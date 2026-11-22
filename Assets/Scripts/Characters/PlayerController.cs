@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using TeksMaster.Core;
@@ -82,11 +83,28 @@ namespace TeksMaster.Characters
         public CharacterActor Actor { get; private set; }
         public NpcOpponent NearestOpponent { get; private set; }
         public bool IsNearSariSariStore { get; private set; }
+        public HiddenCardCollectible NearestHiddenCard { get; private set; }
+        public AreaGateBarrier NearestLockedGate { get; private set; }
         public bool MovementLocked { get; set; }
+        public bool ExternalInteractHandlerActive { get; set; }
+
+        public event Action<AreaGateBarrier> OnLockedGateInteracted;
+
+        private const float OpponentProximityRadius = 3.1f;
+        private const float StoreProximityRadius = 3.6f;
+        private const float HiddenCardProximityRadius = 2.6f;
+        private const float LockedGateProximityRadius = 3.2f;
 
         private CharacterController _cc;
         private Vector3 _velocity;
         private Vector2 _virtualMoveInput;
+        private int _lastInteractFrame = -1;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            Instance = null;
+        }
 
         private void Awake()
         {
@@ -140,6 +158,10 @@ namespace TeksMaster.Characters
             {
                 PlayerInventory.Instance.OnGenderChanged -= HandleGenderChanged;
             }
+            if (Instance == this)
+            {
+                Instance = null;
+            }
         }
 
         private void HandleGenderChanged(PlayerGender gender)
@@ -191,6 +213,30 @@ namespace TeksMaster.Characters
             if (_cc != null) _cc.enabled = true;
         }
 
+        public bool TryInteractNearestHiddenCard()
+        {
+            if (_lastInteractFrame == Time.frameCount) return false;
+            if (NearestHiddenCard == null || !NearestHiddenCard.CanCollect) return false;
+
+            _lastInteractFrame = Time.frameCount;
+            bool collected = NearestHiddenCard.TryCollect();
+            if (collected)
+            {
+                NearestHiddenCard = null;
+            }
+            return collected;
+        }
+
+        public bool TryInteractNearestLockedGate()
+        {
+            if (_lastInteractFrame == Time.frameCount) return false;
+            if (NearestLockedGate == null || !NearestLockedGate.IsLocked) return false;
+
+            _lastInteractFrame = Time.frameCount;
+            OnLockedGateInteracted?.Invoke(NearestLockedGate);
+            return true;
+        }
+
         private void Update()
         {
             UpdateProximityTargets();
@@ -199,6 +245,21 @@ namespace TeksMaster.Characters
             if (!MovementLocked && kb != null && kb.cKey.wasPressedThisFrame)
             {
                 PlayerInventory.Instance?.ToggleGender();
+            }
+
+            if (!MovementLocked && !ExternalInteractHandlerActive && kb != null && kb.eKey.wasPressedThisFrame)
+            {
+                if (NearestOpponent == null && !IsNearSariSariStore)
+                {
+                    if (NearestHiddenCard != null)
+                    {
+                        TryInteractNearestHiddenCard();
+                    }
+                    else if (NearestLockedGate != null)
+                    {
+                        TryInteractNearestLockedGate();
+                    }
+                }
             }
 
             if (MovementLocked)
@@ -272,28 +333,78 @@ namespace TeksMaster.Characters
         private void UpdateProximityTargets()
         {
             NearestOpponent = null;
-            float bestDist = 3.1f;
+            NearestHiddenCard = null;
+            NearestLockedGate = null;
+            IsNearSariSariStore = false;
+
+            float bestOppDist = OpponentProximityRadius;
+            Vector3 playerPos = transform.position;
 
             var court = BarangayCourtBuilder.Instance;
             if (court != null)
             {
-                foreach (var npc in court.SpawnedOpponents)
+                for (int i = 0; i < court.SpawnedOpponents.Count; i++)
                 {
+                    var npc = court.SpawnedOpponents[i];
                     if (npc == null) continue;
                     npc.SetPlayerTransform(transform);
-                    float d = Vector3.Distance(transform.position, npc.transform.position);
-                    if (d < bestDist)
+                    float d = Vector3.Distance(playerPos, npc.transform.position);
+                    if (d < bestOppDist)
                     {
-                        bestDist = d;
+                        bestOppDist = d;
                         NearestOpponent = npc;
                     }
                 }
 
-                IsNearSariSariStore = Vector3.Distance(transform.position, court.StoreInteractionPoint) < 3.6f;
+                var storePoints = court.StoreInteractionPoints;
+                if (storePoints != null && storePoints.Count > 0)
+                {
+                    for (int i = 0; i < storePoints.Count; i++)
+                    {
+                        if (Vector3.Distance(playerPos, storePoints[i]) < StoreProximityRadius)
+                        {
+                            IsNearSariSariStore = true;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    IsNearSariSariStore = Vector3.Distance(playerPos, court.StoreInteractionPoint) < StoreProximityRadius;
+                }
             }
-            else
+
+            // Detect nearest uncollected hidden card (horizontal XZ distance < 2.6f)
+            float bestCardDist = HiddenCardProximityRadius;
+            var hiddenCards = HiddenCardCollectible.AllInstances;
+            for (int i = 0; i < hiddenCards.Count; i++)
             {
-                IsNearSariSariStore = false;
+                var card = hiddenCards[i];
+                if (card == null || !card.CanCollect) continue;
+                Vector3 cPos = card.transform.position;
+                float dx = playerPos.x - cPos.x;
+                float dz = playerPos.z - cPos.z;
+                float distXZ = Mathf.Sqrt(dx * dx + dz * dz);
+                if (distXZ < bestCardDist)
+                {
+                    bestCardDist = distXZ;
+                    NearestHiddenCard = card;
+                }
+            }
+
+            // Detect nearest locked area gate barrier (< 3.2f via BoxCollider.ClosestPoint horizontal distance)
+            float bestGateDist = LockedGateProximityRadius;
+            var gates = AreaGateBarrier.AllBarriers;
+            for (int i = 0; i < gates.Count; i++)
+            {
+                var gate = gates[i];
+                if (gate == null || !gate.IsLocked) continue;
+                float dist = gate.GetDistanceTo(playerPos);
+                if (dist < bestGateDist)
+                {
+                    bestGateDist = dist;
+                    NearestLockedGate = gate;
+                }
             }
         }
     }
