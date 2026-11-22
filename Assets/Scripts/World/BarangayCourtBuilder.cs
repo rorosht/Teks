@@ -12,12 +12,23 @@ namespace TeksMaster.World
         public static BarangayCourtBuilder Instance { get; private set; }
 
         public Transform CourtRoot { get; private set; }
-        public Vector3 StoreInteractionPoint { get; private set; } = new Vector3(9.2f, 0f, 5.3f);
+        public Vector3 StoreInteractionPoint { get; private set; } = new Vector3(7.9f, 0f, 5.4f);
+        public List<Vector3> StoreInteractionPoints { get; } = new List<Vector3>();
         public List<NpcOpponent> SpawnedOpponents { get; } = new List<NpcOpponent>();
+        public List<HiddenCardCollectible> SpawnedHiddenCards { get; } = new List<HiddenCardCollectible>();
+        public List<AreaGateBarrier> SpawnedAreaGates { get; } = new List<AreaGateBarrier>();
 
         private readonly List<TextMesh> _storeTimerMeshes = new List<TextMesh>();
         private readonly List<Renderer> _storeRackCardRenderers = new List<Renderer>();
         private bool _built;
+        private ShopManager _subscribedShop;
+        private PlayerInventory _subscribedInventory;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticState()
+        {
+            Instance = null;
+        }
 
         private void Awake()
         {
@@ -31,20 +42,63 @@ namespace TeksMaster.World
 
         private void Start()
         {
-            if (ShopManager.Instance != null)
-            {
-                ShopManager.Instance.OnShopUpdated += RefreshStoreDisplayCards;
-                RefreshStoreDisplayCards();
-            }
+            if (!Application.isPlaying) return;
+
+            SubscribeRuntimeEvents();
+            RefreshStoreDisplayCards();
+            RefreshAreaGates();
+            RefreshHiddenCardStates();
         }
 
         private void OnDestroy()
         {
+            UnsubscribeRuntimeEvents();
             if (Instance == this) Instance = null;
-            if (ShopManager.Instance != null)
+        }
+
+        private void SubscribeRuntimeEvents()
+        {
+            if (!Application.isPlaying) return;
+
+            if (ShopManager.Instance != null && _subscribedShop != ShopManager.Instance)
             {
-                ShopManager.Instance.OnShopUpdated -= RefreshStoreDisplayCards;
+                if (_subscribedShop != null) _subscribedShop.OnShopUpdated -= RefreshStoreDisplayCards;
+                _subscribedShop = ShopManager.Instance;
+                _subscribedShop.OnShopUpdated += RefreshStoreDisplayCards;
             }
+
+            if (PlayerInventory.Instance != null && _subscribedInventory != PlayerInventory.Instance)
+            {
+                if (_subscribedInventory != null)
+                {
+                    _subscribedInventory.OnAreasChanged -= RefreshAreaGates;
+                    _subscribedInventory.OnAreaUnlocked -= HandleAreaUnlocked;
+                }
+                _subscribedInventory = PlayerInventory.Instance;
+                _subscribedInventory.OnAreasChanged += RefreshAreaGates;
+                _subscribedInventory.OnAreaUnlocked += HandleAreaUnlocked;
+            }
+        }
+
+        private void UnsubscribeRuntimeEvents()
+        {
+            if (_subscribedShop != null)
+            {
+                _subscribedShop.OnShopUpdated -= RefreshStoreDisplayCards;
+                _subscribedShop = null;
+            }
+
+            if (_subscribedInventory != null)
+            {
+                _subscribedInventory.OnAreasChanged -= RefreshAreaGates;
+                _subscribedInventory.OnAreaUnlocked -= HandleAreaUnlocked;
+                _subscribedInventory = null;
+            }
+        }
+
+        private void HandleAreaUnlocked(BarangayAreaId unlockedArea)
+        {
+            RefreshAreaGates();
         }
 
         private void Update()
@@ -62,33 +116,110 @@ namespace TeksMaster.World
 
         public struct BarangayZoneInfo
         {
+            public BarangayAreaId AreaId;
             public string Name;
             public string Subtitle;
+            public string UnlockHint;
             public Vector3 SpawnPosition;
             public float SpawnYaw;
         }
 
         public static readonly BarangayZoneInfo[] WorldZones = new[]
         {
-            new BarangayZoneInfo { Name = "BASKETBALL COURT", Subtitle = "Main Hub & Sari-Sari Store (8 Challengers)", SpawnPosition = new Vector3(-3.8f, 0f, -4.6f), SpawnYaw = 34f },
-            new BarangayZoneInfo { Name = "KALYE MAIN STREET", Subtitle = "Jeepney & Fishball Cart (4 Challengers)", SpawnPosition = new Vector3(-1.5f, 0f, -13.5f), SpawnYaw = 180f },
-            new BarangayZoneInfo { Name = "BARANGAY PLAZA PARK", Subtitle = "Gazebo & Park Lawn (4 Challengers)", SpawnPosition = new Vector3(17.8f, 0f, -0.5f), SpawnYaw = 90f },
-            new BarangayZoneInfo { Name = "WEST TAMBAYAN ALLEY", Subtitle = "Waiting Shed & Grandmaster (5 Challengers)", SpawnPosition = new Vector3(-17.8f, 0f, -0.5f), SpawnYaw = -90f },
-            new BarangayZoneInfo { Name = "FIESTA TEKS ARENA", Subtitle = "Covered Stage & Elite Bosses (3 Challengers)", SpawnPosition = new Vector3(18.5f, 0f, -15.5f), SpawnYaw = 115f }
+            new BarangayZoneInfo
+            {
+                AreaId = BarangayAreaId.PlayersNeighborhood,
+                Name = "PLAYER'S NEIGHBORHOOD",
+                Subtitle = "Your House, Plaza Gazebo & Dodong (Starter Area)",
+                UnlockHint = "Starting Area (Unlocked)",
+                SpawnPosition = new Vector3(24.8f, 0f, 5.2f),
+                SpawnYaw = -145f
+            },
+            new BarangayZoneInfo
+            {
+                AreaId = BarangayAreaId.SariSariAndKalye,
+                Name = "SARI-SARI & KALYE",
+                Subtitle = "Kalye Kiosk, Jeepney, Fishball Cart & Mark",
+                UnlockHint = "Starting Area (Unlocked)",
+                SpawnPosition = new Vector3(-2.5f, 0f, -13.2f),
+                SpawnYaw = 180f
+            },
+            new BarangayZoneInfo
+            {
+                AreaId = BarangayAreaId.BasketballCourt,
+                Name = "BASKETBALL COURT",
+                Subtitle = "Main Court, Aling Nena's Store & Carlo",
+                UnlockHint = "Defeat Dodong & Mark (or win 2 Starter Area matches)",
+                SpawnPosition = new Vector3(-3.8f, 0f, -4.6f),
+                SpawnYaw = 34f
+            },
+            new BarangayZoneInfo
+            {
+                AreaId = BarangayAreaId.OldNeighborhood,
+                Name = "OLD NEIGHBORHOOD",
+                Subtitle = "West Tambayan Alley, Waiting Shed & Joshua",
+                UnlockHint = "Defeat Carlo (or win 2 Basketball Court matches)",
+                SpawnPosition = new Vector3(-17.8f, 0f, -0.5f),
+                SpawnYaw = -90f
+            },
+            new BarangayZoneInfo
+            {
+                AreaId = BarangayAreaId.FiestaArena,
+                Name = "FIESTA TEKS ARENA",
+                Subtitle = "Covered Stage, Banderitas & Teks Master",
+                UnlockHint = "Defeat Joshua (or win 2 Old Neighborhood matches)",
+                SpawnPosition = new Vector3(18.5f, 0f, -15.5f),
+                SpawnYaw = 115f
+            }
         };
+
+        public static BarangayAreaId GetAreaAtPosition(Vector3 pos)
+        {
+            if (pos.x <= -14.5f) return BarangayAreaId.OldNeighborhood;
+            if (pos.x >= 14.5f)
+            {
+                return pos.z <= -12.2f
+                    ? BarangayAreaId.FiestaArena
+                    : BarangayAreaId.PlayersNeighborhood;
+            }
+            return pos.z <= -8.4f
+                ? BarangayAreaId.SariSariAndKalye
+                : BarangayAreaId.BasketballCourt;
+        }
+
+        public static string GetAreaDisplayName(BarangayAreaId area)
+        {
+            switch (area)
+            {
+                case BarangayAreaId.PlayersNeighborhood: return "PLAYER'S NEIGHBORHOOD";
+                case BarangayAreaId.SariSariAndKalye: return "SARI-SARI & KALYE";
+                case BarangayAreaId.BasketballCourt: return "BASKETBALL COURT";
+                case BarangayAreaId.OldNeighborhood: return "OLD NEIGHBORHOOD";
+                case BarangayAreaId.FiestaArena: return "FIESTA TEKS ARENA";
+                default: return "BARANGAY";
+            }
+        }
+
+        public static BarangayZoneInfo GetZoneInfo(BarangayAreaId area)
+        {
+            for (int i = 0; i < WorldZones.Length; i++)
+            {
+                if (WorldZones[i].AreaId == area)
+                {
+                    return WorldZones[i];
+                }
+            }
+            return WorldZones[0];
+        }
 
         public static string GetZoneNameAtPosition(Vector3 pos)
         {
-            if (pos.x >= 14.5f && pos.z <= -9.5f) return "FIESTA TEKS ARENA";
-            if (pos.x >= 14.5f) return "BARANGAY PLAZA PARK";
-            if (pos.x <= -14.5f) return "WEST TAMBAYAN ALLEY";
-            if (pos.z <= -9.5f) return "KALYE MAIN STREET";
-            return "BASKETBALL COURT";
+            return GetAreaDisplayName(GetAreaAtPosition(pos));
         }
 
         public void BuildWorldIfNeeded()
         {
-            const string versionMarker = "WorldVersion_V4";
+            const string versionMarker = "WorldVersion_V5";
             if (_built && CourtRoot != null && CourtRoot.Find(versionMarker) != null)
             {
                 // Verify materials aren't stale/missing shaders (prevents magenta screen when Reload Domain is disabled)
@@ -96,6 +227,8 @@ namespace TeksMaster.World
                 if (firstRend != null && firstRend.sharedMaterial != null && firstRend.sharedMaterial.shader != null &&
                     firstRend.sharedMaterial.shader.name != "Hidden/InternalErrorShader")
                 {
+                    RefreshAreaGates();
+                    RefreshHiddenCardStates();
                     return;
                 }
             }
@@ -108,8 +241,12 @@ namespace TeksMaster.World
 
             _built = true;
             SpawnedOpponents.Clear();
+            SpawnedHiddenCards.Clear();
+            SpawnedAreaGates.Clear();
+            StoreInteractionPoints.Clear();
             _storeTimerMeshes.Clear();
             _storeRackCardRenderers.Clear();
+
             var rootGo = new GameObject("BarangayCourtWorld");
             CourtRoot = rootGo.transform;
             new GameObject(versionMarker).transform.SetParent(CourtRoot, false);
@@ -123,30 +260,99 @@ namespace TeksMaster.World
             BuildBleachersAndShadySidelines();
             BuildSariSariStore();
             BuildExtendedBarangayZones();
+            BuildAreaGates();
             BuildBarangayHousesAndUtilityPoles();
             SpawnAllOpponents();
+            SpawnHiddenCollectibleCards();
+
+            if (Application.isPlaying)
+            {
+                SubscribeRuntimeEvents();
+            }
 
             RefreshStoreDisplayCards();
+            RefreshAreaGates();
+            RefreshHiddenCardStates();
+        }
+
+        public void RefreshAreaGates()
+        {
+            for (int i = 0; i < SpawnedAreaGates.Count; i++)
+            {
+                if (SpawnedAreaGates[i] != null)
+                {
+                    SpawnedAreaGates[i].RefreshLockState();
+                }
+            }
+
+            var all = AreaGateBarrier.AllBarriers;
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i] != null)
+                {
+                    all[i].RefreshLockState();
+                }
+            }
+        }
+
+        public void RefreshHiddenCardStates()
+        {
+            for (int i = 0; i < SpawnedHiddenCards.Count; i++)
+            {
+                if (SpawnedHiddenCards[i] != null)
+                {
+                    SpawnedHiddenCards[i].RefreshCollectedState();
+                }
+            }
+        }
+
+        public List<string> GetHiddenCardIdsInArea(BarangayAreaId area)
+        {
+            var ids = new List<string>();
+            for (int i = 0; i < SpawnedHiddenCards.Count; i++)
+            {
+                var card = SpawnedHiddenCards[i];
+                if (card != null && card.AreaId == area && !string.IsNullOrEmpty(card.HiddenId))
+                {
+                    ids.Add(card.HiddenId);
+                }
+            }
+            return ids;
+        }
+
+        public int GetTotalHiddenCardCount()
+        {
+            return SpawnedHiddenCards.Count;
         }
 
         private void CollectDynamicReferences()
         {
             SpawnedOpponents.Clear();
             SpawnedOpponents.AddRange(FindObjectsByType<NpcOpponent>());
-            _storeTimerMeshes.Clear();
-            foreach (var tm in CourtRoot.GetComponentsInChildren<TextMesh>())
+            SpawnedHiddenCards.Clear();
+            if (CourtRoot != null)
             {
-                if (tm.gameObject.name.StartsWith("StoreTimerText"))
-                {
-                    _storeTimerMeshes.Add(tm);
-                }
+                SpawnedHiddenCards.AddRange(CourtRoot.GetComponentsInChildren<HiddenCardCollectible>(true));
+                SpawnedAreaGates.Clear();
+                SpawnedAreaGates.AddRange(CourtRoot.GetComponentsInChildren<AreaGateBarrier>(true));
             }
-            _storeRackCardRenderers.Clear();
-            foreach (var rend in CourtRoot.GetComponentsInChildren<Renderer>())
+            _storeTimerMeshes.Clear();
+            if (CourtRoot != null)
             {
-                if (rend.gameObject.name.StartsWith("StoreRackCard_"))
+                foreach (var tm in CourtRoot.GetComponentsInChildren<TextMesh>())
                 {
-                    _storeRackCardRenderers.Add(rend);
+                    if (tm.gameObject.name.StartsWith("StoreTimerText"))
+                    {
+                        _storeTimerMeshes.Add(tm);
+                    }
+                }
+                _storeRackCardRenderers.Clear();
+                foreach (var rend in CourtRoot.GetComponentsInChildren<Renderer>())
+                {
+                    if (rend.gameObject.name.StartsWith("StoreRackCard_"))
+                    {
+                        _storeRackCardRenderers.Add(rend);
+                    }
                 }
             }
         }
@@ -233,14 +439,38 @@ namespace TeksMaster.World
             if (wireMat.HasProperty("_BaseMap")) wireMat.SetTextureScale("_BaseMap", new Vector2(8f, 3f));
             if (wireMat.HasProperty("_MainTex")) wireMat.SetTextureScale("_MainTex", new Vector2(8f, 3f));
 
-            // Back fence segments (leaving space for the Sari-Sari store at x = 5.6..13.0)
+            // Back fence segments (leaving space for the Sari-Sari store at x = 5.6..13.0 and behind-store walkthrough inside Court)
             BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 8.4f), new Vector3(5.6f, 0f, 8.4f), 3.1f, postMat, wireMat);
-            // Left fence with wide walkthrough gate (-3.0 .. +3.0) to West Tambayan Alley
-            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -8.2f), new Vector3(-14.4f, 0f, -3.0f), 3.1f, postMat, wireMat);
+
+            // Seal NW & NE perimeter gaps north of z = 8.4 up to BoundaryNorth (z = 12.2) so players cannot bypass locked gates
+            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 8.4f), new Vector3(-14.4f, 0f, 12.2f), 3.1f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, 8.4f), new Vector3(14.4f, 0f, 12.2f), 3.1f, postMat, wireMat);
+
+            // Left court fence with wide walkthrough gate (z ∈ [-3.0, +3.0]) to Old Neighborhood (West Tambayan Alley)
+            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -8.4f), new Vector3(-14.4f, 0f, -3.0f), 3.1f, postMat, wireMat);
             BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 3.0f), new Vector3(-14.4f, 0f, 8.4f), 3.1f, postMat, wireMat);
-            // Right fence with wide walkthrough gate (-3.0 .. +3.0) to East Barangay Plaza
-            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -8.2f), new Vector3(14.4f, 0f, -3.0f), 3.1f, postMat, wireMat);
+
+            // Right court fence with wide walkthrough gate (z ∈ [-3.0, +3.0]) to Player's Neighborhood (East Plaza)
+            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -8.4f), new Vector3(14.4f, 0f, -3.0f), 3.1f, postMat, wireMat);
             BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, 3.0f), new Vector3(14.4f, 0f, 8.4f), 3.1f, postMat, wireMat);
+
+            // South court fence along z = -8.4 with centered walkthrough gateway (x ∈ [-3.2, +3.2]) to Sari-Sari & Kalye
+            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -8.4f), new Vector3(-3.2f, 0f, -8.4f), 2.5f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(3.2f, 0f, -8.4f), new Vector3(14.4f, 0f, -8.4f), 2.5f, postMat, wireMat);
+
+            // SW Kalye -> Old Neighborhood border along x = -14.4 (z ∈ [-25.5, -8.4]), leaving Kalye road gate z ∈ [-18.6, -12.4]
+            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -25.5f), new Vector3(-14.4f, 0f, -18.6f), 2.6f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -12.4f), new Vector3(-14.4f, 0f, -8.4f), 2.6f, postMat, wireMat);
+
+            // NOTE: x = 14.4, z ∈ [-12.2, -8.4] stays COMPLETELY OPEN as the starter walkway between Area 0 (PlayersNeighborhood) & Area 1 (SariSariAndKalye).
+
+            // Fiesta Arena West border along x = 14.4 (z ∈ [-25.5, -12.2]), leaving Fiesta West Archway gate z ∈ [-18.8, -12.6]
+            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -25.5f), new Vector3(14.4f, 0f, -18.8f), 2.6f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -12.6f), new Vector3(14.4f, 0f, -12.2f), 2.6f, postMat, wireMat);
+
+            // Fiesta Arena North border along z = -12.2 (x ∈ [14.4, 32.5]), leaving Fiesta North Rope gate x ∈ [19.6, 25.8]
+            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -12.2f), new Vector3(19.6f, 0f, -12.2f), 2.2f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(25.8f, 0f, -12.2f), new Vector3(32.5f, 0f, -12.2f), 2.2f, postMat, wireMat);
         }
 
         private void BuildFenceSpan(Transform parent, Vector3 start, Vector3 end, float height, Material postMat, Material wireMat)
@@ -261,6 +491,14 @@ namespace TeksMaster.World
             }
 
             Vector3 mid = (start + end) * 0.5f;
+            // Solid collision volume so players cannot bypass locked area gates through fences
+            var fenceColliderGo = new GameObject("FenceSpanCollider");
+            fenceColliderGo.transform.SetParent(parent, false);
+            fenceColliderGo.transform.position = mid + Vector3.up * (height * 0.5f);
+            fenceColliderGo.transform.rotation = rot;
+            var fenceBox = fenceColliderGo.AddComponent<BoxCollider>();
+            fenceBox.size = new Vector3(length, height, 0.30f);
+
             // Top & middle rail
             var topRail = CreateBox("TopRail", parent, mid + Vector3.up * (height - 0.05f), new Vector3(length, 0.08f, 0.08f), postMat, false);
             topRail.transform.rotation = rot;
@@ -285,6 +523,60 @@ namespace TeksMaster.World
             panelBack.transform.localScale = new Vector3(length, height - 0.1f, 1f);
             panelBack.GetComponent<Renderer>().sharedMaterial = wireMat;
             SafeDestroy(panelBack.GetComponent<Collider>());
+        }
+
+        private void BuildAreaGates()
+        {
+            var gateGroup = new GameObject("AreaGates").transform;
+            gateGroup.SetParent(CourtRoot, false);
+
+            // Area 2: Basketball Court (East & South gateways)
+            CreateAreaGate(
+                gateGroup, "Gate_Court_East", BarangayAreaId.BasketballCourt,
+                "Basketball Court", new Vector3(14.4f, 0f, 0f), Quaternion.Euler(0f, 90f, 0f), 6.0f, 2.4f);
+            CreateAreaGate(
+                gateGroup, "Gate_Court_South", BarangayAreaId.BasketballCourt,
+                "Basketball Court", new Vector3(0f, 0f, -8.4f), Quaternion.identity, 6.4f, 2.4f);
+
+            // Area 3: Old Neighborhood (Court West & Kalye West gateways)
+            CreateAreaGate(
+                gateGroup, "Gate_OldNeighborhood_CourtWest", BarangayAreaId.OldNeighborhood,
+                "Old Neighborhood", new Vector3(-14.4f, 0f, 0f), Quaternion.Euler(0f, 90f, 0f), 6.0f, 2.4f);
+            CreateAreaGate(
+                gateGroup, "Gate_OldNeighborhood_KalyeWest", BarangayAreaId.OldNeighborhood,
+                "Old Neighborhood", new Vector3(-14.4f, 0f, -15.5f), Quaternion.Euler(0f, 90f, 0f), 6.2f, 2.4f);
+
+            // Area 4: Fiesta Teks Arena (West Archway & North Rope gateways)
+            CreateAreaGate(
+                gateGroup, "Gate_Fiesta_WestArchway", BarangayAreaId.FiestaArena,
+                "Fiesta Teks Arena", new Vector3(14.4f, 0f, -15.7f), Quaternion.Euler(0f, 90f, 0f), 6.2f, 2.4f);
+            CreateAreaGate(
+                gateGroup, "Gate_Fiesta_NorthRope", BarangayAreaId.FiestaArena,
+                "Fiesta Teks Arena", new Vector3(22.7f, 0f, -12.2f), Quaternion.identity, 6.2f, 2.4f);
+        }
+
+        private void CreateAreaGate(
+            Transform parent,
+            string gateName,
+            BarangayAreaId areaId,
+            string gateTitle,
+            Vector3 worldPos,
+            Quaternion worldRot,
+            float width,
+            float height)
+        {
+            var go = new GameObject(gateName);
+            go.transform.SetParent(parent, false);
+            go.transform.position = worldPos;
+            go.transform.rotation = worldRot;
+
+            string hint = PlayerInventory.Instance != null
+                ? PlayerInventory.Instance.GetAreaUnlockRequirementText(areaId)
+                : GetZoneInfo(areaId).UnlockHint;
+
+            var barrier = go.AddComponent<AreaGateBarrier>();
+            barrier.Initialize(areaId, gateTitle, hint, width, height);
+            SpawnedAreaGates.Add(barrier);
         }
 
         private void BuildBasketballHoop(string name, Vector3 basePos, bool faceRight)
@@ -495,6 +787,10 @@ namespace TeksMaster.World
             );
 
             StoreInteractionPoint = new Vector3(7.9f, 0f, 5.4f);
+            if (!StoreInteractionPoints.Contains(StoreInteractionPoint))
+            {
+                StoreInteractionPoints.Add(StoreInteractionPoint);
+            }
         }
 
         public void RefreshStoreDisplayCards()
@@ -568,9 +864,77 @@ namespace TeksMaster.World
             CreateCylinder("CartUmbrellaTop", cart, new Vector3(0f, 2.85f, 0f), new Vector3(2.5f, 0.12f, 2.5f), jeepRedMat, false);
             CreateWorldText("FishballSign", cart, new Vector3(0f, 0.85f, -0.54f), "FISHBALL & TAHO", 18, new Color(0.35f, 0.12f, 0.05f));
 
-            // 2. EAST ZONE: Barangay Plaza & Kubo Park (x = +16 .. +29)
+            // Starter Kalye Sari-Sari Kiosk (allows shopping in Areas 0 & 1 before Basketball Court unlocks)
+            var kalyeKiosk = new GameObject("KalyeSariSariKiosk").transform;
+            kalyeKiosk.SetParent(zones, false);
+            kalyeKiosk.position = new Vector3(-4.2f, 0f, -10.6f);
+            Material kioskWallMat = CardArtGenerator.CreateLitMaterial(new Color(0.50f, 0.78f, 0.66f), 0.18f);
+            Material kioskSignBg = CardArtGenerator.CreateLitMaterial(new Color(0.96f, 0.86f, 0.64f), 0.15f);
+            Material kioskLedBg = CardArtGenerator.CreateLitMaterial(new Color(0.10f, 0.14f, 0.16f), 0.20f);
+            CreateBox("KioskBase", kalyeKiosk, new Vector3(0f, 0.56f, 0f), new Vector3(3.1f, 1.12f, 1.45f), kioskWallMat, true);
+            CreateBox("KioskBackWall", kalyeKiosk, new Vector3(0f, 1.45f, 0.62f), new Vector3(3.1f, 2.50f, 0.20f), kioskWallMat, true);
+            CreateBox("KioskLeftPost", kalyeKiosk, new Vector3(-1.45f, 1.85f, -0.62f), new Vector3(0.16f, 1.55f, 0.16f), woodMat, false);
+            CreateBox("KioskRightPost", kalyeKiosk, new Vector3(1.45f, 1.85f, -0.62f), new Vector3(0.16f, 1.55f, 0.16f), woodMat, false);
+            CreateBox("KioskCounter", kalyeKiosk, new Vector3(0f, 1.15f, -0.70f), new Vector3(3.25f, 0.10f, 0.48f), woodMat, true);
+            var kioskRoof = CreateBox("KioskAwning", kalyeKiosk, new Vector3(0f, 2.74f, -0.18f), new Vector3(3.6f, 0.14f, 2.25f), roofMat, false);
+            kioskRoof.transform.localRotation = Quaternion.Euler(11f, 0f, 0f);
+            CreateBox("KioskSignBg", kalyeKiosk, new Vector3(0f, 3.16f, -0.82f), new Vector3(2.85f, 0.72f, 0.12f), kioskSignBg, false);
+            CreateWorldText("KioskSignText", kalyeKiosk, new Vector3(0f, 3.16f, -0.90f), "KALYE SARI-SARI\nTEKS KIOSK", 19, new Color(0.42f, 0.16f, 0.08f));
+            CreateBox("KioskTimerBg", kalyeKiosk, new Vector3(0f, 0.68f, -0.76f), new Vector3(2.1f, 0.56f, 0.06f), kioskLedBg, false);
+            var kioskTimer = CreateWorldText("StoreTimerText_Kalye", kalyeKiosk, new Vector3(0f, 0.68f, -0.81f), "NEW CARDS IN\n04:59", 17, new Color(0.55f, 1.0f, 0.45f));
+            _storeTimerMeshes.Add(kioskTimer);
+
+            Color[] kioskSnacks = {
+                new Color(0.86f, 0.18f, 0.20f),
+                new Color(0.96f, 0.78f, 0.18f),
+                new Color(0.32f, 0.54f, 0.26f),
+                new Color(0.14f, 0.42f, 0.86f)
+            };
+            for (int c = 0; c < 4; c++)
+            {
+                Material sm = CardArtGenerator.CreateLitMaterial(kioskSnacks[c % kioskSnacks.Length], 0.30f);
+                CreateBox("KioskSnack_" + c, kalyeKiosk, new Vector3(-0.95f + c * 0.62f, 2.08f, -0.66f), new Vector3(0.20f, 0.24f, 0.05f), sm, false);
+            }
+
+            Vector3 kalyeStorePoint = new Vector3(-4.2f, 0f, -11.6f);
+            if (!StoreInteractionPoints.Contains(kalyeStorePoint))
+            {
+                StoreInteractionPoints.Add(kalyeStorePoint);
+            }
+
+            // 2. EAST ZONE: Player's Neighborhood & Barangay Plaza Park (x = +15 .. +31, z > -12.2)
             CreateBox("EastPlazaLawn", zones, new Vector3(22.5f, -0.009f, 0f), new Vector3(14f, 0.02f, 18f), grassMat, false);
             CreateBox("EastPlazaPatio", zones, new Vector3(22.2f, 0.002f, 0f), new Vector3(10.5f, 0.02f, 12.5f), plazaTileMat, false);
+
+            // Player's House (Starter Home Landmark in Area 0, clear of spawn (24.8, 0, 5.2) & behind-house hidden card (27.5, 0.35, 9.6))
+            var playerHouse = new GameObject("PlayersHouse").transform;
+            playerHouse.SetParent(zones, false);
+            playerHouse.position = new Vector3(27.5f, 0f, 6.2f);
+            Material homeWallMat = CardArtGenerator.CreateLitMaterial(new Color(0.95f, 0.89f, 0.76f), 0.16f);
+            Material homeTrimMat = CardArtGenerator.CreateLitMaterial(new Color(0.20f, 0.48f, 0.66f), 0.22f);
+            Material homeDoorMat = CardArtGenerator.CreateLitMaterial(new Color(0.46f, 0.26f, 0.14f), 0.20f);
+            Material porchGlowMat = CardArtGenerator.CreateUnlitEmissiveMaterial(new Color(1.0f, 0.90f, 0.58f), 1.45f);
+            CreateBox("HomeBody", playerHouse, new Vector3(0f, 1.70f, 0f), new Vector3(3.4f, 3.4f, 3.4f), homeWallMat, true);
+            CreateBox("HomePorchStep", playerHouse, new Vector3(-1.90f, 0.12f, 0f), new Vector3(0.55f, 0.24f, 1.85f), plazaTileMat, true);
+            CreateBox("HomeDoor", playerHouse, new Vector3(-1.72f, 1.12f, 0f), new Vector3(0.08f, 1.95f, 1.05f), homeDoorMat, false);
+            CreateBox("HomeWindowFront", playerHouse, new Vector3(-1.72f, 2.25f, 1.05f), new Vector3(0.08f, 0.75f, 0.75f), homeTrimMat, false);
+            CreateBox("HomeWindowSouth", playerHouse, new Vector3(0f, 1.85f, -1.72f), new Vector3(1.15f, 0.85f, 0.08f), homeTrimMat, false);
+            CreateBox("HomeRoof", playerHouse, new Vector3(-0.12f, 3.56f, 0f), new Vector3(4.35f, 0.24f, 4.10f), roofMat, false);
+            CreateBox("HomeRoofPeak", playerHouse, new Vector3(0f, 3.92f, 0f), new Vector3(2.80f, 0.46f, 2.90f), roofMat, false);
+            CreateBox("HomePorchLamp", playerHouse, new Vector3(-1.82f, 2.42f, 0f), new Vector3(0.18f, 0.18f, 0.18f), porchGlowMat, false);
+            CreateBox("HomeSignBg", playerHouse, new Vector3(-1.76f, 2.95f, 0f), new Vector3(0.10f, 0.52f, 2.15f), homeTrimMat, false);
+            var homeLabel = CreateWorldText("HomeSignText", playerHouse, new Vector3(-1.83f, 2.95f, 0f), "MY HOUSE", 19, new Color(1.0f, 0.94f, 0.40f));
+            homeLabel.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+
+            // Plaza Bench (for bench sitter Ate Lorna)
+            var plazaBench = new GameObject("PlazaBench").transform;
+            plazaBench.SetParent(zones, false);
+            plazaBench.position = new Vector3(25.8f, 0f, -2.6f);
+            Material benchLegMat = CardArtGenerator.CreateLitMaterial(new Color(0.50f, 0.48f, 0.45f), 0.15f);
+            CreateBox("PlazaBenchSeat", plazaBench, new Vector3(0f, 0.42f, 0f), new Vector3(0.70f, 0.12f, 2.55f), woodMat, true);
+            CreateBox("PlazaBenchBack", plazaBench, new Vector3(0.30f, 0.80f, 0f), new Vector3(0.10f, 0.56f, 2.55f), woodMat, true);
+            CreateBox("PlazaBenchLegN", plazaBench, new Vector3(0f, 0.20f, 0.95f), new Vector3(0.58f, 0.40f, 0.18f), benchLegMat, false);
+            CreateBox("PlazaBenchLegS", plazaBench, new Vector3(0f, 0.20f, -0.95f), new Vector3(0.58f, 0.40f, 0.18f), benchLegMat, false);
 
             var kubo = new GameObject("BarangayPlazaGazebo").transform;
             kubo.SetParent(zones, false);
@@ -584,7 +948,7 @@ namespace TeksMaster.World
             CreateBox("KuboRoofPeak", kubo, new Vector3(0f, 3.55f, 0f), new Vector3(3.4f, 0.55f, 3.4f), roofMat, false);
             CreateWorldText("PlazaSign", kubo, new Vector3(0f, 3.25f, -2.85f), "BARANGAY PLAZA", 20, new Color(1.0f, 0.90f, 0.35f));
 
-            // 3. WEST ZONE: West Tambayan Alley & Waiting Shed (x = -16 .. -29)
+            // 3. WEST ZONE: Old Neighborhood & Waiting Shed (x = -16 .. -29)
             CreateBox("WestTambayanPad", zones, new Vector3(-22.2f, 0.002f, 0f), new Vector3(13f, 0.02f, 16f), plazaTileMat, false);
 
             var shed = new GameObject("WestWaitingShed").transform;
@@ -596,7 +960,7 @@ namespace TeksMaster.World
             CreateCylinder("ShedPostR", shed, new Vector3(2.4f, 1.45f, -1.1f), new Vector3(0.12f, 1.45f, 0.12f), chromeMat, true);
             var shedRoof = CreateBox("ShedRoof", shed, new Vector3(0f, 2.85f, 0f), new Vector3(5.8f, 0.16f, 3.2f), jeepBlueMat, false);
             shedRoof.transform.localRotation = Quaternion.Euler(8f, 0f, 0f);
-            CreateWorldText("ShedSign", shed, new Vector3(0f, 2.95f, -1.65f), "TAMBAYAN SHED", 20, new Color(1.0f, 0.88f, 0.24f));
+            CreateWorldText("ShedSign", shed, new Vector3(0f, 2.95f, -1.65f), "OLD NEIGHBORHOOD\nTAMBAYAN SHED", 18, new Color(1.0f, 0.88f, 0.24f));
 
             // 4. SOUTH-EAST SEPARATE ZONE: Barangay Fiesta Stage & Teks Arena (x = +17 .. +31, z = -12 .. -24)
             var fiesta = new GameObject("BarangayFiestaArena").transform;
@@ -623,9 +987,9 @@ namespace TeksMaster.World
             }
 
             // Directional Wooden Barangay Street Signposts at the Basketball Court Exits
-            BuildDirectionSign(zones, new Vector3(-14.8f, 0f, 3.4f), Quaternion.Euler(0f, -90f, 0f), "WEST TAMBAYAN\nALLEY ->", woodMat);
-            BuildDirectionSign(zones, new Vector3(14.8f, 0f, 3.4f), Quaternion.Euler(0f, 90f, 0f), "BARANGAY PLAZA\nPARK ->", woodMat);
-            BuildDirectionSign(zones, new Vector3(0f, 0f, -9.2f), Quaternion.Euler(0f, 180f, 0f), "KALYE STREET &\nFIESTA ARENA", woodMat);
+            BuildDirectionSign(zones, new Vector3(-14.8f, 0f, 3.6f), Quaternion.Euler(0f, -90f, 0f), "OLD NEIGHBORHOOD\nWEST ALLEY ->", woodMat);
+            BuildDirectionSign(zones, new Vector3(14.8f, 0f, 3.6f), Quaternion.Euler(0f, 90f, 0f), "PLAYER'S\nNEIGHBORHOOD ->", woodMat);
+            BuildDirectionSign(zones, new Vector3(4.6f, 0f, -9.2f), Quaternion.Euler(0f, 180f, 0f), "SARI-SARI, KALYE &\nFIESTA ARENA", woodMat);
         }
 
         private void BuildDirectionSign(Transform parent, Vector3 pos, Quaternion rot, string text, Material woodMat)
@@ -751,6 +1115,67 @@ namespace TeksMaster.World
         {
             SpawnedOpponents.Clear();
 
+            // 0. NAMED STORY NPCs (5 Story Progression Opponents — Dodong MUST be SpawnedOpponents[0])
+            // Story 1: Dodong (Easy) — Player's Neighborhood (clear of KuboFloor at 23.5 ± 2.3)
+            var dodong = CreateOpponent("Dodong", AIDifficulty.Easy, "bantay_kalye", 1, 40,
+                new Vector3(20.4f, 0f, 2.6f), Quaternion.Euler(0f, 35f, 0f),
+                CharacterOutfitRole.MaleKid,
+                new Color(0.20f, 0.64f, 0.92f), new Color(0.18f, 0.22f, 0.34f), new Color(0.95f, 0.78f, 0.20f),
+                isSeated: false, isWandering: false, isBenchSitter: false,
+                npcId: "dodong", areaOverride: BarangayAreaId.PlayersNeighborhood, isStory: true, storyOrder: 1);
+            dodong.ChallengeQuote = "Uy kapitbahay! Warm-up Teks muna tayo bago ka pumunta ng Court!";
+            dodong.AmbientCallouts = new[] { "Tara kapitbahay, 1v1 Teks!", "Easy match muna tayo!", "Talunin mo kami ni Mark para buksan ang Court!" };
+            dodong.WinBanter = "Haha! Sabi sa'yo swerte 'tong Bantay Kalye ko eh!";
+            dodong.LoseBanter = "Ayos! Galing mo na — puntahan mo naman si Mark sa Kalye!";
+
+            // Story 2: Mark (Easy) — Sari-Sari & Kalye
+            var mark = CreateOpponent("Mark", AIDifficulty.Easy, "tumbang_striker", 2, 60,
+                new Vector3(-3.2f, 0f, -12.2f), Quaternion.Euler(0f, 165f, 0f),
+                CharacterOutfitRole.MaleKid,
+                new Color(0.92f, 0.44f, 0.16f), new Color(0.16f, 0.26f, 0.46f), new Color(0.96f, 0.84f, 0.22f),
+                isSeated: false, isWandering: false, isBenchSitter: false,
+                npcId: "mark", areaOverride: BarangayAreaId.SariSariAndKalye, isStory: true, storyOrder: 2);
+            mark.ChallengeQuote = "Dito sa Kalye Kiosk ako nagte-Teks! Ready ka na ba sa Tumbang Striker ko?";
+            mark.AmbientCallouts = new[] { "Teks tayo dito sa Kalye!", "Bili ka muna ng packs sa Kiosk!", "Talunin mo ako para buksan ang Basketball Court!" };
+            mark.WinBanter = "Hehe! Subukan mo ulit, walang atrasan!";
+            mark.LoseBanter = "Grabe solid ng flick mo! Bukas na pinto papuntang Basketball Court!";
+
+            // Story 3: Carlo (Medium) — Basketball Court (replaces old East Plaza AI Carlo)
+            var carlo = CreateOpponent("Carlo", AIDifficulty.Medium, "agila_kid", 3, 140,
+                new Vector3(4.8f, 0f, -4.8f), Quaternion.Euler(0f, -35f, 0f),
+                CharacterOutfitRole.MaleKid,
+                new Color(0.20f, 0.48f, 0.92f), new Color(0.88f, 0.64f, 0.16f), new Color(0.95f, 0.95f, 0.95f),
+                isSeated: false, isWandering: true, isBenchSitter: false,
+                npcId: "carlo", areaOverride: BarangayAreaId.BasketballCourt, isStory: true, storyOrder: 3);
+            carlo.ChallengeQuote = "Welcome sa Basketball Court! Talunin mo Agila Kid ko para makapasok sa Old Neighborhood!";
+            carlo.AmbientCallouts = new[] { "Court Ace Carlo 'to!", "Subukan mo Agila Kid ko!", "Talunin mo ako para sa Old Neighborhood!" };
+            carlo.WinBanter = "Nice try! Malakas talaga ang Court rotation ko!";
+            carlo.LoseBanter = "Galing! Handa ka na kay Joshua sa Old Neighborhood!";
+
+            // Story 4: Joshua (Hard) — Old Neighborhood
+            var joshua = CreateOpponent("Joshua", AIDifficulty.Hard, "panday_blade", 4, 260,
+                new Vector3(-21.2f, 0f, -3.4f), Quaternion.Euler(0f, 65f, 0f),
+                CharacterOutfitRole.MaleKid,
+                new Color(0.76f, 0.18f, 0.16f), new Color(0.14f, 0.16f, 0.22f), new Color(1.0f, 0.78f, 0.18f),
+                isSeated: false, isWandering: false, isBenchSitter: false,
+                npcId: "joshua", areaOverride: BarangayAreaId.OldNeighborhood, isStory: true, storyOrder: 4);
+            joshua.ChallengeQuote = "Bihira ang nakakarating dito sa Old Neighborhood! Harapin mo Panday Blade ko!";
+            joshua.AmbientCallouts = new[] { "Old Neighborhood Veteran ako!", "Hard difficulty duel — palag?", "Talunin mo ako para buksan ang Fiesta Arena!" };
+            joshua.WinBanter = "Matibay pa rin ang Old Neighborhood! Balik ka pag handa ka na!";
+            joshua.LoseBanter = "Respeto! Bukas na ang Fiesta Teks Arena — naghihintay si Teks Master!";
+
+            // Story 5: Teks Master (Extreme Champion) — Fiesta Teks Arena
+            var teksMaster = CreateOpponent("Teks Master", AIDifficulty.Extreme, "adarna_phoenix", 5, 500,
+                new Vector3(26.4f, 0f, -17.4f), Quaternion.Euler(0f, -80f, 0f),
+                CharacterOutfitRole.MaleKid,
+                new Color(1.0f, 0.76f, 0.14f), new Color(0.16f, 0.12f, 0.28f), new Color(1.0f, 0.92f, 0.34f),
+                isSeated: false, isWandering: false, isBenchSitter: false,
+                npcId: "teks_master", areaOverride: BarangayAreaId.FiestaArena, isStory: true, isChampion: true, storyOrder: 5);
+            teksMaster.ChallengeQuote = "Ako ang Barangay Teks Master! Patunayan mong karapat-dapat ka sa korona ng Fiesta Arena!";
+            teksMaster.AmbientCallouts = new[] { "BARANGAY TEKS MASTER!", "Extreme Champion Challenge!", "Harapin ang Adarna Solaris!" };
+            teksMaster.WinBanter = "Isang tunay na Master lang ang makakatalo sa Adarna Solaris!";
+            teksMaster.LoseBanter = "MABUHAY! Ikaw na ang tunay na TEKS MASTER ng buong Barangay!!";
+
             // 1. Free-throw zone standing opponent (matches AI Gelo (Med) in image_0.png)
             var gelo = CreateOpponent("AI Gelo", AIDifficulty.Medium, "kid_kidlat", 3, 120,
                 new Vector3(-5.8f, 0f, -1.2f), Quaternion.Euler(0f, 105f, 0f),
@@ -810,12 +1235,12 @@ namespace TeksMaster.World
             mia.ChallengeQuote = "Uy! Challenge kita — bilis ng Sigbin Runner ko!";
             mia.AmbientCallouts = new[] { "Uy! Teks tayo!", "Habulan ng swerte!", "Sino palag dyan?" };
 
-            // 4. Sidelines Stronger Opponents & Bosses (Bleachers + Shady Area)
+            // 4. Sidelines Stronger Opponents & Bosses (Bleachers Bench Sitter + Shady Area)
             var tisoy = CreateOpponent("Boss Tisoy", AIDifficulty.Hard, "mecha_bathala", 4, 250,
-                new Vector3(-3.2f, 0f, 5.4f), Quaternion.Euler(0f, 180f, 0f),
+                new Vector3(-3.2f, 0f, 6.92f), Quaternion.Euler(0f, 180f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.45f, 0.20f, 0.72f), new Color(0.14f, 0.14f, 0.18f), new Color(0.88f, 0.32f, 0.96f),
-                isSeated: false, isWandering: false);
+                isSeated: false, isWandering: false, isBenchSitter: true);
             tisoy.ChallengeQuote = "Lakasan mo flick mo, bata — hindi ka uubra sa Mecha Bathala ko!";
             tisoy.AmbientCallouts = new[] { "May lakas ng loob ka ba?", "250 Coins pusta — palag?", "Bleachers Boss ako dito!" };
             tisoy.WinBanter = "Hahaha! Balik ka pag 5-star na Pamato mo!";
@@ -831,7 +1256,7 @@ namespace TeksMaster.World
             kapitan.WinBanter = "Walang makakatalo sa Hari ng Court!";
             kapitan.LoseBanter = "Ikaw na bagong Teks Master ng Barangay!!";
 
-            // 5. SOUTH ZONE (Kalye / Main Street) AI Opponents
+            // 5. SOUTH ZONE (Sari-Sari & Kalye) AI Opponents
             var junjun = CreateOpponent("AI Junjun", AIDifficulty.Easy, "tumbang_striker", 2, 70,
                 new Vector3(-6.2f, 0f, -12.6f), Quaternion.Euler(0f, 25f, 0f),
                 CharacterOutfitRole.MaleKid,
@@ -858,22 +1283,14 @@ namespace TeksMaster.World
             manong.WinBanter = "Hahaha! Bayad muna ng pamasahe, bata!";
             manong.LoseBanter = "Aba, ang galing mo mag-Teks ah! Libre sakay ka na!";
 
-            // 6. EAST ZONE (Barangay Plaza & Gazebo) AI Opponents
-            var carlo = CreateOpponent("AI Carlo", AIDifficulty.Medium, "agila_kid", 3, 160,
-                new Vector3(19.2f, 0f, -2.2f), Quaternion.Euler(0f, -75f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.20f, 0.48f, 0.92f), new Color(0.88f, 0.64f, 0.16f), new Color(0.95f, 0.95f, 0.95f),
-                isSeated: false, isWandering: true);
-            carlo.ChallengeQuote = "Plaza champion ako! Subukan mo Agila Kid ko!";
-            carlo.AmbientCallouts = new[] { "Welcome sa Plaza!", "160 Coins pusta!", "Teks tayo sa Gazebo!" };
-
+            // 6. EAST ZONE (Player's Neighborhood & Plaza Gazebo) AI Opponents
             var lorna = CreateOpponent("Ate Lorna", AIDifficulty.Hard, "diwata_maria", 4, 320,
-                new Vector3(25.2f, 0f, -4.4f), Quaternion.Euler(0f, -40f, 0f),
+                new Vector3(25.52f, 0f, -2.6f), Quaternion.Euler(0f, -90f, 0f),
                 CharacterOutfitRole.FemaleKid,
                 new Color(0.16f, 0.68f, 0.46f), new Color(0.92f, 0.76f, 0.24f), new Color(0.22f, 0.84f, 0.56f),
-                isSeated: false, isWandering: false);
+                isSeated: false, isWandering: false, isBenchSitter: true);
             lorna.ChallengeQuote = "Swerte ng Diwata Maria ang kalaban mo! Ready ka na ba?";
-            lorna.AmbientCallouts = new[] { "Diwata Maria blessing!", "320 Coins challenge!", "Laban sa Plaza!" };
+            lorna.AmbientCallouts = new[] { "Diwata Maria blessing!", "320 Coins challenge!", "Pahinga muna sa Plaza Bench!" };
 
             var panday = CreateOpponent("Master Panday", AIDifficulty.Boss, "panday_blade", 5, 500,
                 new Vector3(23.5f, 0f, -0.8f), Quaternion.Euler(0f, -90f, 0f),
@@ -885,7 +1302,7 @@ namespace TeksMaster.World
             panday.WinBanter = "Hindi pa hinog ang Pamato mo, bata!";
             panday.LoseBanter = "Matibay ka! Karapat-dapat ka sa Panday Blade!";
 
-            // 7. WEST ZONE (West Tambayan Alley & Waiting Shed) AI Opponents
+            // 7. WEST ZONE (Old Neighborhood & Waiting Shed) AI Opponents
             var toto = CreateOpponent("AI Toto", AIDifficulty.Easy, "sipa_master", 2, 80,
                 new Vector3(-19.5f, 0f, -1.6f), Quaternion.Euler(0f, 80f, 0f),
                 CharacterOutfitRole.MaleKid,
@@ -895,10 +1312,10 @@ namespace TeksMaster.World
             toto.AmbientCallouts = new[] { "Tambay Teks tayo!", "Presko dito sa West Shed!", "80 Coins pusta!" };
 
             var bert = CreateOpponent("Kuya Bert", AIDifficulty.Hard, "kapre_titan", 4, 280,
-                new Vector3(-22.5f, 0f, 1.4f), Quaternion.Euler(0f, 130f, 0f),
+                new Vector3(-22.5f, 0f, 3.72f), Quaternion.Euler(0f, 180f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.24f, 0.42f, 0.22f), new Color(0.42f, 0.24f, 0.14f), new Color(0.96f, 0.56f, 0.18f),
-                isSeated: false, isWandering: false);
+                isSeated: false, isWandering: false, isBenchSitter: true);
             bert.ChallengeQuote = "Lahat ng bata dito talo sa Kapre Titan ko! Palag ka?";
             bert.AmbientCallouts = new[] { "Tambayan Veteran!", "280 Coins — laban?", "Kapre Titan unbeatable!" };
 
@@ -922,7 +1339,7 @@ namespace TeksMaster.World
             tonton.ChallengeQuote = "Fishball muna dito sa Kalye tapos Teks tayo!";
             tonton.AmbientCallouts = new[] { "Teks sa Kalye!", "65 Coins lang!", "Balut Drone Pamato ko!" };
 
-            // East Barangay Plaza Park
+            // East Player's Neighborhood / Plaza Park
             var nica = CreateOpponent("AI Nica", AIDifficulty.Medium, "halo_halo_core", 3, 130,
                 new Vector3(21.2f, 0f, 5.2f), Quaternion.Euler(0f, -145f, 0f),
                 CharacterOutfitRole.FemaleKid,
@@ -931,13 +1348,13 @@ namespace TeksMaster.World
             nica.ChallengeQuote = "Ang presko dito sa Plaza Park — Teks showdown, 130 Coins!";
             nica.AmbientCallouts = new[] { "Halo-Halo Core power!", "130 Coins pusta!", "Laban sa Plaza Park!" };
 
-            // West Tambayan Alley
+            // West Old Neighborhood
             var marco = CreateOpponent("AI Marco", AIDifficulty.Medium, "luksong_tinik", 3, 125,
                 new Vector3(-19.2f, 0f, 4.2f), Quaternion.Euler(0f, 125f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.22f, 0.62f, 0.86f), new Color(0.18f, 0.20f, 0.28f), new Color(0.96f, 0.72f, 0.18f),
                 isSeated: false, isWandering: true);
-            marco.ChallengeQuote = "Dito sa West Tambayan Alley — mainit ang laban ng Teks!";
+            marco.ChallengeQuote = "Dito sa Old Neighborhood — mainit ang laban ng Teks!";
             marco.AmbientCallouts = new[] { "West Alley Teks!", "125 Coins tara!", "Luksong Tinik jump!" };
 
             var ella = CreateOpponent("AI Ella", AIDifficulty.Easy, "sorbetes_bot", 2, 75,
@@ -965,17 +1382,76 @@ namespace TeksMaster.World
             macky.ChallengeQuote = "Eclipse ng Minokawa ang haharapin mo sa Fiesta Arena — 290 Coins!";
             macky.AmbientCallouts = new[] { "Minokawa Eclipse!", "290 Coins — palag?", "Fiesta Semi-Finalist!" };
             macky.WinBanter = "Haha! Eclipse ka ng Minokawa ko!";
-            macky.LoseBanter = "Solid ng Pamato mo! Harapin mo si Fiesta Champ Rico!";
+            macky.LoseBanter = "Solid ng Pamato mo! Harapin mo sina Rico at Teks Master!";
 
             var rico = CreateOpponent("Fiesta Champ Rico", AIDifficulty.Boss, "sun_dragon_hero", 5, 750,
-                new Vector3(26.8f, 0f, -19.0f), Quaternion.Euler(0f, -65f, 0f),
+                new Vector3(21.2f, 0f, -20.8f), Quaternion.Euler(0f, 35f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(1.0f, 0.68f, 0.12f), new Color(0.12f, 0.64f, 0.92f), new Color(1.0f, 0.90f, 0.28f),
                 isSeated: false, isWandering: false);
-            rico.ChallengeQuote = "Ako ang Fiesta Teks Champion! Pusta 750 Coins laban sa Sun Dragon Hero ko!";
-            rico.AmbientCallouts = new[] { "FIESTA CHAMPION!", "750 Coins Grand Prize!", "Sun Dragon Hero Pamato!" };
+            rico.ChallengeQuote = "Ako ang dating Fiesta Teks Champion! Subukan mo Sun Dragon Hero ko!";
+            rico.AmbientCallouts = new[] { "FIESTA BOSS RICO!", "Sun Dragon Hero Pamato!", "Warm-up bago si Teks Master!" };
             rico.WinBanter = "Hindi pa sapat ang lakas mo para sa Fiesta Trophy!";
-            rico.LoseBanter = "MABUHAY! Ikaw ang bagong Barangay Fiesta Teks Champion!!";
+            rico.LoseBanter = "MABUHAY! Handa ka na talaga kay Teks Master!!";
+        }
+
+        private void SpawnHiddenCollectibleCards()
+        {
+            var hiddenGroup = new GameObject("HiddenCards").transform;
+            hiddenGroup.SetParent(CourtRoot, false);
+
+            // Area 0: Player's Neighborhood (3 Hidden Cards)
+            CreateHiddenCard(hiddenGroup, "hidden_behind_player_house", "duwende_trickster",
+                BarangayAreaId.PlayersNeighborhood, new Vector3(27.5f, 0.35f, 9.6f), "Behind Your House", 50, 5);
+            CreateHiddenCard(hiddenGroup, "hidden_plaza_palm_tree", "sipa_master",
+                BarangayAreaId.PlayersNeighborhood, new Vector3(16.8f, 0.30f, -2.8f), "Near Plaza Palm Tree", 60, 5);
+            CreateHiddenCard(hiddenGroup, "hidden_behind_gazebo", "sarimanok",
+                BarangayAreaId.PlayersNeighborhood, new Vector3(23.5f, 0.35f, 5.4f), "Behind Plaza Gazebo", 85, 8);
+
+            // Area 1: Sari-Sari & Kalye (2 Hidden Cards)
+            CreateHiddenCard(hiddenGroup, "hidden_behind_jeepney", "scrap_trisikad",
+                BarangayAreaId.SariSariAndKalye, new Vector3(8.5f, 0.30f, -20.2f), "Behind Barangay Jeepney", 50, 5);
+            CreateHiddenCard(hiddenGroup, "hidden_fishball_corner", "cyber_taho_bot",
+                BarangayAreaId.SariSariAndKalye, new Vector3(-12.2f, 0.30f, -10.4f), "Fishball Alley Corner", 60, 5);
+
+            // Area 2: Basketball Court (4 Hidden Cards)
+            CreateHiddenCard(hiddenGroup, "hidden_behind_sarisari", "agila_kid",
+                BarangayAreaId.BasketballCourt, new Vector3(9.4f, 0.35f, 10.2f), "Behind Sari-Sari Store", 75, 8);
+            CreateHiddenCard(hiddenGroup, "hidden_under_shady_bench", "tikbalang_striker",
+                BarangayAreaId.BasketballCourt, new Vector3(11.4f, 0.22f, -6.65f), "Under Shady Bench", 75, 8);
+            CreateHiddenCard(hiddenGroup, "hidden_beside_bleachers", "luksong_tinik",
+                BarangayAreaId.BasketballCourt, new Vector3(-9.8f, 0.30f, 7.6f), "Beside Sideline Bleachers", 55, 5);
+            CreateHiddenCard(hiddenGroup, "hidden_sw_court_fence", "kid_kidlat",
+                BarangayAreaId.BasketballCourt, new Vector3(-13.4f, 0.30f, -7.2f), "SW Court Chain-Link Fence", 75, 8);
+
+            // Area 3: Old Neighborhood (2 Hidden Cards)
+            CreateHiddenCard(hiddenGroup, "hidden_behind_waiting_shed", "kapre_titan",
+                BarangayAreaId.OldNeighborhood, new Vector3(-23.5f, 0.30f, 5.8f), "Behind Waiting Shed", 80, 8);
+            CreateHiddenCard(hiddenGroup, "hidden_nw_alley_tree", "manananggal_wing",
+                BarangayAreaId.OldNeighborhood, new Vector3(-16.6f, 0.30f, 10.6f), "Near NW Alley Palm Tree", 95, 10);
+
+            // Area 4: Fiesta Teks Arena (1 Hidden Card)
+            CreateHiddenCard(hiddenGroup, "hidden_behind_fiesta_stage", "ibong_adarna",
+                BarangayAreaId.FiestaArena, new Vector3(26.9f, 0.35f, -24.1f), "Behind Fiesta Stage", 150, 15);
+        }
+
+        private void CreateHiddenCard(
+            Transform parent,
+            string hiddenId,
+            string cardId,
+            BarangayAreaId areaId,
+            Vector3 worldPos,
+            string spotLabel,
+            int coinBonus,
+            int gemBonus)
+        {
+            var go = new GameObject("HiddenCard_" + hiddenId);
+            go.transform.SetParent(parent, false);
+            go.transform.position = worldPos;
+
+            var collectible = go.AddComponent<HiddenCardCollectible>();
+            collectible.Initialize(hiddenId, cardId, areaId, spotLabel, coinBonus, gemBonus);
+            SpawnedHiddenCards.Add(collectible);
         }
 
         private NpcOpponent CreateOpponent(
@@ -991,7 +1467,13 @@ namespace TeksMaster.World
             Color shorts,
             Color slippers,
             bool isSeated,
-            bool isWandering)
+            bool isWandering,
+            bool isBenchSitter = false,
+            string npcId = null,
+            BarangayAreaId? areaOverride = null,
+            bool isStory = false,
+            bool isChampion = false,
+            int storyOrder = 0)
         {
             var go = new GameObject(npcName.Replace(" ", "_"));
             go.transform.SetParent(CourtRoot, false);
@@ -1001,21 +1483,34 @@ namespace TeksMaster.World
             var actor = CharacterVisualBuilder.BuildCharacterVisual(
                 go, role, shirt, shorts, new Color(0.76f, 0.52f, 0.37f), slippers);
 
-            if (isSeated)
+            if (isBenchSitter)
+            {
+                actor.SetPose(CharacterPoseMode.SittingOnBench);
+            }
+            else if (isSeated)
             {
                 actor.SetPose(CharacterPoseMode.SittingOnCourt);
             }
 
+            BarangayAreaId area = areaOverride.HasValue ? areaOverride.Value : GetAreaAtPosition(pos);
+
             var npc = go.AddComponent<NpcOpponent>();
             npc.NpcName = npcName;
+            npc.NpcId = !string.IsNullOrWhiteSpace(npcId) ? npcId : npc.GetEffectiveNpcId();
             npc.Difficulty = difficulty;
+            npc.AreaId = area;
+            npc.IsStoryOpponent = isStory;
+            npc.IsChampion = isChampion;
+            npc.StoryOrder = storyOrder;
             npc.FavoriteCardId = favCardId;
             npc.CardStarRank = starRank;
             npc.BaseCoinWager = wager;
             npc.IsSeated = isSeated;
-            npc.IsWandering = isWandering;
+            npc.IsBenchSitter = isBenchSitter;
+            npc.IsWandering = isWandering && !isSeated && !isBenchSitter;
             npc.WanderCenter = pos;
             npc.WanderRadius = 2.4f;
+            npc.PatrolBounds = NpcOpponent.GetDefaultZoneBounds(area);
 
             var col = go.AddComponent<CapsuleCollider>();
             col.center = new Vector3(0f, 0.8f, 0f);

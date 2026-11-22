@@ -5,6 +5,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
+using TeksMaster.Audio;
 using TeksMaster.Core;
 using TeksMaster.Characters;
 using TeksMaster.Gameplay;
@@ -14,7 +15,7 @@ using TeksMaster.World;
 
 namespace TeksMaster.UI
 {
-    public class TeksUIManager : MonoBehaviour
+    public partial class TeksUIManager : MonoBehaviour
     {
         public static TeksUIManager Instance { get; private set; }
 
@@ -23,6 +24,7 @@ namespace TeksMaster.UI
 
         // Top Left HUD
         private Text _coinsText;
+        private Text _gemsText;
         private Text _genderButtonText;
         private Image _hudAvatarPortrait;
         private Text _hudProfileNameRank;
@@ -80,6 +82,10 @@ namespace TeksMaster.UI
         private Text _roundResultSubtitle;
         private Text _roundResultCardsState;
         private GameObject _roundButtonsRow;
+        private Button _roundPrimaryBtn;
+        private Text _roundPrimaryBtnText;
+        private Button _roundSecondaryBtn;
+        private Text _roundSecondaryBtnText;
         private GameObject _cardFlipShowcaseRoot;
         private readonly FlipCardWidget[] _flipWidgets = new FlipCardWidget[2];
 
@@ -124,6 +130,8 @@ namespace TeksMaster.UI
         private Text _shopModalCoinsText;
         private Button _shopDailyFreeBtn;
         private Text _shopDailyFreeBtnText;
+        private Button _shopDailyPackBtn;
+        private Text _shopDailyPackBtnText;
         private Transform _shopSlotsContainer;
         private Transform _packRevealContainer;
         private Text _packRevealHeader;
@@ -193,8 +201,14 @@ namespace TeksMaster.UI
             CreateQuestsModal();
             CreateMapModal();
             CreateWagerModal();
+            BuildExtendedUI();
             CreateStartScreen();
             CreateToastBanner();
+
+            if (PlayerController.Instance != null)
+            {
+                PlayerController.Instance.ExternalInteractHandlerActive = true;
+            }
 
             HookEvents();
             RefreshAllUI();
@@ -354,49 +368,68 @@ namespace TeksMaster.UI
             var coinIcon = CreateImage("CoinIcon", panel, CardArtGenerator.GetUIIconSprite("coin"));
             coinIcon.rectTransform.anchorMin = new Vector2(0f, 0f);
             coinIcon.rectTransform.anchorMax = new Vector2(0f, 0f);
-            coinIcon.rectTransform.anchoredPosition = new Vector2(124f, 26f);
-            coinIcon.rectTransform.sizeDelta = new Vector2(28f, 28f);
+            coinIcon.rectTransform.anchoredPosition = new Vector2(122f, 26f);
+            coinIcon.rectTransform.sizeDelta = new Vector2(26f, 26f);
 
-            _coinsText = CreateText("CoinsValue", panel, "2,450 COINS", 22, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
+            _coinsText = CreateText("CoinsValue", panel, "2,450 COINS", 19, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
             _coinsText.rectTransform.anchorMin = new Vector2(0f, 0f);
             _coinsText.rectTransform.anchorMax = new Vector2(1f, 0f);
-            _coinsText.rectTransform.offsetMin = new Vector2(146f, 8f);
-            _coinsText.rectTransform.offsetMax = new Vector2(-10f, 44f);
+            _coinsText.rectTransform.offsetMin = new Vector2(142f, 8f);
+            _coinsText.rectTransform.offsetMax = new Vector2(-168f, 44f);
 
-            // Controls pill beneath TopLeftHUD (Avatar Gender, Fusion Lab, Quests, Quick Challenge)
-            var subBar = CreateRoundedPanel("ControlsBar", _canvas.transform, new Color(0.09f, 0.13f, 0.20f, 0.88f), new Vector2(680f, 44f));
+            var gemIcon = CreateImage("GemIcon", panel, CardArtGenerator.GetUIIconSprite("gem"));
+            gemIcon.rectTransform.anchorMin = new Vector2(0f, 0f);
+            gemIcon.rectTransform.anchorMax = new Vector2(0f, 0f);
+            gemIcon.rectTransform.anchoredPosition = new Vector2(302f, 26f);
+            gemIcon.rectTransform.sizeDelta = new Vector2(24f, 24f);
+
+            _gemsText = CreateText("GemsValue", panel, "25 GEMS", 19, FontStyle.Bold, new Color(0.38f, 0.92f, 1.0f), TextAnchor.MiddleLeft);
+            _gemsText.rectTransform.anchorMin = new Vector2(0f, 0f);
+            _gemsText.rectTransform.anchorMax = new Vector2(1f, 0f);
+            _gemsText.rectTransform.offsetMin = new Vector2(320f, 8f);
+            _gemsText.rectTransform.offsetMax = new Vector2(-10f, 44f);
+
+            // Controls pill beneath TopLeftHUD (Avatar Gender, Fusion Lab, Missions, Modes, Quick Challenge, Pause)
+            var subBar = CreateRoundedPanel("ControlsBar", _canvas.transform, new Color(0.09f, 0.13f, 0.20f, 0.88f), new Vector2(860f, 44f));
             subBar.anchorMin = new Vector2(0f, 1f);
             subBar.anchorMax = new Vector2(0f, 1f);
             subBar.pivot = new Vector2(0f, 1f);
             subBar.anchoredPosition = new Vector2(22f, -140f);
 
-            var genderBtn = CreateButton("GenderToggleBtn", subBar, "AVATAR: MALE [C]", new Color(0.20f, 0.34f, 0.56f), 13, () =>
+            var genderBtn = CreateButton("GenderToggleBtn", subBar, "AVATAR: MALE [C]", new Color(0.20f, 0.34f, 0.56f), 12, () =>
             {
                 PlayerInventory.Instance?.ToggleGender();
             });
             var gRt = genderBtn.GetComponent<RectTransform>();
             gRt.anchorMin = new Vector2(0f, 0.5f);
             gRt.anchorMax = new Vector2(0f, 0.5f);
-            gRt.anchoredPosition = new Vector2(90f, 0f);
-            gRt.sizeDelta = new Vector2(162f, 32f);
+            gRt.anchoredPosition = new Vector2(80f, 0f);
+            gRt.sizeDelta = new Vector2(144f, 32f);
             _genderButtonText = genderBtn.GetComponentInChildren<Text>();
 
-            var fusionQuickBtn = CreateButton("FusionQuickBtn", subBar, "FUSION LAB [F]", new Color(0.58f, 0.22f, 0.84f), 13, OpenFusionLabDirect);
+            var fusionQuickBtn = CreateButton("FusionQuickBtn", subBar, "FUSION LAB [F]", new Color(0.58f, 0.22f, 0.84f), 12, OpenFusionLabDirect);
             var fRt = fusionQuickBtn.GetComponent<RectTransform>();
             fRt.anchorMin = new Vector2(0f, 0.5f);
             fRt.anchorMax = new Vector2(0f, 0.5f);
-            fRt.anchoredPosition = new Vector2(252f, 0f);
-            fRt.sizeDelta = new Vector2(142f, 32f);
+            fRt.anchoredPosition = new Vector2(220f, 0f);
+            fRt.sizeDelta = new Vector2(124f, 32f);
 
-            var questsBtn = CreateButton("QuestsBtn", subBar, "QUESTS [Q]", new Color(0.84f, 0.50f, 0.12f), 13, ToggleQuestsModal);
+            var questsBtn = CreateButton("QuestsBtn", subBar, "MISSIONS [Q]", new Color(0.84f, 0.50f, 0.12f), 12, ToggleQuestsModal);
             var qrRt = questsBtn.GetComponent<RectTransform>();
             qrRt.anchorMin = new Vector2(0f, 0.5f);
             qrRt.anchorMax = new Vector2(0f, 0.5f);
-            qrRt.anchoredPosition = new Vector2(396f, 0f);
-            qrRt.sizeDelta = new Vector2(128f, 32f);
+            qrRt.anchoredPosition = new Vector2(354f, 0f);
+            qrRt.sizeDelta = new Vector2(132f, 32f);
             _questsBtnLabel = questsBtn.GetComponentInChildren<Text>();
 
-            var quickBtn = CreateButton("QuickMatchBtn", subBar, "QUICK CHALLENGE", new Color(0.18f, 0.62f, 0.32f), 13, () =>
+            var modesBtn = CreateButton("ModesQuickBtn", subBar, "MODES [G]", new Color(0.16f, 0.56f, 0.78f), 12, ToggleModesModal);
+            var mRt = modesBtn.GetComponent<RectTransform>();
+            mRt.anchorMin = new Vector2(0f, 0.5f);
+            mRt.anchorMax = new Vector2(0f, 0.5f);
+            mRt.anchoredPosition = new Vector2(486f, 0f);
+            mRt.sizeDelta = new Vector2(118f, 32f);
+
+            var quickBtn = CreateButton("QuickMatchBtn", subBar, "QUICK CHALLENGE", new Color(0.18f, 0.62f, 0.32f), 12, () =>
             {
                 if (TeksMatchManager.Instance == null || TeksMatchManager.Instance.State != MatchState.Idle) return;
                 NpcOpponent target = PlayerController.Instance != null ? PlayerController.Instance.NearestOpponent : null;
@@ -411,10 +444,17 @@ namespace TeksMaster.UI
                 }
             });
             var qRt = quickBtn.GetComponent<RectTransform>();
-            qRt.anchorMin = new Vector2(1f, 0.5f);
-            qRt.anchorMax = new Vector2(1f, 0.5f);
-            qRt.anchoredPosition = new Vector2(-94f, 0f);
-            qRt.sizeDelta = new Vector2(172f, 32f);
+            qRt.anchorMin = new Vector2(0f, 0.5f);
+            qRt.anchorMax = new Vector2(0f, 0.5f);
+            qRt.anchoredPosition = new Vector2(624f, 0f);
+            qRt.sizeDelta = new Vector2(144f, 32f);
+
+            var pauseBtn = CreateButton("PauseQuickBtn", subBar, "PAUSE [ESC]", new Color(0.34f, 0.40f, 0.52f), 12, TogglePauseModal);
+            var pRt = pauseBtn.GetComponent<RectTransform>();
+            pRt.anchorMin = new Vector2(0f, 0.5f);
+            pRt.anchorMax = new Vector2(0f, 0.5f);
+            pRt.anchoredPosition = new Vector2(778f, 0f);
+            pRt.sizeDelta = new Vector2(148f, 32f);
         }
 
         private void CreateTopRightHud()
@@ -465,14 +505,14 @@ namespace TeksMaster.UI
 
         private void CreateProximityPrompt()
         {
-            _proximityPromptPanel = CreateRoundedPanel("ProximityPrompt", _canvas.transform, new Color(0.07f, 0.10f, 0.16f, 0.90f), new Vector2(460f, 44f)).gameObject;
+            _proximityPromptPanel = CreateRoundedPanel("ProximityPrompt", _canvas.transform, new Color(0.07f, 0.10f, 0.16f, 0.90f), new Vector2(660f, 44f)).gameObject;
             var rt = _proximityPromptPanel.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0f);
             rt.anchorMax = new Vector2(0.5f, 0f);
             rt.anchoredPosition = new Vector2(0f, 44f);
             AddOutline(_proximityPromptPanel, new Color(0.98f, 0.80f, 0.24f), 2f);
 
-            _proximityPromptText = CreateText("PromptTxt", rt, "[E] CHALLENGE", 20, FontStyle.Bold, new Color(1.0f, 0.92f, 0.45f), TextAnchor.MiddleCenter);
+            _proximityPromptText = CreateText("PromptTxt", rt, "[E] CHALLENGE", 19, FontStyle.Bold, new Color(1.0f, 0.92f, 0.45f), TextAnchor.MiddleCenter);
             StretchFull(_proximityPromptText.rectTransform, 6f);
             _proximityPromptPanel.SetActive(false);
         }
@@ -724,19 +764,37 @@ namespace TeksMaster.UI
 
             var rematchBtn = CreateButton("RematchBtn", rowRt, "REMATCH", new Color(0.18f, 0.72f, 0.32f), 19, () =>
             {
-                TeksMatchManager.Instance?.Rematch();
+                if (TeksGameModeManager.Instance != null && TeksGameModeManager.Instance.IsSpecialModeActive)
+                {
+                    TeksGameModeManager.Instance.HandleResultPrimaryAction();
+                }
+                else
+                {
+                    TeksMatchManager.Instance?.Rematch();
+                }
             });
             var rmRt = rematchBtn.GetComponent<RectTransform>();
             rmRt.anchoredPosition = new Vector2(-120f, 0f);
-            rmRt.sizeDelta = new Vector2(200f, 44f);
+            rmRt.sizeDelta = new Vector2(210f, 44f);
+            _roundPrimaryBtn = rematchBtn;
+            _roundPrimaryBtnText = rematchBtn.GetComponentInChildren<Text>();
 
             var backBtn = CreateButton("BackToCourtBtn", rowRt, "BACK TO COURT", new Color(0.28f, 0.38f, 0.56f), 18, () =>
             {
-                TeksMatchManager.Instance?.CancelChallenge();
+                if (TeksGameModeManager.Instance != null && TeksGameModeManager.Instance.IsSpecialModeActive)
+                {
+                    TeksGameModeManager.Instance.HandleResultSecondaryAction();
+                }
+                else
+                {
+                    TeksMatchManager.Instance?.CancelChallenge();
+                }
             });
             var bkRt = backBtn.GetComponent<RectTransform>();
             bkRt.anchoredPosition = new Vector2(120f, 0f);
             bkRt.sizeDelta = new Vector2(210f, 44f);
+            _roundSecondaryBtn = backBtn;
+            _roundSecondaryBtnText = backBtn.GetComponentInChildren<Text>();
 
             // Live 3-Card Flip & Result Showcase (rendered above RoundResultPanel so it sits inside it when RoundComplete and floats cleanly during FlickInAir)
             BuildCardFlipShowcase(rootRt);
@@ -946,18 +1004,7 @@ namespace TeksMaster.UI
             _shopVendorBannerText = CreateText("VendorTxt", vendorBox, "Aling Nena: \"Bili na! May -30% Sulit Sale ngayon!\"", 14, FontStyle.Italic, new Color(1.0f, 0.94f, 0.72f), TextAnchor.MiddleLeft);
             StretchFull(_shopVendorBannerText.rectTransform, 10f);
 
-            _shopDailyFreeBtn = CreateButton("DailyBaryaBtn", window, "FREE +200 BARYA", new Color(0.86f, 0.56f, 0.10f), 13, () =>
-            {
-                if (ShopManager.Instance != null && ShopManager.Instance.TryClaimDailyBarya(out string msg))
-                {
-                    ShowToast(msg);
-                    PopulateShopModal();
-                }
-                else
-                {
-                    ShowToast("Already claimed Aling Nena's Free Barya today!");
-                }
-            });
+            _shopDailyFreeBtn = CreateButton("DailyBaryaBtn", window, "DAILY FREE DRAW", new Color(0.86f, 0.56f, 0.10f), 13, OnDailyFreeDrawClicked);
             var dfRt = _shopDailyFreeBtn.GetComponent<RectTransform>();
             dfRt.anchorMin = new Vector2(1f, 1f);
             dfRt.anchorMax = new Vector2(1f, 1f);
@@ -969,6 +1016,7 @@ namespace TeksMaster.UI
             {
                 if (PlayerInventory.Instance != null && PlayerInventory.Instance.TrySellAllExtraDuplicates(out int sold, out int earned))
                 {
+                    TeksAudioManager.Instance?.PlayCoinClink();
                     ShowToast($"Sold {sold} duplicate cards for +{earned} Barya Coins!");
                     PopulateShopModal();
                 }
@@ -987,6 +1035,7 @@ namespace TeksMaster.UI
             {
                 if (ShopManager.Instance != null && ShopManager.Instance.TryManualRefresh(out string msg))
                 {
+                    TeksAudioManager.Instance?.PlayCoinClink();
                     ShowToast(msg);
                     PopulateShopModal();
                 }
@@ -1024,8 +1073,8 @@ namespace TeksMaster.UI
             hlg.childForceExpandHeight = true;
             _shopSlotsContainer = slotsGo.transform;
 
-            // Booster Packs Section (3 Tiers — Always Available)
-            var boosterTitle = CreateText("BoosterTitle", window, "BOOSTER PACKS & MYTHIC BOX (Always Available - No Timer!)", 16, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
+            // Booster Packs Section (All 5 SPEC Pack Types — Always Available)
+            var boosterTitle = CreateText("BoosterTitle", window, "CARD PACKS & DAILY FREE DRAW (Basic 55/25/12/6/2 • Premium • Rare • Mythic Gem Pack)", 16, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
             boosterTitle.rectTransform.anchorMin = new Vector2(0f, 1f);
             boosterTitle.rectTransform.anchorMax = new Vector2(1f, 1f);
             boosterTitle.rectTransform.offsetMin = new Vector2(28f, -432f);
@@ -1039,15 +1088,18 @@ namespace TeksMaster.UI
             prRt.offsetMin = new Vector2(26f, -504f);
             prRt.offsetMax = new Vector2(-26f, -436f);
             var pHlg = packsRow.GetComponent<HorizontalLayoutGroup>();
-            pHlg.spacing = 14f;
+            pHlg.spacing = 10f;
             pHlg.childControlWidth = true;
             pHlg.childControlHeight = true;
             pHlg.childForceExpandWidth = true;
             pHlg.childForceExpandHeight = true;
 
-            CreateButton("KalyePackBtn", packsRow.transform, "KALYE PACK (150 Coins)\n3 Random Teks Cards", new Color(0.18f, 0.56f, 0.86f), 15, () => OpenBoosterPack(false));
-            CreateButton("AlamatPackBtn", packsRow.transform, "ALAMAT SUPER PACK (400 Coins)\n3 Cards (Guaranteed Rare+!)", new Color(0.62f, 0.24f, 0.86f), 15, () => OpenBoosterPack(true));
-            CreateButton("MythicBoxBtn", packsRow.transform, "BARANGAY MYTHIC BOX (850 Coins)\n5 Cards (Guaranteed Epic/Legend!)", new Color(0.86f, 0.52f, 0.08f), 14, OpenMythicBox);
+            CreateButton("BasicPackBtn", packsRow.transform, "BASIC PACK (150c)\n3 Cards (55/25/12/6/2)", new Color(0.18f, 0.56f, 0.86f), 13, () => OpenShopPack(ShopPackType.Basic));
+            CreateButton("PremiumPackBtn", packsRow.transform, "PREMIUM PACK (300c)\n5 Cards (Uncommon+ 5th)", new Color(0.18f, 0.68f, 0.44f), 13, () => OpenShopPack(ShopPackType.Premium));
+            CreateButton("RarePackBtn", packsRow.transform, "RARE PACK (400c)\n4 Cards (Boosted Rare+!)", new Color(0.62f, 0.24f, 0.86f), 13, () => OpenShopPack(ShopPackType.Rare));
+            CreateButton("SpecialGemPackBtn", packsRow.transform, "MYTHIC GEM PACK (30 Gems)\n5 Rare+ (Epic/Legend!)", new Color(0.86f, 0.48f, 0.08f), 13, () => OpenShopPack(ShopPackType.SpecialGem));
+            _shopDailyPackBtn = CreateButton("DailyFreePackBtn", packsRow.transform, "DAILY FREE DRAW\n1 Free Card + 200c", new Color(0.82f, 0.60f, 0.12f), 13, OnDailyFreeDrawClicked);
+            _shopDailyPackBtnText = _shopDailyPackBtn.GetComponentInChildren<Text>();
 
             // Pack Reveal Tray
             _packRevealHeader = CreateText("PackRevealHeader", window, "Open a Booster Pack or Mythic Box to reveal your new Teks cards here!", 15, FontStyle.Italic, new Color(0.82f, 0.86f, 0.94f), TextAnchor.MiddleLeft);
@@ -1074,147 +1126,6 @@ namespace TeksMaster.UI
             _shopModal.SetActive(false);
         }
 
-        private void CreateQuestsModal()
-        {
-            _questsModal = CreateModalBackdrop("QuestsModal", new Vector2(680f, 430f), out RectTransform window);
-
-            var header = CreateText("QuestsHeader", window, "BARANGAY MISSIONS & DAILY REWARDS", 24, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
-            header.rectTransform.anchorMin = new Vector2(0f, 1f);
-            header.rectTransform.anchorMax = new Vector2(0.85f, 1f);
-            header.rectTransform.offsetMin = new Vector2(26f, -56f);
-            header.rectTransform.offsetMax = new Vector2(0f, -12f);
-
-            var closeBtn = CreateButton("CloseQuestsBtn", window, "X", new Color(0.84f, 0.20f, 0.20f), 18, CloseAllModals);
-            var closeRt = closeBtn.GetComponent<RectTransform>();
-            closeRt.anchorMin = new Vector2(1f, 1f);
-            closeRt.anchorMax = new Vector2(1f, 1f);
-            closeRt.anchoredPosition = new Vector2(-34f, -34f);
-            closeRt.sizeDelta = new Vector2(40f, 40f);
-
-            var listGo = new GameObject("QuestsList", typeof(RectTransform), typeof(VerticalLayoutGroup));
-            listGo.transform.SetParent(window, false);
-            var lRt = listGo.GetComponent<RectTransform>();
-            lRt.anchorMin = Vector2.zero;
-            lRt.anchorMax = Vector2.one;
-            lRt.offsetMin = new Vector2(26f, 24f);
-            lRt.offsetMax = new Vector2(-26f, -74f);
-            var vlg = listGo.GetComponent<VerticalLayoutGroup>();
-            vlg.spacing = 14f;
-            vlg.childControlWidth = true;
-            vlg.childControlHeight = true;
-            vlg.childForceExpandWidth = true;
-            vlg.childForceExpandHeight = true;
-            _questsListContent = listGo.transform;
-
-            _questsModal.SetActive(false);
-        }
-
-        private void CreateStartScreen()
-        {
-            _startScreenRoot = CreateModalBackdrop("StartGameScreen", new Vector2(680f, 540f), out RectTransform window);
-            _startScreenRoot.GetComponent<Image>().color = new Color(0.03f, 0.05f, 0.10f, 0.55f);
-
-            var title = CreateText("GameTitle", window, "3D TEKS MASTER", 42, FontStyle.Bold, new Color(1.0f, 0.85f, 0.22f), TextAnchor.MiddleCenter);
-            title.rectTransform.anchorMin = new Vector2(0f, 1f);
-            title.rectTransform.anchorMax = new Vector2(1f, 1f);
-            title.rectTransform.offsetMin = new Vector2(20f, -72f);
-            title.rectTransform.offsetMax = new Vector2(-20f, -14f);
-
-            var sub = CreateText("GameSub", window, "BARANGAY SHOWDOWN  •  Flick, Fuse & Rule the Court!", 17, FontStyle.Bold, new Color(0.76f, 0.90f, 1.0f), TextAnchor.MiddleCenter);
-            sub.rectTransform.anchorMin = new Vector2(0f, 1f);
-            sub.rectTransform.anchorMax = new Vector2(1f, 1f);
-            sub.rectTransform.offsetMin = new Vector2(20f, -104f);
-            sub.rectTransform.offsetMax = new Vector2(-20f, -72f);
-
-            // Avatar Preview Box
-            var previewBox = CreateRoundedPanel("StartAvatarBox", window, new Color(0.14f, 0.20f, 0.30f), new Vector2(150f, 150f));
-            previewBox.anchoredPosition = new Vector2(0f, 80f);
-            _startPreviewPortrait = CreateImage("StartAvatarImg", previewBox, CharacterResourceGenerator.GetAvatarPortraitSprite(PlayerGender.Male));
-            StretchFull(_startPreviewPortrait.rectTransform, 6f);
-
-            // Nickname Label + InputField
-            var nickLbl = CreateText("NickLbl", window, "SET YOUR NICKNAME:", 16, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            nickLbl.rectTransform.anchoredPosition = new Vector2(0f, -18f);
-            nickLbl.rectTransform.sizeDelta = new Vector2(360f, 26f);
-
-            var inputBg = CreateRoundedPanel("NicknameInputBg", window, new Color(0.06f, 0.09f, 0.16f, 1f), new Vector2(360f, 44f));
-            inputBg.anchoredPosition = new Vector2(0f, -54f);
-            AddOutline(inputBg.gameObject, new Color(0.42f, 0.62f, 0.92f), 2f);
-
-            _nicknameInput = inputBg.gameObject.AddComponent<InputField>();
-            _nicknameInput.characterLimit = 18;
-            var placeholderTxt = CreateText("Placeholder", inputBg, "Enter nickname...", 18, FontStyle.Italic, new Color(0.55f, 0.60f, 0.70f), TextAnchor.MiddleCenter);
-            StretchFull(placeholderTxt.rectTransform, 8f);
-            var inputText = CreateText("Text", inputBg, "", 20, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            StretchFull(inputText.rectTransform, 8f);
-            _nicknameInput.textComponent = inputText;
-            _nicknameInput.placeholder = placeholderTxt;
-            _nicknameInput.text = PlayerInventory.Instance != null ? PlayerInventory.Instance.PlayerNickname : "TeksMaster";
-
-            // Gender Picker Buttons
-            var genLbl = CreateText("GenderLbl", window, "CHOOSE YOUR AVATAR:", 16, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            genLbl.rectTransform.anchoredPosition = new Vector2(0f, -100f);
-            genLbl.rectTransform.sizeDelta = new Vector2(360f, 26f);
-
-            var maleBtn = CreateButton("StartMaleBtn", window, "MALE (TOTOY)", new Color(0.18f, 0.50f, 0.88f), 16, () => SelectStartGender(PlayerGender.Male));
-            var mRt = maleBtn.GetComponent<RectTransform>();
-            mRt.anchoredPosition = new Vector2(-106f, -138f);
-            mRt.sizeDelta = new Vector2(196f, 42f);
-            _startMaleBtnImg = maleBtn.GetComponent<Image>();
-
-            var femaleBtn = CreateButton("StartFemaleBtn", window, "FEMALE (NENE)", new Color(0.32f, 0.22f, 0.36f), 16, () => SelectStartGender(PlayerGender.Female));
-            var fRt = femaleBtn.GetComponent<RectTransform>();
-            fRt.anchoredPosition = new Vector2(106f, -138f);
-            fRt.sizeDelta = new Vector2(196f, 42f);
-            _startFemaleBtnImg = femaleBtn.GetComponent<Image>();
-
-            // Play Button
-            var playBtn = CreateButton("StartPlayBtn", window, "PLAY BARANGAY SHOWDOWN!", new Color(0.18f, 0.76f, 0.34f), 22, OnStartPlayClicked);
-            var pRt = playBtn.GetComponent<RectTransform>();
-            pRt.anchoredPosition = new Vector2(0f, -210f);
-            pRt.sizeDelta = new Vector2(390f, 56f);
-            AddOutline(playBtn.gameObject, new Color(0.75f, 1.0f, 0.65f), 2f);
-
-            var initialGender = PlayerInventory.Instance != null ? PlayerInventory.Instance.SelectedGender : PlayerGender.Male;
-            SelectStartGender(initialGender);
-
-            // Lock player & orbit title camera until user presses PLAY
-            if (PlayerController.Instance != null) PlayerController.Instance.MovementLocked = true;
-            if (Camera.main != null)
-            {
-                var camFollow = Camera.main.GetComponent<CameraFollowController>();
-                if (camFollow != null) camFollow.IsTitleCameraActive = true;
-            }
-            _startScreenRoot.SetActive(true);
-        }
-
-        private void SelectStartGender(PlayerGender gender)
-        {
-            _pendingStartGender = gender;
-            if (_startPreviewPortrait != null) _startPreviewPortrait.sprite = CharacterResourceGenerator.GetAvatarPortraitSprite(gender);
-            if (_startMaleBtnImg != null) _startMaleBtnImg.color = gender == PlayerGender.Male ? new Color(0.18f, 0.56f, 0.94f) : new Color(0.20f, 0.24f, 0.32f);
-            if (_startFemaleBtnImg != null) _startFemaleBtnImg.color = gender == PlayerGender.Female ? new Color(0.88f, 0.30f, 0.58f) : new Color(0.20f, 0.24f, 0.32f);
-            PlayerInventory.Instance?.SetGender(gender);
-        }
-
-        private void OnStartPlayClicked()
-        {
-            string nick = _nicknameInput != null ? _nicknameInput.text : "TeksMaster";
-            PlayerInventory.Instance?.StartGameWithProfile(nick, _pendingStartGender);
-
-            if (_startScreenRoot != null) _startScreenRoot.SetActive(false);
-            if (PlayerController.Instance != null) PlayerController.Instance.MovementLocked = false;
-            if (Camera.main != null)
-            {
-                var camFollow = Camera.main.GetComponent<CameraFollowController>();
-                if (camFollow != null) camFollow.IsTitleCameraActive = false;
-            }
-
-            string finalNick = PlayerInventory.Instance != null ? PlayerInventory.Instance.PlayerNickname : "TeksMaster";
-            ShowToast($"Maligayang pagdating, {finalNick}! Walk up to any kid & press [E] to play Teks!");
-            RefreshAllUI();
-        }
-
         private void CreateWagerModal()
         {
             _wagerModal = CreateModalBackdrop("WagerModal", new Vector2(760f, 525f), out RectTransform window);
@@ -1230,29 +1141,52 @@ namespace TeksMaster.UI
             quoteBox.anchorMax = new Vector2(0.5f, 1f);
             quoteBox.anchoredPosition = new Vector2(0f, -72f);
             AddOutline(quoteBox.gameObject, new Color(1.0f, 0.80f, 0.26f), 1.5f);
-            _wagerChallengeQuoteText = CreateText("WagerQuoteTxt", quoteBox, "AI Gelo: \"Hoy! Teks tayo!\"", 16, FontStyle.Italic, new Color(1.0f, 0.95f, 0.72f), TextAnchor.MiddleCenter);
+            _wagerChallengeQuoteText = CreateText("WagerQuoteTxt", quoteBox, "Dodong: \"Hoy! Teks tayo!\"", 16, FontStyle.Italic, new Color(1.0f, 0.95f, 0.72f), TextAnchor.MiddleCenter);
             StretchFull(_wagerChallengeQuoteText.rectTransform, 6f);
 
             // Player side
             var playerBox = CreateRoundedPanel("WagerPlayerBox", window, new Color(0.14f, 0.20f, 0.30f), new Vector2(260f, 240f));
             playerBox.anchoredPosition = new Vector2(-190f, 36f);
-            CreateText("PlayerPamatoLbl", playerBox, "YOUR PAMATO", 16, FontStyle.Bold, new Color(0.45f, 0.95f, 0.55f), TextAnchor.MiddleCenter)
+            CreateText("PlayerPamatoLbl", playerBox, "YOUR PAMATO (50% CHUB)", 15, FontStyle.Bold, new Color(0.45f, 0.95f, 0.55f), TextAnchor.MiddleCenter)
                 .rectTransform.anchoredPosition = new Vector2(0f, 96f);
 
             _wagerPlayerCardImg = CreateImage("WagerPlayerImg", playerBox, null);
             _wagerPlayerCardImg.rectTransform.sizeDelta = new Vector2(105f, 140f);
             _wagerPlayerCardImg.rectTransform.anchoredPosition = new Vector2(0f, 10f);
 
-            _wagerPlayerCardText = CreateText("WagerPlayerCardTxt", playerBox, "HERO 5★", 15, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            _wagerPlayerCardText = CreateText("WagerPlayerCardTxt", playerBox, "HERO (Lv.5)", 14, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
             _wagerPlayerCardText.rectTransform.anchoredPosition = new Vector2(0f, -84f);
             _wagerPlayerCardText.rectTransform.sizeDelta = new Vector2(240f, 44f);
 
             var cycleBtn = CreateButton("CyclePamatoBtn", playerBox, "< SWITCH CARD >", new Color(0.24f, 0.42f, 0.68f), 13, () =>
             {
+                var mm = TeksMatchManager.Instance;
                 var inv = PlayerInventory.Instance;
-                if (inv == null || inv.OwnedCards.Count == 0) return;
-                _wagerCardCycleIndex = (_wagerCardCycleIndex + 1) % inv.OwnedCards.Count;
-                inv.EquipPamato(inv.OwnedCards[_wagerCardCycleIndex].CardId);
+                if (inv == null) return;
+
+                IReadOnlyList<OwnedTeksCard> allowed = mm != null ? mm.GetAllowedPamatoCards() : inv.OwnedCards;
+                if (allowed == null || allowed.Count == 0) return;
+
+                int curIdx = -1;
+                for (int i = 0; i < allowed.Count; i++)
+                {
+                    if (allowed[i].CardId == inv.EquippedPamatoId)
+                    {
+                        curIdx = i;
+                        break;
+                    }
+                }
+                _wagerCardCycleIndex = (curIdx + 1) % allowed.Count;
+                string nextCardId = allowed[_wagerCardCycleIndex].CardId;
+                if (mm != null)
+                {
+                    mm.TrySelectPamatoCard(nextCardId, out string msg);
+                    if (!string.IsNullOrEmpty(msg)) ShowToast(msg);
+                }
+                else
+                {
+                    inv.EquipPamato(nextCardId);
+                }
                 PopulateWagerModal();
             });
             var cyRt = cycleBtn.GetComponent<RectTransform>();
@@ -1353,6 +1287,7 @@ namespace TeksMaster.UI
                 TeksMatchManager.Instance.OnMatchStateChanged -= HandleMatchStateChanged;
                 TeksMatchManager.Instance.OnMatchStateChanged += HandleMatchStateChanged;
             }
+            HookExtendedEvents();
         }
 
         private void OnDestroy()
@@ -1361,13 +1296,14 @@ namespace TeksMaster.UI
             if (PlayerInventory.Instance != null) PlayerInventory.Instance.OnInventoryChanged -= RefreshAllUI;
             if (ShopManager.Instance != null) ShopManager.Instance.OnShopUpdated -= RefreshShopDisplay;
             if (TeksMatchManager.Instance != null) TeksMatchManager.Instance.OnMatchStateChanged -= HandleMatchStateChanged;
+            UnhookExtendedEvents();
         }
 
         private void Update()
         {
             if (_toastTimer > 0f)
             {
-                _toastTimer -= Time.deltaTime;
+                _toastTimer -= Time.unscaledDeltaTime;
                 if (_toastTimer <= 0f && _toastPanel != null) _toastPanel.SetActive(false);
             }
 
@@ -1380,7 +1316,8 @@ namespace TeksMaster.UI
 
             if (PlayerController.Instance != null && _zonePillText != null)
             {
-                string currentZone = BarangayCourtBuilder.GetZoneNameAtPosition(PlayerController.Instance.transform.position);
+                var areaId = BarangayCourtBuilder.GetAreaAtPosition(PlayerController.Instance.transform.position);
+                string currentZone = BarangayCourtBuilder.GetAreaDisplayName(areaId).ToUpper();
                 if (currentZone != _lastDisplayedZone)
                 {
                     _lastDisplayedZone = currentZone;
@@ -1398,38 +1335,48 @@ namespace TeksMaster.UI
         {
             var kb = Keyboard.current;
             if (kb == null) return;
+
+            if (kb.escapeKey.wasPressedThisFrame)
+            {
+                HandleEscapePressed();
+                return;
+            }
+
             if (_startScreenRoot != null && _startScreenRoot.activeSelf) return;
 
             var matchState = TeksMatchManager.Instance != null ? TeksMatchManager.Instance.State : MatchState.Idle;
-            if (matchState != MatchState.Idle)
-            {
-                if (kb.escapeKey.wasPressedThisFrame && matchState == MatchState.WagerScreen)
-                {
-                    _wagerModal.SetActive(false);
-                    TeksMatchManager.Instance.CancelChallenge();
-                }
-                return;
-            }
+            if (matchState != MatchState.Idle) return;
+
+            if (_pauseModal != null && _pauseModal.activeSelf) return;
 
             if (kb.iKey.wasPressedThisFrame) ToggleInventoryModal();
             if (kb.fKey.wasPressedThisFrame) OpenFusionLabDirect();
             if (kb.qKey.wasPressedThisFrame) ToggleQuestsModal();
             if (kb.mKey.wasPressedThisFrame) ToggleMapModal();
             if (kb.pKey.wasPressedThisFrame) ToggleShopModal();
-            if (kb.escapeKey.wasPressedThisFrame) CloseAllModals();
+            if (kb.gKey.wasPressedThisFrame) ToggleModesModal();
 
             if (kb.eKey.wasPressedThisFrame && !IsAnyModalOpen())
             {
                 var pc = PlayerController.Instance;
                 if (pc != null)
                 {
-                    if (pc.NearestOpponent != null)
+                    pc.ExternalInteractHandlerActive = true;
+                    if (pc.NearestHiddenCard != null && pc.NearestHiddenCard.CanCollect)
+                    {
+                        pc.TryInteractNearestHiddenCard();
+                    }
+                    else if (pc.NearestOpponent != null)
                     {
                         TeksMatchManager.Instance?.StartChallenge(pc.NearestOpponent);
                     }
                     else if (pc.IsNearSariSariStore)
                     {
                         ToggleShopModal();
+                    }
+                    else if (pc.NearestLockedGate != null && pc.NearestLockedGate.IsLocked)
+                    {
+                        pc.TryInteractNearestLockedGate();
                     }
                 }
             }
@@ -1631,6 +1578,8 @@ namespace TeksMaster.UI
         {
             if (_proximityPromptPanel == null) return;
             var pc = PlayerController.Instance;
+            if (pc != null) pc.ExternalInteractHandlerActive = true;
+
             bool idle = TeksMatchManager.Instance == null || TeksMatchManager.Instance.State == MatchState.Idle;
 
             if (!idle || pc == null || IsAnyModalOpen())
@@ -1639,15 +1588,26 @@ namespace TeksMaster.UI
                 return;
             }
 
-            if (pc.NearestOpponent != null)
+            if (pc.NearestHiddenCard != null && pc.NearestHiddenCard.CanCollect)
             {
                 _proximityPromptPanel.SetActive(true);
-                _proximityPromptText.text = $"[E] CHALLENGE {pc.NearestOpponent.GetDisplayTag().ToUpper()} ({pc.NearestOpponent.BaseCoinWager} COINS)";
+                _proximityPromptText.text = pc.NearestHiddenCard.GetPromptText();
+            }
+            else if (pc.NearestOpponent != null)
+            {
+                _proximityPromptPanel.SetActive(true);
+                int reward = TeksMatchManager.GetBaseCoinReward(pc.NearestOpponent);
+                _proximityPromptText.text = $"[E] CHALLENGE {pc.NearestOpponent.GetDisplayTag().ToUpper()} (WIN +{reward} COINS)";
             }
             else if (pc.IsNearSariSariStore)
             {
                 _proximityPromptPanel.SetActive(true);
                 _proximityPromptText.text = "[E] OPEN SARI-SARI STORE (BUY TEKS & PACKS)";
+            }
+            else if (pc.NearestLockedGate != null && pc.NearestLockedGate.IsLocked)
+            {
+                _proximityPromptPanel.SetActive(true);
+                _proximityPromptText.text = pc.NearestLockedGate.GetPromptText();
             }
             else
             {
@@ -1665,6 +1625,7 @@ namespace TeksMaster.UI
                 _wagerModal.SetActive(false);
                 _matchHudRoot.SetActive(false);
                 if (_cardFlipShowcaseRoot != null) _cardFlipShowcaseRoot.SetActive(false);
+                SyncPlayerMovementLock();
                 RefreshAllUI();
                 return;
             }
@@ -1676,11 +1637,13 @@ namespace TeksMaster.UI
                 _selectedWagerAmount = mm.CurrentCoinWager;
                 PopulateWagerModal();
                 _wagerModal.SetActive(true);
+                SyncPlayerMovementLock();
                 return;
             }
 
             _wagerModal.SetActive(false);
             _matchHudRoot.SetActive(true);
+            SyncPlayerMovementLock();
 
             string oppLabel = mm.ActiveOpponent != null ? mm.ActiveOpponent.GetDisplayTag() : "Opponent";
 
@@ -1691,8 +1654,13 @@ namespace TeksMaster.UI
                 _flickGauge.SetSweetSpotHalfWidth(mm.SweetSpotHalfWidth);
                 _roundResultPanel.SetActive(false);
                 if (_cardFlipShowcaseRoot != null) _cardFlipShowcaseRoot.SetActive(false);
-                _matchBannerTitle.text = $"VS {oppLabel.ToUpper()}  |  POT: {mm.CurrentCoinWager} COINS";
-                _matchBannerSub.text = "Press SPACE or click the gauge inside the GREEN Sweet Spot!";
+
+                string modePrefix = (TeksGameModeManager.Instance != null && TeksGameModeManager.Instance.IsSpecialModeActive)
+                    ? TeksGameModeManager.Instance.GetModeStatusBanner() + "  |  "
+                    : string.Empty;
+                int baseReward = TeksMatchManager.GetBaseCoinReward(mm.ActiveOpponent);
+                _matchBannerTitle.text = $"{modePrefix}VS {oppLabel.ToUpper()}  |  WIN: +{baseReward} COINS";
+                _matchBannerSub.text = "Press SPACE or click inside the GREEN Sweet Spot for power & spin! (50% CHUB / 50% CHA)";
             }
             else if (mm.State == MatchState.FlickInAir)
             {
@@ -1733,7 +1701,29 @@ namespace TeksMaster.UI
                         : (mm.PlayerWonLastRound ? mm.ActiveOpponent.LoseBanter : mm.ActiveOpponent.WinBanter);
                     banter = $"\n{mm.ActiveOpponent.NpcName}: \"{line}\"";
                 }
-                _roundResultSubtitle.text = mm.RoundResultSubtitle + banter;
+
+                var gm = TeksGameModeManager.Instance;
+                string modeBonusNote = string.Empty;
+                if (gm != null && gm.IsSpecialModeActive)
+                {
+                    string note = gm.GetModeResultBonusNote();
+                    if (!string.IsNullOrEmpty(note))
+                    {
+                        modeBonusNote = "\n" + note;
+                    }
+                    if (_roundPrimaryBtnText != null) _roundPrimaryBtnText.text = gm.GetResultPrimaryButtonLabel();
+                    bool showSec = gm.ShouldShowResultSecondaryButton();
+                    if (_roundSecondaryBtn != null) _roundSecondaryBtn.gameObject.SetActive(showSec);
+                    if (showSec && _roundSecondaryBtnText != null) _roundSecondaryBtnText.text = gm.GetResultSecondaryButtonLabel();
+                }
+                else
+                {
+                    if (_roundPrimaryBtnText != null) _roundPrimaryBtnText.text = "REMATCH";
+                    if (_roundSecondaryBtn != null) _roundSecondaryBtn.gameObject.SetActive(true);
+                    if (_roundSecondaryBtnText != null) _roundSecondaryBtnText.text = "BACK TO COURT";
+                }
+
+                _roundResultSubtitle.text = mm.RoundResultSubtitle + banter + modeBonusNote;
                 _roundButtonsRow.SetActive(!mm.WasTablaLastRound);
 
                 RefreshAllUI();
@@ -1746,6 +1736,7 @@ namespace TeksMaster.UI
             if (inv == null) return;
 
             if (_coinsText != null) _coinsText.text = $"{inv.Coins:N0} COINS";
+            if (_gemsText != null) _gemsText.text = $"{inv.Gems:N0} GEMS";
             if (_hudAvatarPortrait != null) _hudAvatarPortrait.sprite = CharacterResourceGenerator.GetAvatarPortraitSprite(inv.SelectedGender);
             if (_hudProfileNameRank != null) _hudProfileNameRank.text = $"{inv.PlayerNickname.ToUpper()}  •  {inv.GetBarangayRankTitle()}";
             if (_hudStreakBadge != null)
@@ -1755,7 +1746,7 @@ namespace TeksMaster.UI
             if (_questsBtnLabel != null)
             {
                 int claimable = inv.GetUnclaimedCompletedQuestCount();
-                _questsBtnLabel.text = claimable > 0 ? $"QUESTS [Q] ({claimable}!)" : "QUESTS [Q]";
+                _questsBtnLabel.text = claimable > 0 ? $"MISSIONS [Q] ({claimable}!)" : "MISSIONS [Q]";
             }
             if (_genderButtonText != null)
             {
@@ -1766,11 +1757,12 @@ namespace TeksMaster.UI
 
             if (_inventoryModal != null && _inventoryModal.activeSelf)
             {
-                if (_inventoryHeaderCoins != null) _inventoryHeaderCoins.text = $"{inv.Coins:N0} COINS";
+                if (_inventoryHeaderCoins != null) _inventoryHeaderCoins.text = $"{inv.Coins:N0} COINS  |  {inv.Gems:N0} GEMS";
                 if (!_isFusionTabOpen) PopulateInventoryModal();
             }
             if (_shopModal != null && _shopModal.activeSelf) PopulateShopModal();
-            if (_questsModal != null && _questsModal.activeSelf) PopulateQuestsModal();
+
+            RefreshExtendedUI();
         }
 
         private void RefreshPamatoPanel()
@@ -1890,6 +1882,7 @@ namespace TeksMaster.UI
             {
                 _inventoryModal.SetActive(true);
                 SwitchInventoryTab(false);
+                SyncPlayerMovementLock();
             }
         }
 
@@ -1904,6 +1897,7 @@ namespace TeksMaster.UI
             CloseAllModals();
             _inventoryModal.SetActive(true);
             SwitchInventoryTab(true);
+            SyncPlayerMovementLock();
         }
 
         private void SwitchInventoryTab(bool fusionTab)
@@ -1923,7 +1917,7 @@ namespace TeksMaster.UI
             var inv = PlayerInventory.Instance;
             if (inv == null || _fusionListContent == null) return;
 
-            if (_inventoryHeaderCoins != null) _inventoryHeaderCoins.text = $"{inv.Coins:N0} COINS";
+            if (_inventoryHeaderCoins != null) _inventoryHeaderCoins.text = $"{inv.Coins:N0} COINS  |  {inv.Gems:N0} GEMS";
 
             for (int i = _fusionListContent.childCount - 1; i >= 0; i--)
             {
@@ -2128,78 +2122,13 @@ namespace TeksMaster.UI
             {
                 PopulateShopModal();
                 _shopModal.SetActive(true);
-            }
-        }
-
-        private void ToggleQuestsModal()
-        {
-            if (TeksMatchManager.Instance != null && TeksMatchManager.Instance.State != MatchState.Idle) return;
-            bool next = !_questsModal.activeSelf;
-            CloseAllModals();
-            if (next)
-            {
-                PopulateQuestsModal();
-                _questsModal.SetActive(true);
-            }
-        }
-
-        private void PopulateQuestsModal()
-        {
-            var inv = PlayerInventory.Instance;
-            if (inv == null || _questsListContent == null) return;
-
-            for (int i = _questsListContent.childCount - 1; i >= 0; i--)
-            {
-                Destroy(_questsListContent.GetChild(i).gameObject);
-            }
-
-            for (int i = 0; i < inv.Quests.Count; i++)
-            {
-                var q = inv.Quests[i];
-                var row = CreateRoundedPanel("QuestRow_" + i, _questsListContent, new Color(0.13f, 0.18f, 0.28f, 1f), new Vector2(620f, 92f));
-                AddOutline(row.gameObject, q.IsCompleted && !q.IsClaimed ? new Color(1.0f, 0.84f, 0.22f) : new Color(0.30f, 0.38f, 0.52f), 2f);
-
-                var qTxt = CreateText(
-                    "QuestInfo",
-                    row,
-                    $"{q.Title}\nProgress: {q.CurrentProgress} / {q.TargetCount}   |   Reward: +{q.CoinReward} Barya Coins",
-                    16,
-                    FontStyle.Bold,
-                    Color.white,
-                    TextAnchor.MiddleLeft
-                );
-                qTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
-                qTxt.rectTransform.anchorMax = new Vector2(0.72f, 1f);
-                qTxt.rectTransform.offsetMin = new Vector2(18f, 8f);
-                qTxt.rectTransform.offsetMax = new Vector2(-8f, -8f);
-
-                int capturedIdx = i;
-                string lbl = q.IsClaimed ? "CLAIMED" : (q.IsCompleted ? $"CLAIM +{q.CoinReward}c" : "IN PROGRESS");
-                Color col = q.IsClaimed ? new Color(0.24f, 0.28f, 0.34f) : (q.IsCompleted ? new Color(0.18f, 0.76f, 0.34f) : new Color(0.30f, 0.36f, 0.48f));
-                var btn = CreateButton("ClaimQuestBtn", row, lbl, col, 14, () =>
-                {
-                    if (inv.TryClaimQuest(capturedIdx, out string msg))
-                    {
-                        ShowToast(msg);
-                        PopulateQuestsModal();
-                    }
-                    else
-                    {
-                        ShowToast(msg);
-                    }
-                });
-                var bRt = btn.GetComponent<RectTransform>();
-                bRt.anchorMin = new Vector2(1f, 0.5f);
-                bRt.anchorMax = new Vector2(1f, 0.5f);
-                bRt.anchoredPosition = new Vector2(-92f, 0f);
-                bRt.sizeDelta = new Vector2(158f, 44f);
-                btn.interactable = q.IsCompleted && !q.IsClaimed;
+                SyncPlayerMovementLock();
             }
         }
 
         private void CreateTopCenterZoneBar()
         {
-            var pill = CreateRoundedPanel("TopCenterZonePill", _canvas.transform, new Color(0.09f, 0.14f, 0.22f, 0.90f), new Vector2(470f, 40f));
+            var pill = CreateRoundedPanel("TopCenterZonePill", _canvas.transform, new Color(0.09f, 0.14f, 0.22f, 0.90f), new Vector2(540f, 40f));
             pill.anchorMin = new Vector2(0.5f, 1f);
             pill.anchorMax = new Vector2(0.5f, 1f);
             pill.pivot = new Vector2(0.5f, 1f);
@@ -2209,96 +2138,8 @@ namespace TeksMaster.UI
             var btn = pill.gameObject.AddComponent<Button>();
             btn.onClick.AddListener(ToggleMapModal);
 
-            _zonePillText = CreateText("ZonePillTxt", pill, "AREA: BASKETBALL COURT   |   [M] BARANGAY MAP", 15, FontStyle.Bold, new Color(0.86f, 0.96f, 1.0f), TextAnchor.MiddleCenter);
+            _zonePillText = CreateText("ZonePillTxt", pill, "AREA: PLAYER'S NEIGHBORHOOD   |   [M] BARANGAY MAP", 15, FontStyle.Bold, new Color(0.86f, 0.96f, 1.0f), TextAnchor.MiddleCenter);
             StretchFull(_zonePillText.rectTransform, 6f);
-        }
-
-        private void CreateMapModal()
-        {
-            _mapModal = CreateModalBackdrop("BarangayMapModal", new Vector2(720f, 540f), out RectTransform window);
-
-            var header = CreateText("MapHeader", window, "BARANGAY AREAS & FAST TRAVEL MAP [M]", 24, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
-            header.rectTransform.anchorMin = new Vector2(0f, 1f);
-            header.rectTransform.anchorMax = new Vector2(0.85f, 1f);
-            header.rectTransform.offsetMin = new Vector2(26f, -56f);
-            header.rectTransform.offsetMax = new Vector2(0f, -12f);
-
-            var closeBtn = CreateButton("CloseMapBtn", window, "X", new Color(0.84f, 0.20f, 0.20f), 18, CloseAllModals);
-            var closeRt = closeBtn.GetComponent<RectTransform>();
-            closeRt.anchorMin = new Vector2(1f, 1f);
-            closeRt.anchorMax = new Vector2(1f, 1f);
-            closeRt.anchoredPosition = new Vector2(-34f, -34f);
-            closeRt.sizeDelta = new Vector2(40f, 40f);
-
-            var listGo = new GameObject("ZonesList", typeof(RectTransform), typeof(VerticalLayoutGroup));
-            listGo.transform.SetParent(window, false);
-            var lRt = listGo.GetComponent<RectTransform>();
-            lRt.anchorMin = Vector2.zero;
-            lRt.anchorMax = Vector2.one;
-            lRt.offsetMin = new Vector2(26f, 22f);
-            lRt.offsetMax = new Vector2(-26f, -74f);
-            var vlg = listGo.GetComponent<VerticalLayoutGroup>();
-            vlg.spacing = 12f;
-            vlg.childControlWidth = true;
-            vlg.childControlHeight = true;
-            vlg.childForceExpandWidth = true;
-            vlg.childForceExpandHeight = true;
-
-            foreach (var zone in BarangayCourtBuilder.WorldZones)
-            {
-                var captured = zone;
-                var row = CreateRoundedPanel("ZoneRow_" + zone.Name, listGo.transform, new Color(0.13f, 0.19f, 0.30f, 1f), new Vector2(650f, 76f));
-                AddOutline(row.gameObject, new Color(0.32f, 0.56f, 0.86f), 2f);
-
-                var txt = CreateText("ZoneTxt", row, $"{zone.Name}\n{zone.Subtitle}", 16, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
-                txt.rectTransform.anchorMin = new Vector2(0f, 0f);
-                txt.rectTransform.anchorMax = new Vector2(0.74f, 1f);
-                txt.rectTransform.offsetMin = new Vector2(18f, 6f);
-                txt.rectTransform.offsetMax = new Vector2(-8f, -6f);
-
-                var goBtn = CreateButton("GoZoneBtn", row, "TRAVEL HERE", new Color(0.18f, 0.72f, 0.36f), 14, () =>
-                {
-                    CloseAllModals();
-                    if (PlayerController.Instance != null)
-                    {
-                        PlayerController.Instance.TeleportForMatch(captured.SpawnPosition, Quaternion.Euler(0f, captured.SpawnYaw, 0f));
-                        ShowToast($"Traveled to {captured.Name}!");
-                    }
-                });
-                var gRt = goBtn.GetComponent<RectTransform>();
-                gRt.anchorMin = new Vector2(1f, 0.5f);
-                gRt.anchorMax = new Vector2(1f, 0.5f);
-                gRt.anchoredPosition = new Vector2(-90f, 0f);
-                gRt.sizeDelta = new Vector2(150f, 42f);
-            }
-
-            _mapModal.SetActive(false);
-        }
-
-        private void ToggleMapModal()
-        {
-            if (TeksMatchManager.Instance != null && TeksMatchManager.Instance.State != MatchState.Idle) return;
-            bool next = !_mapModal.activeSelf;
-            CloseAllModals();
-            if (next) _mapModal.SetActive(true);
-        }
-
-        private void CloseAllModals()
-        {
-            if (_inventoryModal != null) _inventoryModal.SetActive(false);
-            if (_shopModal != null) _shopModal.SetActive(false);
-            if (_questsModal != null) _questsModal.SetActive(false);
-            if (_mapModal != null) _mapModal.SetActive(false);
-        }
-
-        private bool IsAnyModalOpen()
-        {
-            return (_startScreenRoot != null && _startScreenRoot.activeSelf) ||
-                   (_inventoryModal != null && _inventoryModal.activeSelf) ||
-                   (_shopModal != null && _shopModal.activeSelf) ||
-                   (_questsModal != null && _questsModal.activeSelf) ||
-                   (_mapModal != null && _mapModal.activeSelf) ||
-                   (_wagerModal != null && _wagerModal.activeSelf);
         }
 
         private void PopulateInventoryModal()
@@ -2306,7 +2147,7 @@ namespace TeksMaster.UI
             var inv = PlayerInventory.Instance;
             if (inv == null || _inventoryGridContent == null) return;
 
-            if (_inventoryHeaderCoins != null) _inventoryHeaderCoins.text = $"{inv.Coins:N0} COINS";
+            if (_inventoryHeaderCoins != null) _inventoryHeaderCoins.text = $"{inv.Coins:N0} COINS  |  {inv.Gems:N0} GEMS";
 
             for (int i = _inventoryGridContent.childCount - 1; i >= 0; i--)
             {
@@ -2340,20 +2181,29 @@ namespace TeksMaster.UI
                 nameTxt.rectTransform.offsetMin = new Vector2(124f, -44f);
                 nameTxt.rectTransform.offsetMax = new Vector2(-10f, -10f);
 
-                string stars = new string('★', owned.StarRank) + new string('☆', 5 - owned.StarRank);
-                var metaTxt = CreateText("Meta", cardBox, $"{stars}\n{TeksDatabase.GetRarityName(def.Rarity)} | {TeksDatabase.GetThemeName(def.Theme)}", 13, FontStyle.Bold, rarityCol, TextAnchor.UpperLeft);
+                string stars = new string('★', owned.Level) + new string('☆', 5 - owned.Level);
+                string fusionBadge = owned.FusionStage > 0 ? $" • Stg.{owned.FusionStage}" : string.Empty;
+                var metaTxt = CreateText(
+                    "Meta",
+                    cardBox,
+                    $"{stars} (Lv.{owned.Level}/5{fusionBadge})\n{TeksDatabase.GetRarityName(def.Rarity)} | {TeksDatabase.GetCategoryName(def.Category)}",
+                    12,
+                    FontStyle.Bold,
+                    rarityCol,
+                    TextAnchor.UpperLeft
+                );
                 metaTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
                 metaTxt.rectTransform.anchorMax = new Vector2(1f, 1f);
                 metaTxt.rectTransform.offsetMin = new Vector2(124f, -84f);
                 metaTxt.rectTransform.offsetMax = new Vector2(-10f, -44f);
 
                 int sweetPct = Mathf.RoundToInt(owned.GetFlickSweetSpotBonus() * 100f);
-                int luckPct = Mathf.RoundToInt(owned.GetLuckRatingBonus() * 100f);
+                string stageLabel = owned.FusionStage > 0 ? $"Fusion Stage {owned.FusionStage}" : "Base Stage";
                 var statsTxt = CreateText(
                     "Stats",
                     cardBox,
-                    $"HP:{owned.GetHP(def)}  ATK:{owned.GetAtk(def)}  PWR:{owned.GetPower(def)}\nSweetSpot +{sweetPct}%  Luck +{luckPct}%\nDuplicates: x{owned.DuplicateCount}",
-                    13,
+                    $"HP:{owned.GetHP(def)}  ATK:{owned.GetAtk(def)}  PWR:{owned.GetPower(def)}\nSweetSpot +{sweetPct}%  |  {stageLabel}\nQty: x{owned.Quantity} (Extras: x{owned.DuplicateCount})",
+                    12,
                     FontStyle.Normal,
                     new Color(0.84f, 0.90f, 0.98f),
                     TextAnchor.UpperLeft
@@ -2377,11 +2227,12 @@ namespace TeksMaster.UI
                 equipBtn.interactable = !isEquipped;
 
                 bool canUpg = inv.CanUpgradeCard(owned.CardId, out int upgCost, out _, out string upgReason);
-                string upgLbl = owned.StarRank >= 5 ? "MAX 5★" : $"UPGRADE ({upgCost}c)";
+                string upgLbl = owned.StarRank >= 5 ? "MAX Lv.5" : $"UPGRADE ({upgCost}c)";
                 var upgBtn = CreateButton("UpgBtn", cardBox, upgLbl, canUpg ? new Color(0.18f, 0.72f, 0.30f) : new Color(0.26f, 0.30f, 0.38f), 12, () =>
                 {
                     if (inv.TryUpgradeCard(owned.CardId, out string msg))
                     {
+                        TeksAudioManager.Instance?.PlayCoinClink();
                         ShowToast(msg);
                     }
                     else
@@ -2399,6 +2250,7 @@ namespace TeksMaster.UI
                 {
                     if (inv.TrySellDuplicate(owned.CardId, out int earned))
                     {
+                        TeksAudioManager.Instance?.PlayCoinClink();
                         ShowToast($"Sold 1 duplicate {def.Name} for +{earned} Coins!");
                     }
                     else
@@ -2421,14 +2273,29 @@ namespace TeksMaster.UI
             var inv = PlayerInventory.Instance;
             if (shop == null || _shopSlotsContainer == null) return;
 
-            if (_shopModalCoinsText != null && inv != null) _shopModalCoinsText.text = $"{inv.Coins:N0} COINS";
+            if (_shopModalCoinsText != null && inv != null)
+            {
+                _shopModalCoinsText.text = $"{inv.Coins:N0} COINS  |  {inv.Gems:N0} GEMS";
+            }
             if (_shopVendorBannerText != null) _shopVendorBannerText.text = shop.LastVendorMessage;
+
+            bool canDailyDraw = shop.CanClaimDailyFreeDraw;
             if (_shopDailyFreeBtn != null)
             {
-                _shopDailyFreeBtn.interactable = !shop.HasClaimedDailyBarya;
+                _shopDailyFreeBtn.interactable = canDailyDraw;
                 if (_shopDailyFreeBtnText != null)
                 {
-                    _shopDailyFreeBtnText.text = shop.HasClaimedDailyBarya ? "DAILY CLAIMED" : "FREE +200 BARYA";
+                    _shopDailyFreeBtnText.text = canDailyDraw ? "DAILY FREE DRAW" : "DAILY CLAIMED ✓";
+                }
+            }
+            if (_shopDailyPackBtn != null)
+            {
+                _shopDailyPackBtn.interactable = canDailyDraw;
+                if (_shopDailyPackBtnText != null)
+                {
+                    _shopDailyPackBtnText.text = canDailyDraw
+                        ? "DAILY FREE DRAW\n1 Free Card + 200c"
+                        : "DAILY FREE DRAW\nCLAIMED TODAY ✓";
                 }
             }
 
@@ -2476,7 +2343,7 @@ namespace TeksMaster.UI
                 var artImg = CreateImage("Art", artFrame, CardArtGenerator.GetCardPortraitSprite(slot.Card, slot.IsSuperSlot ? 3 : 1));
                 StretchFull(artImg.rectTransform, 4f);
 
-                var cardName = CreateText("Name", boxRt, $"{slot.Card.Name}\n[{TeksDatabase.GetRarityName(slot.Card.Rarity)}]", 13, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                var cardName = CreateText("Name", boxRt, $"{slot.Card.Name}\n[{TeksDatabase.GetRarityName(slot.Card.Rarity)} • {TeksDatabase.GetCategoryName(slot.Card.Category)}]", 12, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
                 cardName.rectTransform.anchorMin = new Vector2(0f, 0.16f);
                 cardName.rectTransform.anchorMax = new Vector2(1f, 0.34f);
                 cardName.rectTransform.offsetMin = new Vector2(6f, 0f);
@@ -2493,6 +2360,7 @@ namespace TeksMaster.UI
                 {
                     if (ShopManager.Instance.TryBuySlot(capturedIdx, out string msg))
                     {
+                        TeksAudioManager.Instance?.PlayCoinClink();
                         ShowToast(msg);
                         PopulateShopModal();
                     }
@@ -2510,40 +2378,52 @@ namespace TeksMaster.UI
             }
         }
 
-        private void OpenBoosterPack(bool isSuperPack)
+        private void OpenShopPack(ShopPackType packType)
         {
             if (ShopManager.Instance == null) return;
-            if (!ShopManager.Instance.TryBuyBoosterPack(isSuperPack, out var drawn, out string msg))
+            if (packType == ShopPackType.DailyFree)
+            {
+                OnDailyFreeDrawClicked();
+                return;
+            }
+
+            if (!ShopManager.Instance.TryBuyPack(packType, out var drawn, out string msg))
             {
                 ShowToast(msg);
                 return;
             }
 
+            TeksAudioManager.Instance?.PlayPackOpen();
+            TeksAudioManager.Instance?.PlayCoinClink();
             ShowToast(msg);
-            RenderPackReveal(
-                isSuperPack ? "ALAMAT SUPER PACK OPENED! Cards added to your Album:" : "KALYE BOOSTER PACK OPENED! Cards added to your Album:",
-                drawn
-            );
+
+            var info = ShopManager.Instance.GetPackInfo(packType);
+            RenderPackReveal($"{info.DisplayName.ToUpper()} OPENED! {drawn.Count} Cards added to your Collection:", drawn);
+            PopulateShopModal();
         }
 
-        private void OpenMythicBox()
+        private void OnDailyFreeDrawClicked()
         {
             if (ShopManager.Instance == null) return;
-            if (!ShopManager.Instance.TryBuyMythicBox(out var drawn, out string msg))
+            if (ShopManager.Instance.TryClaimDailyFreeDraw(out var drawn, out int baryaBonus, out string msg))
             {
+                TeksAudioManager.Instance?.PlayPackOpen();
+                TeksAudioManager.Instance?.PlayCoinClink();
                 ShowToast(msg);
-                return;
+                RenderPackReveal($"DAILY FREE DRAW CLAIMED! +{baryaBonus} Barya Coins & Free Card:", drawn);
+                PopulateShopModal();
             }
-
-            ShowToast(msg);
-            RenderPackReveal("BARANGAY MYTHIC BOX OPENED! 5 Cards added to your Album:", drawn);
+            else
+            {
+                ShowToast(string.IsNullOrEmpty(msg) ? "Already claimed today's Daily Free Draw!" : msg);
+            }
         }
 
         private void RenderPackReveal(string headerText, List<TeksCardDefinition> drawn)
         {
             if (_shopModalCoinsText != null && PlayerInventory.Instance != null)
             {
-                _shopModalCoinsText.text = $"{PlayerInventory.Instance.Coins:N0} COINS";
+                _shopModalCoinsText.text = $"{PlayerInventory.Instance.Coins:N0} COINS  |  {PlayerInventory.Instance.Gems:N0} GEMS";
             }
             if (_shopVendorBannerText != null && ShopManager.Instance != null)
             {
@@ -2576,7 +2456,7 @@ namespace TeksMaster.UI
                 thumb.rectTransform.offsetMin = Vector2.zero;
                 thumb.rectTransform.offsetMax = Vector2.zero;
 
-                var info = CreateText("Info", pillRt, $"{card.Name}\n{TeksDatabase.GetRarityName(card.Rarity)}", 12, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
+                var info = CreateText("Info", pillRt, $"{card.Name}\n{TeksDatabase.GetRarityName(card.Rarity)} • {TeksDatabase.GetCategoryName(card.Category)}", 11, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
                 info.rectTransform.anchorMin = new Vector2(0.44f, 0.08f);
                 info.rectTransform.anchorMax = new Vector2(0.96f, 0.92f);
                 info.rectTransform.offsetMin = Vector2.zero;
@@ -2590,18 +2470,16 @@ namespace TeksMaster.UI
             var inv = PlayerInventory.Instance;
             if (mm == null || inv == null || mm.ActiveOpponent == null) return;
 
-            var equipped = inv.GetEquippedPamato(out var pDef);
+            var equipped = mm.GetActivePlayerPamato(out var pDef);
             if (equipped != null && pDef != null)
             {
                 _wagerPlayerCardImg.sprite = CardArtGenerator.GetCardPortraitSprite(pDef, equipped.StarRank);
-                _wagerPlayerCardText.text = $"{pDef.Name} ({equipped.StarRank}★)";
-                int sweetPct = Mathf.RoundToInt((mm.SweetSpotHalfWidth + equipped.GetFlickSweetSpotBonus()) * 100f);
-                int luckPct = Mathf.RoundToInt(equipped.GetLuckRatingBonus() * 100f);
-                _wagerBonusInfoText.text = $"Pamato Bonus: Sweet Spot +{Mathf.RoundToInt(equipped.GetFlickSweetSpotBonus() * 100f)}%  |  Chub Luck +{luckPct}%  |  Win: +{ _selectedWagerAmount } Coins & Opponent Card";
+                _wagerPlayerCardText.text = $"{pDef.Name} (Lv.{equipped.Level})\n[{TeksDatabase.GetRarityName(pDef.Rarity)} • {TeksDatabase.GetCategoryName(pDef.Category)}]";
             }
 
             var opp = mm.ActiveOpponent;
-            _wagerOppName.text = opp.GetDisplayTag().ToUpper();
+            int npcFrontPct = Mathf.RoundToInt(opp.GetAiChubProbability() * 100f);
+            _wagerOppName.text = $"{opp.GetDisplayTag().ToUpper()} ({npcFrontPct}% CHUB)";
             if (_wagerChallengeQuoteText != null)
             {
                 string nick = inv != null ? inv.PlayerNickname : "TeksMaster";
@@ -2611,7 +2489,7 @@ namespace TeksMaster.UI
             if (oDef != null)
             {
                 _wagerOppCardImg.sprite = CardArtGenerator.GetCardPortraitSprite(oDef, opp.CardStarRank);
-                _wagerOppCardText.text = $"{oDef.Name} ({opp.CardStarRank}★)";
+                _wagerOppCardText.text = $"{oDef.Name} (Lv.{opp.CardStarRank})\n[{TeksDatabase.GetRarityName(oDef.Rarity)} • {TeksDatabase.GetCategoryName(oDef.Category)}]";
             }
 
             RefreshWagerText();
@@ -2619,17 +2497,24 @@ namespace TeksMaster.UI
 
         private void RefreshWagerText()
         {
+            var mm = TeksMatchManager.Instance;
+            var opp = mm != null ? mm.ActiveOpponent : null;
+            int baseReward = TeksMatchManager.GetBaseCoinReward(opp);
+            int npcFrontPct = opp != null ? Mathf.RoundToInt(opp.GetAiChubProbability() * 100f) : 50;
+
+            string ruleTag = (mm != null && mm.HasCardRestriction && !string.IsNullOrEmpty(mm.CardRestrictionLabel))
+                ? $"[{mm.CardRestrictionLabel}]  •  "
+                : string.Empty;
+
             if (_wagerAmountText != null)
             {
-                _wagerAmountText.text = $"WAGER: {_selectedWagerAmount} BARYA COINS";
+                _wagerAmountText.text = $"{ruleTag}WIN REWARD: +{baseReward} BARYA COINS  (MATCH POT: {_selectedWagerAmount}c)";
             }
-            var inv = PlayerInventory.Instance;
-            if (_wagerBonusInfoText != null && inv != null)
+
+            if (_wagerBonusInfoText != null)
             {
-                var eq = inv.GetEquippedPamato(out _);
-                int sweet = eq != null ? Mathf.RoundToInt(eq.GetFlickSweetSpotBonus() * 100f) : 0;
-                int luck = eq != null ? Mathf.RoundToInt(eq.GetLuckRatingBonus() * 100f) : 0;
-                _wagerBonusInfoText.text = $"Pamato Bonus: Sweet Spot +{sweet}%  |  Chub Luck +{luck}%  |  Win: +{_selectedWagerAmount} Coins + Card!";
+                string diffName = opp != null ? opp.Difficulty.ToString() : "Medium";
+                _wagerBonusInfoText.text = $"Odds: Player 50% CHUB / 50% CHA vs {diffName} AI ({npcFrontPct}% CHUB)  •  Tabla = Auto-Retry  •  Both Keep Cards!";
             }
         }
 
@@ -2736,7 +2621,11 @@ namespace TeksMaster.UI
         {
             var rt = CreateRoundedPanel(name, parent, bgColor, new Vector2(160f, 40f));
             var btn = rt.gameObject.AddComponent<Button>();
-            btn.onClick.AddListener(() => onClick?.Invoke());
+            btn.onClick.AddListener(() =>
+            {
+                TeksAudioManager.Instance?.PlayUiClick();
+                onClick?.Invoke();
+            });
 
             if (!string.IsNullOrEmpty(label))
             {

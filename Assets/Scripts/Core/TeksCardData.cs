@@ -19,18 +19,127 @@ namespace TeksMaster.Core
         SciFiMech
     }
 
+    public enum CardCategory
+    {
+        Heroes,
+        Villains,
+        Monsters,
+        Animals,
+        Warriors,
+        Fantasy,
+        FilipinoMythology
+    }
+
     public enum AIDifficulty
     {
         Easy,
         Medium,
         Hard,
-        Boss
+        Boss,
+        Extreme
     }
 
     public enum PlayerGender
     {
         Male,
         Female
+    }
+
+    public enum BarangayAreaId
+    {
+        PlayersNeighborhood = 0,
+        SariSariAndKalye = 1,
+        BasketballCourt = 2,
+        OldNeighborhood = 3,
+        FiestaArena = 4
+    }
+
+    public enum MissionCategory
+    {
+        MainStory,
+        Daily,
+        Collection,
+        Exploration,
+        Achievement
+    }
+
+    public enum ShopPackType
+    {
+        Basic,
+        Premium,
+        Rare,
+        SpecialGem,
+        DailyFree
+    }
+
+    public enum GameModeType
+    {
+        Story,
+        QuickBattle,
+        Tournament,
+        Challenge
+    }
+
+    public enum ChallengeRuleType
+    {
+        WinStreak3,
+        CommonOnly,
+        ExtremeBossGauntlet
+    }
+
+    [Serializable]
+    public class AudioSettingsData
+    {
+        public float MasterVolume = 0.85f;
+        public float BgmVolume = 0.45f;
+        public float SfxVolume = 0.90f;
+        public bool IsMuted = false;
+        public bool IsFullscreen = true;
+
+        public AudioSettingsData()
+        {
+        }
+
+        public AudioSettingsData(float masterVolume, float bgmVolume, float sfxVolume, bool isMuted, bool isFullscreen)
+        {
+            MasterVolume = Mathf.Clamp01(masterVolume);
+            BgmVolume = Mathf.Clamp01(bgmVolume);
+            SfxVolume = Mathf.Clamp01(sfxVolume);
+            IsMuted = isMuted;
+            IsFullscreen = isFullscreen;
+        }
+
+        public void Clamp()
+        {
+            MasterVolume = Mathf.Clamp01(MasterVolume);
+            BgmVolume = Mathf.Clamp01(BgmVolume);
+            SfxVolume = Mathf.Clamp01(SfxVolume);
+        }
+
+        public AudioSettingsData Clone()
+        {
+            return new AudioSettingsData(MasterVolume, BgmVolume, SfxVolume, IsMuted, IsFullscreen);
+        }
+    }
+
+    [Serializable]
+    public class BarangayQuest
+    {
+        public string Id;
+        public string Title;
+        public string Description;
+        public MissionCategory Category;
+        public int CurrentProgress;
+        public int TargetCount;
+        public int CoinReward;
+        public int GemReward;
+        public bool HasPackReward;
+        public ShopPackType PackRewardType;
+        public string SpecialCardRewardId;
+        public bool IsDaily;
+        public bool IsClaimed;
+
+        public bool IsCompleted => TargetCount > 0 && CurrentProgress >= TargetCount;
     }
 
     [Serializable]
@@ -40,6 +149,7 @@ namespace TeksMaster.Core
         public string Name;
         public string Tagline;
         public CardTheme Theme;
+        public CardCategory Category;
         public CardRarity Rarity;
         public int BaseHP;
         public int BaseAtk;
@@ -70,11 +180,37 @@ namespace TeksMaster.Core
             Color primaryColor,
             Color secondaryColor,
             Color accentColor)
+            : this(
+                id, name, tagline, theme, InferDefaultCategory(theme), rarity,
+                baseHp, baseAtk, baseAgility, baseDef, basePower, baseSpeed,
+                buyPrice, sellPrice, primaryColor, secondaryColor, accentColor)
+        {
+        }
+
+        public TeksCardDefinition(
+            string id,
+            string name,
+            string tagline,
+            CardTheme theme,
+            CardCategory category,
+            CardRarity rarity,
+            int baseHp,
+            int baseAtk,
+            int baseAgility,
+            int baseDef,
+            int basePower,
+            int baseSpeed,
+            int buyPrice,
+            int sellPrice,
+            Color primaryColor,
+            Color secondaryColor,
+            Color accentColor)
         {
             Id = id;
             Name = name;
             Tagline = tagline;
             Theme = theme;
+            Category = category;
             Rarity = rarity;
             BaseHP = baseHp;
             BaseAtk = baseAtk;
@@ -88,20 +224,44 @@ namespace TeksMaster.Core
             SecondaryColor = secondaryColor;
             AccentColor = accentColor;
         }
+
+        private static CardCategory InferDefaultCategory(CardTheme theme)
+        {
+            return theme switch
+            {
+                CardTheme.ClassicHero => CardCategory.Heroes,
+                CardTheme.PinoyMythical => CardCategory.FilipinoMythology,
+                CardTheme.SciFiMech => CardCategory.Warriors,
+                _ => CardCategory.Heroes
+            };
+        }
     }
 
     [Serializable]
     public class OwnedTeksCard
     {
         public string CardId;
-        public int StarRank;
+        public int StarRank = 1;
         public int DuplicateCount;
+        public int FusionStage;
 
-        public OwnedTeksCard(string cardId, int starRank = 1, int duplicateCount = 0)
+        public int Level => Mathf.Clamp(StarRank, 1, 5);
+        public int Quantity => 1 + Mathf.Max(0, DuplicateCount);
+
+        public OwnedTeksCard()
+        {
+            CardId = string.Empty;
+            StarRank = 1;
+            DuplicateCount = 0;
+            FusionStage = 0;
+        }
+
+        public OwnedTeksCard(string cardId, int starRank = 1, int duplicateCount = 0, int fusionStage = 0)
         {
             CardId = cardId;
             StarRank = Mathf.Clamp(starRank, 1, 5);
             DuplicateCount = Mathf.Max(0, duplicateCount);
+            FusionStage = Mathf.Clamp(fusionStage, 0, 5);
         }
 
         private float GetStatScale()
