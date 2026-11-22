@@ -753,6 +753,8 @@ namespace TeksMaster.Visuals
 
         public static Sprite GetUIIconSprite(string iconName)
         {
+            if (string.IsNullOrEmpty(iconName)) iconName = "default";
+
             if (_uiIconCache.TryGetValue(iconName, out var cached) && cached != null)
                 return cached;
 
@@ -807,6 +809,59 @@ namespace TeksMaster.Visuals
                 case "shield":
                     FillRect(tex, 16, 28, 32, 24, new Color(0.28f, 0.68f, 0.98f));
                     FillTriangle(tex, new Vector2(16, 28), new Vector2(48, 28), new Vector2(32, 8), new Color(0.28f, 0.68f, 0.98f));
+                    break;
+                case "gem":
+                    // Faceted turquoise-cyan Barangay Gem
+                    FillTriangle(tex, new Vector2(10, 40), new Vector2(54, 40), new Vector2(32, 8), new Color(0.08f, 0.52f, 0.86f));
+                    FillTriangle(tex, new Vector2(10, 40), new Vector2(20, 54), new Vector2(44, 54), new Color(0.26f, 0.88f, 1.0f));
+                    FillTriangle(tex, new Vector2(10, 40), new Vector2(44, 54), new Vector2(54, 40), new Color(0.18f, 0.78f, 0.98f));
+                    FillTriangle(tex, new Vector2(20, 40), new Vector2(44, 40), new Vector2(32, 11), new Color(0.22f, 0.82f, 0.98f));
+                    FillTriangle(tex, new Vector2(22, 40), new Vector2(32, 52), new Vector2(42, 40), new Color(0.76f, 0.98f, 1.0f));
+                    FillTriangle(tex, new Vector2(20, 54), new Vector2(32, 52), new Vector2(22, 40), new Color(0.92f, 1.0f, 1.0f));
+                    DrawStar(tex, 22, 49, 5f, 2f, Color.white);
+                    break;
+                case "trophy":
+                    // Golden Championship Trophy
+                    FillEllipse(tex, 15, 42, 8, 9, new Color(0.92f, 0.70f, 0.12f));
+                    FillEllipse(tex, 15, 42, 4, 5, Color.clear);
+                    FillEllipse(tex, 49, 42, 8, 9, new Color(0.92f, 0.70f, 0.12f));
+                    FillEllipse(tex, 49, 42, 4, 5, Color.clear);
+                    FillRect(tex, 18, 34, 28, 20, new Color(0.98f, 0.78f, 0.14f));
+                    FillEllipse(tex, 32, 34, 14, 12, new Color(0.98f, 0.78f, 0.14f));
+                    FillRect(tex, 21, 36, 5, 15, new Color(1.0f, 0.93f, 0.54f)); // Cup highlight
+                    FillRect(tex, 28, 17, 8, 11, new Color(0.86f, 0.62f, 0.08f)); // Stem
+                    FillRect(tex, 20, 12, 24, 6, new Color(0.78f, 0.54f, 0.08f)); // Upper base
+                    FillRect(tex, 16, 8, 32, 5, new Color(0.46f, 0.28f, 0.10f));  // Pedestal
+                    break;
+                case "lock":
+                    // Padlock icon for locked areas/gates
+                    FillEllipse(tex, 32, 42, 14, 14, new Color(0.76f, 0.80f, 0.86f));
+                    FillEllipse(tex, 32, 42, 8, 8, Color.clear);
+                    FillRect(tex, 18, 32, 6, 12, new Color(0.76f, 0.80f, 0.86f));
+                    FillRect(tex, 40, 32, 6, 12, new Color(0.76f, 0.80f, 0.86f));
+                    FillRect(tex, 14, 10, 36, 26, new Color(0.95f, 0.72f, 0.16f)); // Body
+                    FillRect(tex, 16, 12, 32, 22, new Color(1.0f, 0.82f, 0.28f));  // Inner face
+                    FillEllipse(tex, 32, 25, 4.5f, 4.5f, new Color(0.24f, 0.16f, 0.06f)); // Keyhole top
+                    FillTriangle(tex, new Vector2(29, 24), new Vector2(35, 24), new Vector2(32, 15), new Color(0.24f, 0.16f, 0.06f));
+                    break;
+                case "sound":
+                    // Speaker + acoustic sound waves
+                    FillRect(tex, 10, 24, 12, 16, new Color(0.94f, 0.96f, 1.0f));
+                    FillTriangle(tex, new Vector2(18, 32), new Vector2(34, 48), new Vector2(34, 16), new Color(0.94f, 0.96f, 1.0f));
+                    for (int y = 10; y < 54; y++)
+                    {
+                        for (int x = 36; x < 58; x++)
+                        {
+                            float dx = x - 32f;
+                            float dy = y - 32f;
+                            float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                            float angle = Mathf.Abs(Mathf.Atan2(dy, dx));
+                            if (angle <= 0.78f && (Mathf.Abs(dist - 12f) <= 2.1f || Mathf.Abs(dist - 20f) <= 2.1f))
+                            {
+                                SetPixelSafe(tex, x, y, new Color(0.45f, 0.92f, 1.0f));
+                            }
+                        }
+                    }
                     break;
                 default:
                     FillEllipse(tex, 32, 32, 20, 20, Color.white);

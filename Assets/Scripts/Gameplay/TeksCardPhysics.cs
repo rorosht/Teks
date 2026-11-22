@@ -1,4 +1,5 @@
 using UnityEngine;
+using TeksMaster.Audio;
 using TeksMaster.Core;
 using TeksMaster.Visuals;
 
@@ -8,6 +9,7 @@ namespace TeksMaster.Gameplay
     {
         public string CardId { get; private set; }
         public int StarRank { get; private set; }
+        public CardRarity Rarity => _rarity;
         public bool IsPlayerPamato { get; private set; }
         public bool IsOpponentPamato { get; private set; }
         public bool HasSettled { get; private set; }
@@ -20,6 +22,8 @@ namespace TeksMaster.Gameplay
         private Transform _visualRoot;
         private GameObject _landingRing;
         private Transform _billboardText;
+        private CardRarity _rarity = CardRarity.Common;
+        private bool _hasSpawnRarity;
         private float _flightElapsed;
         private float _settledTimer;
         private float _targetFaceUpProb = 0.5f;
@@ -100,6 +104,8 @@ namespace TeksMaster.Gameplay
             var comp = root.AddComponent<TeksCardPhysics>();
             comp.CardId = cardId;
             comp.StarRank = Mathf.Clamp(starRank, 1, 5);
+            comp._rarity = def != null ? def.Rarity : CardRarity.Common;
+            comp._hasSpawnRarity = def != null;
             comp.IsPlayerPamato = isPlayerPamato;
             comp.IsOpponentPamato = isOpponentPamato;
             comp._rb = rb;
@@ -107,15 +113,24 @@ namespace TeksMaster.Gameplay
             return comp;
         }
 
-        public void LaunchFlick(Vector3 launchVelocity, Vector3 angularVelocity, float targetFaceUpProbability)
+        public void LaunchFlick(
+            Vector3 launchVelocity,
+            Vector3 angularVelocity,
+            float targetFaceUpProbability,
+            CardRarity rarity = CardRarity.Common)
         {
             HasSettled = false;
             _flightElapsed = 0f;
             _settledTimer = 0f;
             _appliedLandingNudge = false;
             _popTimer = -1f;
+            if (!_hasSpawnRarity || rarity != CardRarity.Common)
+            {
+                _rarity = rarity;
+            }
             if (_visualRoot != null) _visualRoot.localScale = VisualBaseScale;
 
+            // Strictly driven by targetFaceUpProbability (card rarity has 0% effect on flip outcome)
             _targetFaceUpProb = Mathf.Clamp01(targetFaceUpProbability);
             _decidedOutcome = true;
             _targetFaceUp = Random.value < _targetFaceUpProb;
@@ -227,6 +242,8 @@ namespace TeksMaster.Gameplay
 
         private void SnapFlatAndSettle()
         {
+            if (HasSettled) return;
+
             HasSettled = true;
             _popTimer = 0f;
 
@@ -245,6 +262,13 @@ namespace TeksMaster.Gameplay
             transform.position = pos;
 
             SpawnSettledMarkers();
+
+            // Rare/Epic/Legendary visual + audio flourishes fire strictly AFTER outcome & final pose lock
+            CardVfxHelper.SpawnLandingVfx(transform, _rarity);
+            if (TeksAudioManager.Instance != null)
+            {
+                TeksAudioManager.Instance.PlayCardLand(_rarity);
+            }
         }
 
         private void SpawnSettledMarkers()

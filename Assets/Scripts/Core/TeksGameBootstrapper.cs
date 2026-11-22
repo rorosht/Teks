@@ -1,4 +1,5 @@
 using UnityEngine;
+using TeksMaster.Audio;
 using TeksMaster.Characters;
 using TeksMaster.Gameplay;
 using TeksMaster.Shop;
@@ -48,24 +49,41 @@ namespace TeksMaster.Core
         public void InitializeRuntimeSystems()
         {
             var inv = GetOrAdd<PlayerInventory>(gameObject);
+            inv.LoadFromDisk();
             inv.EnsureStarterCollection();
+
+            if (inv.AudioSettings != null)
+            {
+                bool fs = inv.AudioSettings.IsFullscreen;
+                Screen.fullScreenMode = fs ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+                Screen.fullScreen = fs;
+            }
+
+            var audioMgr = GetOrAdd<TeksAudioManager>(gameObject);
+            audioMgr.EnsureInitialized();
+            audioMgr.BindInventory(inv);
+            audioMgr.StartBgm();
 
             var shop = GetOrAdd<ShopManager>(gameObject);
             shop.EnsureInitialized();
 
             var court = GetOrAdd<BarangayCourtBuilder>(gameObject);
             court.BuildWorldIfNeeded();
+            court.RefreshAreaGates();
+            court.RefreshHiddenCardStates();
 
-            var matchMgr = GetOrAdd<TeksMatchManager>(gameObject);
+            GetOrAdd<TeksMatchManager>(gameObject);
+            GetOrAdd<TeksGameModeManager>(gameObject);
 
-            // Spawn or reuse PlayerAvatar
+            // Spawn or reuse PlayerAvatar in Area 0 (Player's Neighborhood)
             var playerGo = GameObject.Find("PlayerAvatar");
             if (playerGo == null)
             {
                 playerGo = new GameObject("PlayerAvatar");
             }
             var player = GetOrAdd<PlayerController>(playerGo);
-            player.InitializePlayer(new Vector3(-3.8f, 0f, -4.6f), Quaternion.Euler(0f, 34f, 0f));
+            player.InitializePlayer(new Vector3(24.8f, 0f, 5.2f), Quaternion.Euler(0f, -145f, 0f));
+            player.ExternalInteractHandlerActive = true;
 
             // Frame main camera nicely on startup
             if (Camera.main != null)
@@ -82,7 +100,7 @@ namespace TeksMaster.Core
             string shaderName = (sampleRend != null && sampleRend.sharedMaterial != null && sampleRend.sharedMaterial.shader != null)
                 ? sampleRend.sharedMaterial.shader.name
                 : "NONE";
-            Debug.Log($"[Teks Master] Runtime initialized! NPCs={court.SpawnedOpponents.Count}, Shader={shaderName}, Cam={(Camera.main != null ? Camera.main.name : "NONE")}");
+            Debug.Log($"[Teks Master] Runtime initialized! NPCs={court.SpawnedOpponents.Count}, HiddenCards={court.SpawnedHiddenCards.Count}, Shader={shaderName}, Cam={(Camera.main != null ? Camera.main.name : "NONE")}");
         }
 
         public void SetupEditModeCourtPreview()
@@ -106,8 +124,8 @@ namespace TeksMaster.Core
             if (playerGo == null)
             {
                 playerGo = new GameObject("PlayerAvatar");
-                playerGo.transform.position = new Vector3(-3.8f, 0f, -4.6f);
-                playerGo.transform.rotation = Quaternion.Euler(0f, 34f, 0f);
+                playerGo.transform.position = new Vector3(24.8f, 0f, 5.2f);
+                playerGo.transform.rotation = Quaternion.Euler(0f, -145f, 0f);
                 CharacterVisualBuilder.BuildCharacterVisual(
                     playerGo,
                     CharacterOutfitRole.MaleKid,
