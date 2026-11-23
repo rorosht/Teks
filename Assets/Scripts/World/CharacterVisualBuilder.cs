@@ -42,6 +42,13 @@ namespace TeksMaster.World
         public GameObject HandCardObject;
         public Renderer HandCardRenderer;
 
+        // Expressive face controls (Option 1 stylized character faces)
+        public Transform LeftEyebrow;
+        public Transform RightEyebrow;
+        public GameObject SmileMouth;
+        public GameObject HappyOpenMouth;
+        public GameObject SadMouth;
+
         public CharacterPoseMode CurrentPose { get; private set; } = CharacterPoseMode.StandingOrWalking;
         public bool IsPlayingReaction => _reactionType != ReactionNone && _reactionTimer > 0f;
         public int CurrentReactionType => IsPlayingReaction ? _reactionType : ReactionNone;
@@ -123,11 +130,11 @@ namespace TeksMaster.World
         {
             float height = CurrentPose switch
             {
-                CharacterPoseMode.SittingOnCourt => 1.08f,
-                CharacterPoseMode.CrouchingFlick => 1.18f,
-                CharacterPoseMode.SittingOnBench => 1.44f,
-                CharacterPoseMode.Talking => 1.72f,
-                _ => 1.72f
+                CharacterPoseMode.SittingOnCourt => 1.14f,
+                CharacterPoseMode.CrouchingFlick => 1.24f,
+                CharacterPoseMode.SittingOnBench => 1.50f,
+                CharacterPoseMode.Talking => 1.78f,
+                _ => 1.78f
             };
             return transform.position + Vector3.up * height;
         }
@@ -144,9 +151,9 @@ namespace TeksMaster.World
             Quaternion targetRightLeg = Quaternion.identity;
             Quaternion targetLeftKnee = Quaternion.identity;
             Quaternion targetRightKnee = Quaternion.identity;
-            Quaternion targetLeftArm = Quaternion.Euler(0f, 0f, 8f);
+            Quaternion targetLeftArm = Quaternion.Euler(0f, 0f, 10f);
             Quaternion targetLeftForearm = Quaternion.identity;
-            Quaternion targetRightArm = Quaternion.Euler(0f, 0f, -8f);
+            Quaternion targetRightArm = Quaternion.Euler(0f, 0f, -10f);
             Quaternion targetRightForearm = Quaternion.identity;
 
             if (CurrentPose == CharacterPoseMode.SittingOnCourt)
@@ -275,16 +282,16 @@ namespace TeksMaster.World
                     targetTorsoRot = Quaternion.Euler(6f * _normalizedSpeed, 0f, 0f);
                     targetLeftLeg = Quaternion.Euler(swing, 0f, 0f);
                     targetRightLeg = Quaternion.Euler(-swing, 0f, 0f);
-                    targetLeftArm = Quaternion.Euler(-swing * 0.8f, 0f, 8f);
-                    targetRightArm = Quaternion.Euler(swing * 0.8f, 0f, -8f);
+                    targetLeftArm = Quaternion.Euler(-swing * 0.8f, 0f, 10f);
+                    targetRightArm = Quaternion.Euler(swing * 0.8f, 0f, -10f);
                 }
                 else
                 {
                     float idle = Mathf.Sin(Time.time * 2.0f) * 1.5f;
                     targetPelvisY = 0.62f + Mathf.Sin(Time.time * 2.0f) * 0.01f;
                     targetTorsoRot = Quaternion.Euler(idle * 0.3f, 0f, 0f);
-                    targetLeftArm = Quaternion.Euler(idle, 0f, 7f);
-                    targetRightArm = Quaternion.Euler(-idle, 0f, -7f);
+                    targetLeftArm = Quaternion.Euler(idle, 0f, 9f);
+                    targetRightArm = Quaternion.Euler(-idle, 0f, -9f);
                 }
             }
 
@@ -389,11 +396,72 @@ namespace TeksMaster.World
             if (LeftForearmPivot != null) LeftForearmPivot.localRotation = Quaternion.Slerp(LeftForearmPivot.localRotation, targetLeftForearm, lerpSpeed);
             if (RightArmPivot != null) RightArmPivot.localRotation = Quaternion.Slerp(RightArmPivot.localRotation, targetRightArm, lerpSpeed);
             if (RightForearmPivot != null) RightForearmPivot.localRotation = Quaternion.Slerp(RightForearmPivot.localRotation, targetRightForearm, lerpSpeed);
+
+            UpdateFacialExpression(lerpSpeed);
+        }
+
+        private void UpdateFacialExpression(float lerpSpeed)
+        {
+            bool isWin = _reactionType == ReactionWin && _reactionTimer > 0f;
+            bool isLose = (_reactionType == ReactionLose || _reactionType == ReactionTabla) && _reactionTimer > 0f;
+            bool isFocused = CurrentPose == CharacterPoseMode.CrouchingFlick && !isWin && !isLose;
+
+            if (SmileMouth != null) SmileMouth.SetActive(!isWin && !isLose);
+            if (HappyOpenMouth != null) HappyOpenMouth.SetActive(isWin);
+            if (SadMouth != null) SadMouth.SetActive(isLose);
+
+            float targetBrowZ = 0f;
+            float targetBrowYOffset = 0f;
+            if (isWin)
+            {
+                targetBrowZ = 8f;
+                targetBrowYOffset = 0.010f;
+            }
+            else if (isLose)
+            {
+                targetBrowZ = 16f;
+                targetBrowYOffset = 0.004f;
+            }
+            else if (isFocused)
+            {
+                targetBrowZ = -12f;
+                targetBrowYOffset = -0.006f;
+            }
+
+            if (LeftEyebrow != null)
+            {
+                LeftEyebrow.localRotation = Quaternion.Slerp(
+                    LeftEyebrow.localRotation,
+                    Quaternion.Euler(0f, -8f, targetBrowZ),
+                    lerpSpeed);
+                Vector3 lp = LeftEyebrow.localPosition;
+                lp.y = Mathf.Lerp(lp.y, 0.068f + targetBrowYOffset, lerpSpeed);
+                LeftEyebrow.localPosition = lp;
+            }
+
+            if (RightEyebrow != null)
+            {
+                RightEyebrow.localRotation = Quaternion.Slerp(
+                    RightEyebrow.localRotation,
+                    Quaternion.Euler(0f, 8f, -targetBrowZ),
+                    lerpSpeed);
+                Vector3 rp = RightEyebrow.localPosition;
+                rp.y = Mathf.Lerp(rp.y, 0.068f + targetBrowYOffset, lerpSpeed);
+                RightEyebrow.localPosition = rp;
+            }
         }
     }
 
     public static class CharacterVisualBuilder
     {
+        private static readonly Color[] HairColorPalette =
+        {
+            new Color(0.24f, 0.15f, 0.09f), // Warm Option-1 brown
+            new Color(0.11f, 0.09f, 0.08f), // Classic Pinoy jet black
+            new Color(0.18f, 0.12f, 0.08f), // Dark espresso brown
+            new Color(0.30f, 0.19f, 0.11f), // Warm chestnut brown
+        };
+
         public static CharacterActor BuildCharacterVisual(
             GameObject host,
             CharacterOutfitRole role,
@@ -415,98 +483,267 @@ namespace TeksMaster.World
             visualRoot.transform.SetParent(host.transform, false);
             actor.VisualRoot = visualRoot.transform;
 
-            int jerseyStyle = Mathf.Abs(host.name.GetHashCode()) % 3;
-            Texture2D jerseyTex = CharacterResourceGenerator.GetStreetwearShirtTexture(shirtColor, slipperColor, jerseyStyle);
-            Texture2D faceTex = CharacterResourceGenerator.GetCharacterFaceTexture(skinTone);
+            uint seed = ComputeStableHash(host.name);
+            int hairStyle = (int)(seed % 4u);
+            Color hairColor = HairColorPalette[(seed >> 3) % (uint)HairColorPalette.Length];
+            bool wearLongCuffedPants = role == CharacterOutfitRole.Tindera || ((seed >> 6) % 10u) < 6u;
+            bool wearSneakers = role != CharacterOutfitRole.Tindera && (wearLongCuffedPants || ((seed >> 9) % 10u) < 7u);
+            bool usePatternedJersey = role != CharacterOutfitRole.Tindera && ((seed >> 12) % 3u) == 0u;
 
-            Material skinMat = CardArtGenerator.CreateLitMaterial(skinTone, 0.25f);
-            Material headSkinMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.22f, 0f, faceTex);
-            Material shirtMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.22f, 0f, jerseyTex);
-            Material sleeveMat = CardArtGenerator.CreateLitMaterial(shirtColor, 0.2f);
-            Material shortsMat = CardArtGenerator.CreateLitMaterial(shortsColor, 0.15f);
-            Material hairMat = CardArtGenerator.CreateLitMaterial(new Color(0.11f, 0.09f, 0.08f), 0.3f);
-            Material slipperMat = CardArtGenerator.CreateLitMaterial(slipperColor, 0.2f);
-            Material whiteMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.3f);
-            Material eyeMat = CardArtGenerator.CreateLitMaterial(new Color(0.08f, 0.08f, 0.08f), 0.6f);
+            // Soft toy-like matte URP materials matching Option 1 aesthetic
+            Material skinMat = CardArtGenerator.CreateLitMaterial(skinTone, 0.18f);
+            Material earInnerMat = CardArtGenerator.CreateLitMaterial(skinTone * 0.86f, 0.14f);
+            Material noseMat = CardArtGenerator.CreateLitMaterial(Color.Lerp(skinTone, new Color(0.88f, 0.56f, 0.44f), 0.24f), 0.22f);
+            Material cheekMat = CardArtGenerator.CreateLitMaterial(Color.Lerp(skinTone, new Color(0.95f, 0.54f, 0.50f), 0.36f), 0.12f);
 
-            // Pelvis root
+            Material shirtMat;
+            if (usePatternedJersey)
+            {
+                int jerseyStyle = (int)((seed >> 14) % 3u);
+                Texture2D jerseyTex = CharacterResourceGenerator.GetStreetwearShirtTexture(shirtColor, slipperColor, jerseyStyle);
+                shirtMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.16f, 0f, jerseyTex);
+            }
+            else
+            {
+                shirtMat = CardArtGenerator.CreateLitMaterial(shirtColor, 0.16f);
+            }
+
+            Material sleeveMat = CardArtGenerator.CreateLitMaterial(shirtColor, 0.16f);
+            Material collarMat = CardArtGenerator.CreateLitMaterial(Color.Lerp(shirtColor, Color.white, 0.18f), 0.14f);
+            Material shortsMat = CardArtGenerator.CreateLitMaterial(shortsColor, 0.14f);
+            Material cuffMat = CardArtGenerator.CreateLitMaterial(Color.Lerp(shortsColor, Color.white, 0.20f), 0.14f);
+            Material hairMat = CardArtGenerator.CreateLitMaterial(hairColor, 0.24f);
+            Material shoeMat = CardArtGenerator.CreateLitMaterial(slipperColor, 0.22f);
+            Material whiteMat = CardArtGenerator.CreateLitMaterial(new Color(0.96f, 0.96f, 0.95f), 0.22f);
+            Material eyeMat = CardArtGenerator.CreateLitMaterial(new Color(0.11f, 0.08f, 0.07f), 0.85f);
+            Material mouthMat = CardArtGenerator.CreateLitMaterial(new Color(0.32f, 0.16f, 0.12f), 0.25f);
+            Material openMouthMat = CardArtGenerator.CreateLitMaterial(new Color(0.58f, 0.20f, 0.22f), 0.20f);
+
+            Mesh headMesh = StylizedCharacterMeshFactory.GetHeadMesh();
+            Mesh torsoMesh = StylizedCharacterMeshFactory.GetTorsoMesh();
+            Mesh hipsMesh = StylizedCharacterMeshFactory.GetHipsMesh();
+            Mesh sleeveMesh = StylizedCharacterMeshFactory.GetSleeveMesh();
+            Mesh limbMesh = StylizedCharacterMeshFactory.GetTaperedLimbMesh();
+            Mesh cuffMesh = StylizedCharacterMeshFactory.GetPantCuffMesh();
+            Mesh soleMesh = StylizedCharacterMeshFactory.GetSneakerSoleMesh();
+            Mesh upperMesh = StylizedCharacterMeshFactory.GetSneakerUpperMesh();
+            Mesh hairCapMesh = StylizedCharacterMeshFactory.GetHairCapMesh();
+            Mesh hairTuftMesh = StylizedCharacterMeshFactory.GetHairTuftMesh();
+            Mesh arcMesh = StylizedCharacterMeshFactory.GetCurvedArcMesh();
+            Mesh sphereMesh = StylizedCharacterMeshFactory.GetSmoothSphereMesh();
+
+            // Pelvis root (exact 0.62f standing height for seamless pose/ground compatibility)
             var pelvis = new GameObject("Pelvis").transform;
             pelvis.SetParent(visualRoot.transform, false);
             pelvis.localPosition = new Vector3(0f, 0.62f, 0f);
             actor.Pelvis = pelvis;
 
-            // Hip block (shorts waist)
-            CreatePart("Hips", PrimitiveType.Cube, pelvis, new Vector3(0f, 0.02f, 0f), new Vector3(0.30f, 0.14f, 0.20f), shortsMat);
+            // Smooth rounded hips
+            CreateMeshPart("Hips", hipsMesh, pelvis, new Vector3(0f, 0.02f, 0f), Quaternion.identity, new Vector3(0.32f, 0.17f, 0.28f), shortsMat);
 
             // Torso
             var torsoPivot = new GameObject("Torso").transform;
             torsoPivot.SetParent(pelvis, false);
-            torsoPivot.localPosition = new Vector3(0f, 0.08f, 0f);
+            torsoPivot.localPosition = new Vector3(0f, 0.07f, 0f);
             actor.Torso = torsoPivot;
 
-            CreatePart("ShirtBody", PrimitiveType.Cube, torsoPivot, new Vector3(0f, 0.22f, 0f), new Vector3(0.32f, 0.42f, 0.21f), shirtMat);
-            CreatePart("Neck", PrimitiveType.Cylinder, torsoPivot, new Vector3(0f, 0.45f, 0f), new Vector3(0.11f, 0.06f, 0.11f), skinMat);
+            // Rounded t-shirt body + soft collar ring + smooth neck
+            CreateMeshPart("ShirtBody", torsoMesh, torsoPivot, new Vector3(0f, 0.01f, 0f), Quaternion.identity, new Vector3(0.36f, 0.42f, 0.30f), shirtMat);
+            CreateMeshPart("CollarTrim", cuffMesh, torsoPivot, new Vector3(0f, 0.405f, 0f), Quaternion.identity, new Vector3(0.15f, 0.032f, 0.14f), collarMat);
+            CreateMeshPart("Neck", limbMesh, torsoPivot, new Vector3(0f, 0.445f, 0f), Quaternion.identity, new Vector3(0.115f, 0.095f, 0.115f), skinMat);
 
             if (role == CharacterOutfitRole.Tindera)
             {
-                Material apronMat = CardArtGenerator.CreateLitMaterial(new Color(0.95f, 0.90f, 0.78f), 0.15f);
-                CreatePart("Apron", PrimitiveType.Cube, torsoPivot, new Vector3(0f, 0.14f, 0.11f), new Vector3(0.28f, 0.42f, 0.03f), apronMat);
+                Material apronMat = CardArtGenerator.CreateLitMaterial(new Color(0.96f, 0.92f, 0.82f), 0.14f);
+                Material pocketMat = CardArtGenerator.CreateLitMaterial(new Color(0.88f, 0.34f, 0.26f), 0.14f);
+                CreateMeshPart("Apron", torsoMesh, torsoPivot, new Vector3(0f, -0.05f, 0.065f), Quaternion.identity, new Vector3(0.28f, 0.38f, 0.16f), apronMat);
+                CreateMeshPart("ApronPocket", hipsMesh, torsoPivot, new Vector3(0f, 0.09f, 0.125f), Quaternion.identity, new Vector3(0.14f, 0.09f, 0.05f), pocketMat);
             }
 
-            // Head
+            // Head (Option 1 big sculpted chibi head)
             var headGroup = new GameObject("HeadGroup").transform;
             headGroup.SetParent(torsoPivot, false);
-            headGroup.localPosition = new Vector3(0f, 0.60f, 0f);
+            headGroup.localPosition = new Vector3(0f, 0.615f, 0f);
             actor.HeadGroup = headGroup;
 
-            CreatePart("Head", PrimitiveType.Sphere, headGroup, Vector3.zero, new Vector3(0.27f, 0.29f, 0.27f), headSkinMat);
-            CreatePart("HairCap", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.045f, -0.02f), new Vector3(0.28f, 0.25f, 0.28f), hairMat);
+            CreateMeshPart("Head", headMesh, headGroup, Vector3.zero, Quaternion.identity, new Vector3(0.395f, 0.375f, 0.375f), skinMat);
 
-            // Eyes
-            CreatePart("LeftEyeWhite", PrimitiveType.Sphere, headGroup, new Vector3(-0.055f, 0.01f, 0.118f), new Vector3(0.042f, 0.042f, 0.02f), whiteMat);
-            CreatePart("RightEyeWhite", PrimitiveType.Sphere, headGroup, new Vector3(0.055f, 0.01f, 0.118f), new Vector3(0.042f, 0.042f, 0.02f), whiteMat);
-            CreatePart("LeftPupil", PrimitiveType.Sphere, headGroup, new Vector3(-0.055f, 0.01f, 0.128f), new Vector3(0.024f, 0.024f, 0.02f), eyeMat);
-            CreatePart("RightPupil", PrimitiveType.Sphere, headGroup, new Vector3(0.055f, 0.01f, 0.128f), new Vector3(0.024f, 0.024f, 0.02f), eyeMat);
+            // Cute rounded ears with subtle inner ear tint
+            CreateMeshPart("LeftEar", sphereMesh, headGroup, new Vector3(-0.190f, -0.015f, -0.012f), Quaternion.Euler(0f, 15f, 6f), new Vector3(0.068f, 0.084f, 0.044f), skinMat);
+            CreateMeshPart("LeftEarInner", sphereMesh, headGroup, new Vector3(-0.194f, -0.015f, -0.002f), Quaternion.Euler(0f, 15f, 6f), new Vector3(0.038f, 0.050f, 0.024f), earInnerMat);
+            CreateMeshPart("RightEar", sphereMesh, headGroup, new Vector3(0.190f, -0.015f, -0.012f), Quaternion.Euler(0f, -15f, -6f), new Vector3(0.068f, 0.084f, 0.044f), skinMat);
+            CreateMeshPart("RightEarInner", sphereMesh, headGroup, new Vector3(0.194f, -0.015f, -0.002f), Quaternion.Euler(0f, -15f, -6f), new Vector3(0.038f, 0.050f, 0.024f), earInnerMat);
 
-            if (role == CharacterOutfitRole.FemaleKid)
-            {
-                Material bandMat = CardArtGenerator.CreateLitMaterial(new Color(0.95f, 0.38f, 0.72f), 0.3f);
-                CreatePart("HairBun", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.14f, -0.06f), new Vector3(0.14f, 0.14f, 0.14f), hairMat);
-                CreatePart("Headband", PrimitiveType.Cylinder, headGroup, new Vector3(0f, 0.08f, 0f), new Vector3(0.285f, 0.022f, 0.285f), bandMat);
-            }
-            else if (role == CharacterOutfitRole.Tindera)
-            {
-                Material scarfMat = CardArtGenerator.CreateLitMaterial(new Color(0.88f, 0.28f, 0.22f), 0.2f);
-                CreatePart("Headscarf", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.06f, -0.03f), new Vector3(0.29f, 0.23f, 0.29f), scarfMat);
-            }
-            else
-            {
-                // Spiky/swept boy hair tuft
-                CreatePart("FrontHairTuft", PrimitiveType.Cube, headGroup, new Vector3(0f, 0.13f, 0.05f), new Vector3(0.18f, 0.07f, 0.14f), hairMat);
-            }
+            // Button nose
+            CreateMeshPart("Nose", sphereMesh, headGroup, new Vector3(0f, -0.020f, 0.174f), Quaternion.identity, new Vector3(0.034f, 0.044f, 0.038f), noseMat);
 
-            // Arms (with both forearm pivots wired for animations)
-            actor.LeftArmPivot = CreateArm("LeftArmPivot", torsoPivot, new Vector3(-0.21f, 0.39f, 0f), sleeveMat, skinMat, isRight: false, out Transform leftForearmPivot, out _, out _);
+            // Soft rosy cheeks
+            CreateMeshPart("LeftCheek", sphereMesh, headGroup, new Vector3(-0.095f, -0.036f, 0.142f), Quaternion.Euler(0f, -24f, 0f), new Vector3(0.056f, 0.038f, 0.018f), cheekMat);
+            CreateMeshPart("RightCheek", sphereMesh, headGroup, new Vector3(0.095f, -0.036f, 0.142f), Quaternion.Euler(0f, 24f, 0f), new Vector3(0.056f, 0.038f, 0.018f), cheekMat);
+
+            // Option-1 glossy vertical oval eyes + crisp white specular catchlight dots
+            CreateMeshPart("LeftEye", sphereMesh, headGroup, new Vector3(-0.062f, 0.014f, 0.160f), Quaternion.Euler(0f, -10f, 0f), new Vector3(0.034f, 0.049f, 0.026f), eyeMat);
+            CreateMeshPart("RightEye", sphereMesh, headGroup, new Vector3(0.062f, 0.014f, 0.160f), Quaternion.Euler(0f, 10f, 0f), new Vector3(0.034f, 0.049f, 0.026f), eyeMat);
+            CreateMeshPart("LeftEyeCatchlight", sphereMesh, headGroup, new Vector3(-0.054f, 0.025f, 0.171f), Quaternion.identity, new Vector3(0.010f, 0.010f, 0.008f), whiteMat);
+            CreateMeshPart("RightEyeCatchlight", sphereMesh, headGroup, new Vector3(0.070f, 0.025f, 0.171f), Quaternion.identity, new Vector3(0.010f, 0.010f, 0.008f), whiteMat);
+
+            // Curved 3D eyebrows (animated dynamically in CharacterActor)
+            actor.LeftEyebrow = CreateMeshPart("LeftEyebrow", arcMesh, headGroup, new Vector3(-0.064f, 0.068f, 0.158f), Quaternion.Euler(0f, -8f, 0f), new Vector3(0.058f, 0.042f, 0.042f), hairMat).transform;
+            actor.RightEyebrow = CreateMeshPart("RightEyebrow", arcMesh, headGroup, new Vector3(0.064f, 0.068f, 0.158f), Quaternion.Euler(0f, 8f, 0f), new Vector3(0.058f, 0.042f, 0.042f), hairMat).transform;
+
+            // Swappable 3D expressive mouths (Smile, Happy Open, Sad/Shocked)
+            actor.SmileMouth = CreateMeshPart("SmileMouth", arcMesh, headGroup, new Vector3(0f, -0.062f, 0.160f), Quaternion.identity, new Vector3(0.088f, -0.055f, 0.042f), mouthMat);
+            actor.HappyOpenMouth = CreateMeshPart("HappyOpenMouth", sphereMesh, headGroup, new Vector3(0f, -0.070f, 0.158f), Quaternion.identity, new Vector3(0.068f, 0.048f, 0.026f), openMouthMat);
+            actor.SadMouth = CreateMeshPart("SadMouth", arcMesh, headGroup, new Vector3(0f, -0.074f, 0.160f), Quaternion.identity, new Vector3(0.072f, 0.048f, 0.042f), mouthMat);
+            actor.HappyOpenMouth.SetActive(false);
+            actor.SadMouth.SetActive(false);
+
+            // Stylized sculpted hair (varies per role + character name hash)
+            BuildHairstyle(headGroup, role, hairStyle, hairCapMesh, hairTuftMesh, sphereMesh, cuffMesh, hairMat, slipperColor);
+
+            // Arms with flared sleeves + mitten hands with thumbs
+            actor.LeftArmPivot = CreateArm(
+                "LeftArmPivot", torsoPivot, new Vector3(-0.205f, 0.375f, 0f),
+                sleeveMesh, limbMesh, sphereMesh, sleeveMat, skinMat,
+                isRight: false, out Transform leftForearmPivot, out _, out _);
             actor.LeftForearmPivot = leftForearmPivot;
-            actor.RightArmPivot = CreateArm("RightArmPivot", torsoPivot, new Vector3(0.21f, 0.39f, 0f), sleeveMat, skinMat, isRight: true, out Transform rightForearmPivot, out GameObject handCard, out Renderer handCardRenderer);
+
+            actor.RightArmPivot = CreateArm(
+                "RightArmPivot", torsoPivot, new Vector3(0.205f, 0.375f, 0f),
+                sleeveMesh, limbMesh, sphereMesh, sleeveMat, skinMat,
+                isRight: true, out Transform rightForearmPivot, out GameObject handCard, out Renderer handCardRenderer);
             actor.RightForearmPivot = rightForearmPivot;
             actor.HandCardObject = handCard;
             actor.HandCardRenderer = handCardRenderer;
             actor.SetHandCardVisible(false);
 
-            // Legs + Basketball Shorts + Tsinelas Slippers
-            actor.LeftLegPivot = CreateLeg("LeftLegPivot", "LeftKneePivot", pelvis, new Vector3(-0.085f, -0.02f, 0f), shortsMat, skinMat, slipperMat, whiteMat, out Transform leftKneePivot);
-            actor.RightLegPivot = CreateLeg("RightLegPivot", "RightKneePivot", pelvis, new Vector3(0.085f, -0.02f, 0f), shortsMat, skinMat, slipperMat, whiteMat, out Transform rightKneePivot);
+            // Legs (Cuffed Option-1 Jeans or Barangay Shorts) + Footwear (Chunky Sneakers or Tsinelas)
+            actor.LeftLegPivot = CreateLeg(
+                "LeftLegPivot", "LeftKneePivot", pelvis, new Vector3(-0.088f, -0.02f, 0f),
+                wearLongCuffedPants, wearSneakers,
+                limbMesh, cuffMesh, soleMesh, upperMesh, sphereMesh,
+                shortsMat, cuffMat, skinMat, shoeMat, whiteMat, out Transform leftKneePivot);
+
+            actor.RightLegPivot = CreateLeg(
+                "RightLegPivot", "RightKneePivot", pelvis, new Vector3(0.088f, -0.02f, 0f),
+                wearLongCuffedPants, wearSneakers,
+                limbMesh, cuffMesh, soleMesh, upperMesh, sphereMesh,
+                shortsMat, cuffMat, skinMat, shoeMat, whiteMat, out Transform rightKneePivot);
+
             actor.LeftKneePivot = leftKneePivot;
             actor.RightKneePivot = rightKneePivot;
 
             return actor;
         }
 
+        private static void BuildHairstyle(
+            Transform headGroup,
+            CharacterOutfitRole role,
+            int hairStyle,
+            Mesh hairCapMesh,
+            Mesh hairTuftMesh,
+            Mesh sphereMesh,
+            Mesh cuffMesh,
+            Material hairMat,
+            Color accentColor)
+        {
+            // Base sculpted hair cap hugging scalp
+            CreateMeshPart("HairCap", hairCapMesh, headGroup, new Vector3(0f, 0.015f, -0.008f), Quaternion.identity, new Vector3(0.415f, 0.395f, 0.395f), hairMat);
+
+            // Soft sideburns
+            CreateMeshPart("SideburnL", hairTuftMesh, headGroup, new Vector3(-0.175f, 0.055f, 0.035f), Quaternion.Euler(78f, -20f, 10f), new Vector3(0.085f, 0.075f, 0.115f), hairMat);
+            CreateMeshPart("SideburnR", hairTuftMesh, headGroup, new Vector3(0.175f, 0.055f, 0.035f), Quaternion.Euler(78f, 20f, -10f), new Vector3(0.085f, 0.075f, 0.115f), hairMat);
+
+            if (role == CharacterOutfitRole.Tindera)
+            {
+                Material scarfMat = CardArtGenerator.CreateLitMaterial(new Color(0.88f, 0.28f, 0.22f), 0.16f);
+                CreateMeshPart("Headscarf", hairCapMesh, headGroup, new Vector3(0f, 0.026f, -0.016f), Quaternion.Euler(-8f, 0f, 0f), new Vector3(0.428f, 0.385f, 0.410f), scarfMat);
+                CreateMeshPart("TinderaBun", sphereMesh, headGroup, new Vector3(0f, 0.06f, -0.195f), Quaternion.identity, new Vector3(0.145f, 0.145f, 0.135f), hairMat);
+                CreateMeshPart("FrontWaveL", hairTuftMesh, headGroup, new Vector3(-0.04f, 0.145f, 0.07f), Quaternion.Euler(18f, -38f, 0f), new Vector3(0.14f, 0.09f, 0.16f), hairMat);
+                CreateMeshPart("FrontWaveR", hairTuftMesh, headGroup, new Vector3(0.04f, 0.145f, 0.07f), Quaternion.Euler(18f, 38f, 0f), new Vector3(0.14f, 0.09f, 0.16f), hairMat);
+                return;
+            }
+
+            if (role == CharacterOutfitRole.FemaleKid)
+            {
+                Color tieColor = Color.Lerp(accentColor, new Color(0.96f, 0.38f, 0.66f), 0.45f);
+                Material bandMat = CardArtGenerator.CreateLitMaterial(tieColor, 0.22f);
+
+                // Cute swept bangs across forehead
+                CreateMeshPart("BangCenter", hairTuftMesh, headGroup, new Vector3(-0.03f, 0.148f, 0.065f), Quaternion.Euler(26f, 18f, 0f), new Vector3(0.16f, 0.10f, 0.18f), hairMat);
+                CreateMeshPart("BangLeft", hairTuftMesh, headGroup, new Vector3(-0.09f, 0.135f, 0.055f), Quaternion.Euler(34f, -30f, 0f), new Vector3(0.13f, 0.09f, 0.17f), hairMat);
+                CreateMeshPart("BangRight", hairTuftMesh, headGroup, new Vector3(0.08f, 0.138f, 0.055f), Quaternion.Euler(32f, 34f, 0f), new Vector3(0.13f, 0.09f, 0.17f), hairMat);
+
+                int femaleStyle = hairStyle % 3;
+                if (femaleStyle == 0)
+                {
+                    // High bun + colorful headband
+                    CreateMeshPart("HairBun", sphereMesh, headGroup, new Vector3(0f, 0.225f, -0.065f), Quaternion.identity, new Vector3(0.165f, 0.155f, 0.165f), hairMat);
+                    CreateMeshPart("BunScrunchie", cuffMesh, headGroup, new Vector3(0f, 0.175f, -0.050f), Quaternion.Euler(-22f, 0f, 0f), new Vector3(0.125f, 0.042f, 0.125f), bandMat);
+                    CreateMeshPart("Headband", cuffMesh, headGroup, new Vector3(0f, 0.105f, 0.005f), Quaternion.Euler(-16f, 0f, 0f), new Vector3(0.395f, 0.034f, 0.375f), bandMat);
+                }
+                else if (femaleStyle == 1)
+                {
+                    // Twin playful pigtails
+                    CreateMeshPart("PigtailL", hairTuftMesh, headGroup, new Vector3(-0.185f, 0.085f, -0.065f), Quaternion.Euler(65f, -72f, 0f), new Vector3(0.16f, 0.15f, 0.24f), hairMat);
+                    CreateMeshPart("PigtailR", hairTuftMesh, headGroup, new Vector3(0.185f, 0.085f, -0.065f), Quaternion.Euler(65f, 72f, 0f), new Vector3(0.16f, 0.15f, 0.24f), hairMat);
+                    CreateMeshPart("TieL", sphereMesh, headGroup, new Vector3(-0.185f, 0.095f, -0.055f), Quaternion.identity, new Vector3(0.065f, 0.065f, 0.065f), bandMat);
+                    CreateMeshPart("TieR", sphereMesh, headGroup, new Vector3(0.185f, 0.095f, -0.055f), Quaternion.identity, new Vector3(0.065f, 0.065f, 0.065f), bandMat);
+                }
+                else
+                {
+                    // Rounded cute bob + headband
+                    CreateMeshPart("BobBack", sphereMesh, headGroup, new Vector3(0f, -0.025f, -0.065f), Quaternion.identity, new Vector3(0.415f, 0.335f, 0.335f), hairMat);
+                    CreateMeshPart("Headband", cuffMesh, headGroup, new Vector3(0f, 0.108f, 0.008f), Quaternion.Euler(-14f, 0f, 0f), new Vector3(0.398f, 0.036f, 0.378f), bandMat);
+                }
+                return;
+            }
+
+            // MaleKid: 4 distinct sculpted Option-1 styles
+            if (hairStyle == 0)
+            {
+                // Exact Option 1: Swept layered chunky tufts on top & front
+                CreateMeshPart("TuftMain1", hairTuftMesh, headGroup, new Vector3(-0.07f, 0.155f, 0.02f), Quaternion.Euler(-12f, 26f, -6f), new Vector3(0.20f, 0.15f, 0.24f), hairMat);
+                CreateMeshPart("TuftMain2", hairTuftMesh, headGroup, new Vector3(0.03f, 0.165f, 0.00f), Quaternion.Euler(-18f, 16f, 4f), new Vector3(0.19f, 0.15f, 0.23f), hairMat);
+                CreateMeshPart("TuftSide", hairTuftMesh, headGroup, new Vector3(-0.12f, 0.135f, 0.03f), Quaternion.Euler(14f, -22f, 12f), new Vector3(0.14f, 0.12f, 0.19f), hairMat);
+                CreateMeshPart("TuftRight", hairTuftMesh, headGroup, new Vector3(0.11f, 0.135f, 0.02f), Quaternion.Euler(12f, 38f, -10f), new Vector3(0.14f, 0.11f, 0.19f), hairMat);
+                CreateMeshPart("TuftCrown", hairTuftMesh, headGroup, new Vector3(-0.02f, 0.175f, -0.06f), Quaternion.Euler(-28f, 8f, 0f), new Vector3(0.21f, 0.14f, 0.22f), hairMat);
+                CreateMeshPart("TuftBack", hairTuftMesh, headGroup, new Vector3(0f, 0.12f, -0.11f), Quaternion.Euler(-10f, 180f, 0f), new Vector3(0.19f, 0.12f, 0.16f), hairMat);
+            }
+            else if (hairStyle == 1)
+            {
+                // Energetic spiky barangay cut
+                CreateMeshPart("SpikeCenter", hairTuftMesh, headGroup, new Vector3(0f, 0.165f, 0.04f), Quaternion.Euler(-36f, 0f, 0f), new Vector3(0.17f, 0.15f, 0.23f), hairMat);
+                CreateMeshPart("SpikeLeft", hairTuftMesh, headGroup, new Vector3(-0.09f, 0.150f, 0.03f), Quaternion.Euler(-28f, -26f, 10f), new Vector3(0.15f, 0.13f, 0.20f), hairMat);
+                CreateMeshPart("SpikeRight", hairTuftMesh, headGroup, new Vector3(0.09f, 0.150f, 0.03f), Quaternion.Euler(-28f, 26f, -10f), new Vector3(0.15f, 0.13f, 0.20f), hairMat);
+                CreateMeshPart("SpikeTop", hairTuftMesh, headGroup, new Vector3(0f, 0.175f, -0.05f), Quaternion.Euler(-48f, 0f, 0f), new Vector3(0.18f, 0.14f, 0.21f), hairMat);
+            }
+            else if (hairStyle == 2)
+            {
+                // Clean side-parted rounded bangs
+                CreateMeshPart("SweepLarge", hairTuftMesh, headGroup, new Vector3(-0.08f, 0.148f, 0.05f), Quaternion.Euler(18f, 36f, 0f), new Vector3(0.21f, 0.13f, 0.22f), hairMat);
+                CreateMeshPart("SweepMid", hairTuftMesh, headGroup, new Vector3(0.02f, 0.155f, 0.03f), Quaternion.Euler(12f, 24f, 0f), new Vector3(0.18f, 0.12f, 0.20f), hairMat);
+                CreateMeshPart("SweepEdge", hairTuftMesh, headGroup, new Vector3(0.11f, 0.130f, 0.04f), Quaternion.Euler(26f, 44f, 0f), new Vector3(0.13f, 0.10f, 0.17f), hairMat);
+                CreateMeshPart("SweepTop", hairTuftMesh, headGroup, new Vector3(-0.02f, 0.168f, -0.04f), Quaternion.Euler(-12f, 14f, 0f), new Vector3(0.22f, 0.13f, 0.20f), hairMat);
+            }
+            else
+            {
+                // Street-kid headband + messy top tufts
+                Material bandMat = CardArtGenerator.CreateLitMaterial(accentColor, 0.18f);
+                CreateMeshPart("StreetHeadband", cuffMesh, headGroup, new Vector3(0f, 0.098f, 0.004f), Quaternion.Euler(-10f, 0f, 0f), new Vector3(0.405f, 0.044f, 0.388f), bandMat);
+                CreateMeshPart("Messy1", hairTuftMesh, headGroup, new Vector3(-0.05f, 0.165f, 0.02f), Quaternion.Euler(-24f, 22f, 0f), new Vector3(0.18f, 0.14f, 0.22f), hairMat);
+                CreateMeshPart("Messy2", hairTuftMesh, headGroup, new Vector3(0.06f, 0.162f, 0.01f), Quaternion.Euler(-20f, -18f, 0f), new Vector3(0.17f, 0.14f, 0.21f), hairMat);
+                CreateMeshPart("Messy3", hairTuftMesh, headGroup, new Vector3(0f, 0.172f, -0.06f), Quaternion.Euler(-34f, 0f, 0f), new Vector3(0.19f, 0.13f, 0.20f), hairMat);
+            }
+        }
+
         private static Transform CreateArm(
             string name,
             Transform parent,
             Vector3 localPos,
+            Mesh sleeveMesh,
+            Mesh limbMesh,
+            Mesh sphereMesh,
             Material sleeveMat,
             Material skinMat,
             bool isRight,
@@ -518,22 +755,28 @@ namespace TeksMaster.World
             pivot.SetParent(parent, false);
             pivot.localPosition = localPos;
 
-            CreatePart("Sleeve", PrimitiveType.Cube, pivot, new Vector3(0f, -0.07f, 0f), new Vector3(0.10f, 0.16f, 0.10f), sleeveMat);
+            // Flared rounded short sleeve
+            CreateMeshPart("Sleeve", sleeveMesh, pivot, new Vector3(0f, 0.01f, 0f), Quaternion.identity, new Vector3(0.125f, 0.165f, 0.125f), sleeveMat);
 
             forearmPivot = new GameObject(isRight ? "RightForearmPivot" : "LeftForearmPivot").transform;
             forearmPivot.SetParent(pivot, false);
             forearmPivot.localPosition = new Vector3(0f, -0.15f, 0f);
 
-            // Forearm (-0.15f + -0.07f = -0.22f) and Hand (-0.15f + -0.20f = -0.35f) preserve exact identity offsets
-            CreatePart("Forearm", PrimitiveType.Capsule, forearmPivot, new Vector3(0f, -0.07f, 0f), new Vector3(0.075f, 0.14f, 0.075f), skinMat);
-            CreatePart("Hand", PrimitiveType.Sphere, forearmPivot, new Vector3(0f, -0.20f, 0f), new Vector3(0.08f, 0.08f, 0.08f), skinMat);
+            // Smooth tapered forearm
+            CreateMeshPart("Forearm", limbMesh, forearmPivot, new Vector3(0f, -0.085f, 0f), Quaternion.identity, new Vector3(0.082f, 0.21f, 0.082f), skinMat);
+
+            // Option-1 rounded mitten hand with sculpted thumb
+            CreateMeshPart("Hand", sphereMesh, forearmPivot, new Vector3(0f, -0.205f, 0f), Quaternion.identity, new Vector3(0.095f, 0.098f, 0.088f), skinMat);
+            float thumbX = isRight ? -0.042f : 0.042f;
+            float thumbRotZ = isRight ? 38f : -38f;
+            CreateMeshPart("Thumb", limbMesh, forearmPivot, new Vector3(thumbX, -0.188f, 0.022f), Quaternion.Euler(14f, 0f, thumbRotZ), new Vector3(0.034f, 0.058f, 0.034f), skinMat);
 
             handCardObj = null;
             handCardRenderer = null;
 
             if (isRight)
             {
-                var cardGo = CreatePart(
+                var cardGo = CreatePrimitivePart(
                     "HeldTeksCard",
                     PrimitiveType.Cube,
                     forearmPivot,
@@ -553,37 +796,91 @@ namespace TeksMaster.World
             string kneeName,
             Transform parent,
             Vector3 localPos,
-            Material shortsMat,
+            bool wearLongCuffedPants,
+            bool wearSneakers,
+            Mesh limbMesh,
+            Mesh cuffMesh,
+            Mesh soleMesh,
+            Mesh upperMesh,
+            Mesh sphereMesh,
+            Material pantsMat,
+            Material cuffMat,
             Material skinMat,
-            Material slipperMat,
-            Material stripeMat,
+            Material shoeMat,
+            Material whiteMat,
             out Transform kneePivot)
         {
             var pivot = new GameObject(name).transform;
             pivot.SetParent(parent, false);
             pivot.localPosition = localPos;
 
-            // Basketball shorts leg + sporty side stripe
-            CreatePart("ShortsLeg", PrimitiveType.Cube, pivot, new Vector3(0f, -0.12f, 0f), new Vector3(0.13f, 0.26f, 0.14f), shortsMat);
-            float stripeX = localPos.x < 0f ? -0.068f : 0.068f;
-            CreatePart("ShortsStripe", PrimitiveType.Cube, pivot, new Vector3(stripeX, -0.12f, 0f), new Vector3(0.01f, 0.24f, 0.04f), stripeMat);
+            // Upper leg (smooth rounded pant thigh or shorts leg)
+            CreateMeshPart("UpperLeg", limbMesh, pivot, new Vector3(0f, -0.125f, 0f), Quaternion.identity, new Vector3(0.135f, 0.28f, 0.138f), pantsMat);
 
-            // Knee pivot placed at bottom of shorts (-0.25f) so standing world offsets remain identical when identity
+            // Knee pivot placed at -0.25f so standing world offsets stay identical to existing animation poses
             kneePivot = new GameObject(kneeName).transform;
             kneePivot.SetParent(pivot, false);
             kneePivot.localPosition = new Vector3(0f, -0.25f, 0f);
 
-            // Calf (-0.25f + -0.11f = -0.36f)
-            CreatePart("LowerLeg", PrimitiveType.Capsule, kneePivot, new Vector3(0f, -0.11f, 0f), new Vector3(0.08f, 0.16f, 0.08f), skinMat);
+            if (wearLongCuffedPants)
+            {
+                // Option 1 cuffed jeans/pants leg + chunky rolled cuff at ankle
+                CreateMeshPart("LowerPantLeg", limbMesh, kneePivot, new Vector3(0f, -0.125f, 0f), Quaternion.identity, new Vector3(0.126f, 0.27f, 0.128f), pantsMat);
+                CreateMeshPart("PantCuff", cuffMesh, kneePivot, new Vector3(0f, -0.245f, 0f), Quaternion.identity, new Vector3(0.142f, 0.062f, 0.144f), cuffMat);
+            }
+            else
+            {
+                // Sporty shorts hem + smooth calf
+                CreateMeshPart("ShortsHem", cuffMesh, pivot, new Vector3(0f, -0.235f, 0f), Quaternion.identity, new Vector3(0.138f, 0.032f, 0.140f), cuffMat);
+                CreateMeshPart("LowerLeg", limbMesh, kneePivot, new Vector3(0f, -0.135f, 0f), Quaternion.identity, new Vector3(0.088f, 0.27f, 0.088f), skinMat);
+            }
 
-            // Tsinelas (flip-flop slipper) (-0.25f + -0.32f = -0.57f; -0.25f + -0.295f = -0.545f)
-            CreatePart("TsinelasSole", PrimitiveType.Cube, kneePivot, new Vector3(0f, -0.32f, 0.03f), new Vector3(0.10f, 0.03f, 0.19f), slipperMat);
-            CreatePart("TsinelasStrap", PrimitiveType.Cube, kneePivot, new Vector3(0f, -0.295f, 0.04f), new Vector3(0.09f, 0.02f, 0.04f), stripeMat);
+            if (wearSneakers)
+            {
+                // Option 1 chunky rounded toy sneaker (white rubber sole + colored upper + white toe cap + laces)
+                // Sole bottom sits at y = -0.35f below kneePivot -> 0.62 - 0.02 - 0.25 - 0.35 = 0.00f ground contact!
+                CreateMeshPart("SneakerSole", soleMesh, kneePivot, new Vector3(0f, -0.332f, 0.032f), Quaternion.identity, new Vector3(0.132f, 0.036f, 0.215f), whiteMat);
+                CreateMeshPart("SneakerUpper", upperMesh, kneePivot, new Vector3(0f, -0.318f, 0.028f), Quaternion.identity, new Vector3(0.124f, 0.098f, 0.198f), shoeMat);
+                CreateMeshPart("SneakerToeCap", sphereMesh, kneePivot, new Vector3(0f, -0.304f, 0.102f), Quaternion.identity, new Vector3(0.104f, 0.044f, 0.064f), whiteMat);
+                CreateMeshPart("SneakerLace1", cuffMesh, kneePivot, new Vector3(0f, -0.278f, 0.052f), Quaternion.Euler(24f, 0f, 0f), new Vector3(0.064f, 0.016f, 0.022f), whiteMat);
+                CreateMeshPart("SneakerLace2", cuffMesh, kneePivot, new Vector3(0f, -0.264f, 0.034f), Quaternion.Euler(28f, 0f, 0f), new Vector3(0.060f, 0.016f, 0.022f), whiteMat);
+            }
+            else
+            {
+                // Stylized rounded tsinelas slipper (ground contact at y = -0.35f)
+                CreateMeshPart("TsinelasSole", soleMesh, kneePivot, new Vector3(0f, -0.334f, 0.028f), Quaternion.identity, new Vector3(0.118f, 0.032f, 0.205f), shoeMat);
+                CreateMeshPart("Foot", sphereMesh, kneePivot, new Vector3(0f, -0.300f, 0.022f), Quaternion.identity, new Vector3(0.095f, 0.056f, 0.155f), skinMat);
+                CreateMeshPart("TsinelasStrap", cuffMesh, kneePivot, new Vector3(0f, -0.285f, 0.045f), Quaternion.Euler(18f, 0f, 0f), new Vector3(0.102f, 0.024f, 0.046f), whiteMat);
+            }
 
             return pivot;
         }
 
-        private static GameObject CreatePart(
+        private static GameObject CreateMeshPart(
+            string name,
+            Mesh mesh,
+            Transform parent,
+            Vector3 localPos,
+            Quaternion localRot,
+            Vector3 localScale,
+            Material mat)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = localRot;
+            go.transform.localScale = localScale;
+
+            var mf = go.AddComponent<MeshFilter>();
+            mf.sharedMesh = mesh;
+
+            var mr = go.AddComponent<MeshRenderer>();
+            if (mat != null) mr.sharedMaterial = mat;
+
+            return go;
+        }
+
+        private static GameObject CreatePrimitivePart(
             string name,
             PrimitiveType primitive,
             Transform parent,
@@ -604,6 +901,18 @@ namespace TeksMaster.World
             if (rend != null && mat != null) rend.sharedMaterial = mat;
 
             return go;
+        }
+
+        private static uint ComputeStableHash(string input)
+        {
+            string s = string.IsNullOrEmpty(input) ? "teks_kid" : input;
+            uint hash = 2166136261u;
+            for (int i = 0; i < s.Length; i++)
+            {
+                hash ^= s[i];
+                hash *= 16777619u;
+            }
+            return hash;
         }
 
         private static void SafeDestroy(Object obj)
