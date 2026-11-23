@@ -53,9 +53,10 @@ namespace TeksMaster.Gameplay
     {
         public static TeksGameModeManager Instance { get; private set; }
 
-        public const int TournamentRoundCount = 4;
-        public const int TournamentTrophyCoins = 500;
-        public const int TournamentTrophyGems = 35;
+        public const int TournamentRoundCount = 3;
+        public const int TournamentEntryFee = 150;
+        public const int TournamentTrophyCoins = 600;
+        public const int TournamentTrophyGems = 40;
 
         public const int WinStreak3TargetWins = 3;
         public const int WinStreak3Coins = 350;
@@ -109,6 +110,11 @@ namespace TeksMaster.Gameplay
 
         private bool _hasSavedPamatoBeforeChallenge;
         private string _savedPamatoBeforeChallenge;
+
+        private NpcOpponent _relocatedTournamentOpponent;
+        private Vector3 _savedOpponentPos;
+        private Quaternion _savedOpponentRot;
+        private Vector3 _savedOpponentWanderCenter;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState()
@@ -340,7 +346,18 @@ namespace TeksMaster.Gameplay
             return true;
         }
 
-        // --- Tournament Mode (4-Round Bracket: Easy -> Medium -> Hard -> Extreme/Champion) ---
+        // --- Tournament Mode (3-Round Bracket: Quarterfinals -> Semifinals -> Finals) ---
+
+        public static string GetTournamentRoundName(int roundIndex)
+        {
+            switch (roundIndex)
+            {
+                case 0: return "Quarterfinals";
+                case 1: return "Semifinals";
+                case 2: return "Finals";
+                default: return $"Round {roundIndex + 1}";
+            }
+        }
 
         public List<NpcOpponent> PreviewTournamentBracket()
         {
@@ -348,33 +365,26 @@ namespace TeksMaster.Gameplay
             var bracket = new List<NpcOpponent>(TournamentRoundCount);
             if (all.Count == 0) return bracket;
 
-            // Round 1: Easy (prefer story opponent "dodong")
+            // Round 1 (Quarterfinals): Medium/Easy (prefer story opponent "carlo" or "dodong")
             NpcOpponent r1 = PickOpponent(all, bracket,
-                n => n.GetEffectiveNpcId() == "dodong",
-                n => n.Difficulty == AIDifficulty.Easy,
+                n => n.GetEffectiveNpcId() == "carlo" || n.GetEffectiveNpcId() == "dodong",
+                n => n.Difficulty == AIDifficulty.Medium || n.Difficulty == AIDifficulty.Easy,
                 preferLowestDifficulty: true);
             if (r1 != null) bracket.Add(r1);
 
-            // Round 2: Medium (prefer story opponent "carlo")
+            // Round 2 (Semifinals): Hard (prefer story opponent "joshua")
             NpcOpponent r2 = PickOpponent(all, bracket,
-                n => n.GetEffectiveNpcId() == "carlo",
-                n => n.Difficulty == AIDifficulty.Medium,
-                preferLowestDifficulty: true);
-            if (r2 != null) bracket.Add(r2);
-
-            // Round 3: Hard (prefer story opponent "joshua")
-            NpcOpponent r3 = PickOpponent(all, bracket,
                 n => n.GetEffectiveNpcId() == "joshua",
                 n => n.Difficulty == AIDifficulty.Hard,
                 preferLowestDifficulty: false);
-            if (r3 != null) bracket.Add(r3);
+            if (r2 != null) bracket.Add(r2);
 
-            // Round 4: Extreme / Champion (prefer "teks_master" or IsChampion, then Extreme/Boss)
-            NpcOpponent r4 = PickOpponent(all, bracket,
+            // Round 3 (Finals): Extreme / Champion / Boss (prefer "teks_master" or IsChampion)
+            NpcOpponent r3 = PickOpponent(all, bracket,
                 n => n.GetEffectiveNpcId() == "teks_master" || n.IsChampion,
                 n => n.Difficulty == AIDifficulty.Extreme || n.Difficulty == AIDifficulty.Boss,
                 preferLowestDifficulty: false);
-            if (r4 != null) bracket.Add(r4);
+            if (r3 != null) bracket.Add(r3);
 
             return bracket;
         }
@@ -394,12 +404,27 @@ namespace TeksMaster.Gameplay
                 return false;
             }
 
+            var inv = PlayerInventory.Instance;
+            if (inv != null && inv.Coins < TournamentEntryFee)
+            {
+                message = $"Need {TournamentEntryFee} Barya Coins to enter the Tournament! (You have {inv.Coins:N0})";
+                return false;
+            }
+
             var bracket = PreviewTournamentBracket();
             if (bracket.Count == 0)
             {
                 message = "No challengers found in the Barangay.";
                 return false;
             }
+
+            if (inv != null && !inv.TrySpendCoins(TournamentEntryFee))
+            {
+                message = $"Need {TournamentEntryFee} Barya Coins to enter the Tournament!";
+                return false;
+            }
+
+            TeksAudioManager.Instance?.PlayCoinClink();
 
             bool keepReturn = _hasReturnTransform && ActiveMode == GameModeType.Tournament;
             PrepareForModeLaunch(keepExistingReturnTransform: keepReturn);
@@ -414,12 +439,12 @@ namespace TeksMaster.Gameplay
             _modeRewardAwarded = false;
             LastModeBonusCoins = 0;
             LastModeBonusGems = 0;
-            LastModeSummary = $"Round 1/{_tournamentBracket.Count}: {_tournamentBracket[0].NpcName}";
+            LastModeSummary = $"Round 1/{_tournamentBracket.Count} ({GetTournamentRoundName(0)}): {_tournamentBracket[0].NpcName}";
 
             TeksMatchManager.Instance.ClearCardRestriction();
             LaunchCurrentTournamentRound(openWagerScreen: true);
 
-            message = $"Barangay Tournament started! Round 1 vs {_tournamentBracket[0].NpcName}!";
+            message = $"Tournament entered (-{TournamentEntryFee} Coins)! {GetTournamentRoundName(0)} vs {_tournamentBracket[0].NpcName}!";
             OnModeStateChanged?.Invoke();
             return true;
         }
@@ -450,7 +475,7 @@ namespace TeksMaster.Gameplay
             var opp = _tournamentBracket[_tournamentRoundIndex];
             if (opp == null || TeksMatchManager.Instance == null) return;
 
-            PositionPlayerNearOpponent(opp);
+            PositionForTournamentRound(opp);
             TeksMatchManager.Instance.StartChallengeImmediate(opp, openWagerScreen);
         }
 
@@ -720,6 +745,7 @@ namespace TeksMaster.Gameplay
                     TeksMatchManager.Instance.CancelChallenge();
                 }
 
+                RestoreRelocatedTournamentOpponent();
                 RestoreReturnTransform();
 
                 ActiveMode = GameModeType.Story;
@@ -763,6 +789,8 @@ namespace TeksMaster.Gameplay
                 {
                     TeksMatchManager.Instance.CancelChallenge();
                 }
+
+                RestoreRelocatedTournamentOpponent();
 
                 if (!keepExistingReturnTransform)
                 {
@@ -846,13 +874,16 @@ namespace TeksMaster.Gameplay
                         RunState = ModeRunState.AwaitingNextRound;
                         var nextOpp = _tournamentBracket[_tournamentRoundIndex];
                         string nextName = nextOpp != null ? nextOpp.NpcName : "Next Challenger";
-                        LastModeSummary = $"Round {_tournamentWins}/{_tournamentBracket.Count} Cleared! Next up: {nextName}.";
+                        string clearedName = GetTournamentRoundName(_tournamentWins - 1);
+                        string nextRoundName = GetTournamentRoundName(_tournamentRoundIndex);
+                        LastModeSummary = $"{clearedName} Cleared ({_tournamentWins}/{_tournamentBracket.Count})! Next: {nextRoundName} vs {nextName}.";
                     }
                 }
                 else
                 {
                     RunState = ModeRunState.Failed;
-                    LastModeSummary = $"Eliminated in Round {_tournamentRoundIndex + 1}/{Mathf.Max(1, _tournamentBracket.Count)}. Try again!";
+                    string failedRoundName = GetTournamentRoundName(_tournamentRoundIndex);
+                    LastModeSummary = $"Eliminated in {failedRoundName} (Round {_tournamentRoundIndex + 1}/{Mathf.Max(1, _tournamentBracket.Count)}). Pay {TournamentEntryFee} Coins to retry!";
                     OnModeCompleted?.Invoke(GameModeType.Tournament, false, LastModeSummary, 0, 0);
                 }
 
@@ -953,10 +984,12 @@ namespace TeksMaster.Gameplay
                 }
                 if (RunState == ModeRunState.Failed)
                 {
-                    return $"TOURNAMENT — ELIMINATED (ROUND {Mathf.Min(_tournamentRoundIndex + 1, total)}/{total})";
+                    string roundName = GetTournamentRoundName(_tournamentRoundIndex).ToUpperInvariant();
+                    return $"TOURNAMENT — ELIMINATED ({roundName})";
                 }
                 int roundDisplay = Mathf.Clamp(_tournamentRoundIndex + 1, 1, total);
-                return $"TOURNAMENT — ROUND {roundDisplay}/{total}";
+                string activeRoundName = GetTournamentRoundName(_tournamentRoundIndex).ToUpperInvariant();
+                return $"TOURNAMENT — {activeRoundName} ({roundDisplay}/{total})";
             }
 
             if (ActiveMode == GameModeType.Challenge)
@@ -1049,7 +1082,10 @@ namespace TeksMaster.Gameplay
                 }
                 else if (RunState == ModeRunState.Failed)
                 {
-                    StartTournament(out _);
+                    if (!StartTournament(out _))
+                    {
+                        ExitActiveMode(cancelActiveMatch: true);
+                    }
                 }
                 else
                 {
@@ -1115,6 +1151,41 @@ namespace TeksMaster.Gameplay
             _hasReturnTransform = false;
         }
 
+        private void PositionForTournamentRound(NpcOpponent opp)
+        {
+            RestoreRelocatedTournamentOpponent();
+
+            var player = PlayerController.Instance;
+            if (player == null || opp == null) return;
+
+            Vector3 arenaCenter = BarangayCourtBuilder.Instance != null
+                ? BarangayCourtBuilder.Instance.TournamentBattleCenter
+                : new Vector3(-22.8f, 0f, -28.5f);
+
+            _relocatedTournamentOpponent = opp;
+            _savedOpponentPos = opp.transform.position;
+            _savedOpponentRot = opp.transform.rotation;
+            _savedOpponentWanderCenter = opp.WanderCenter;
+
+            Vector3 oppArenaPos = new Vector3(arenaCenter.x, 0f, arenaCenter.z - 1.15f);
+            Vector3 playerArenaPos = new Vector3(arenaCenter.x, 0f, arenaCenter.z + 1.15f);
+
+            opp.transform.position = oppArenaPos;
+            opp.transform.rotation = Quaternion.identity;
+            opp.WanderCenter = oppArenaPos;
+
+            player.TeleportForMatch(playerArenaPos, Quaternion.Euler(0f, 180f, 0f));
+        }
+
+        private void RestoreRelocatedTournamentOpponent()
+        {
+            if (_relocatedTournamentOpponent == null) return;
+            _relocatedTournamentOpponent.transform.position = _savedOpponentPos;
+            _relocatedTournamentOpponent.transform.rotation = _savedOpponentRot;
+            _relocatedTournamentOpponent.WanderCenter = _savedOpponentWanderCenter;
+            _relocatedTournamentOpponent = null;
+        }
+
         private static void PositionPlayerNearOpponent(NpcOpponent npc)
         {
             var player = PlayerController.Instance;
@@ -1133,7 +1204,7 @@ namespace TeksMaster.Gameplay
 
             Vector3 desired = oppPos + forward * 2.15f;
             desired.x = Mathf.Clamp(desired.x, -28.0f, 28.0f);
-            desired.z = Mathf.Clamp(desired.z, -22.5f, 14.5f);
+            desired.z = Mathf.Clamp(desired.z, -36.0f, 14.5f);
             desired.y = 0f;
 
             // If clamping pulled the spot too close to the NPC, try the opposite direction
@@ -1141,7 +1212,7 @@ namespace TeksMaster.Gameplay
             {
                 desired = oppPos - forward * 2.15f;
                 desired.x = Mathf.Clamp(desired.x, -28.0f, 28.0f);
-                desired.z = Mathf.Clamp(desired.z, -22.5f, 14.5f);
+                desired.z = Mathf.Clamp(desired.z, -36.0f, 14.5f);
                 desired.y = 0f;
             }
 

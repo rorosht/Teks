@@ -51,7 +51,8 @@ namespace TeksMaster.Core
         SariSariAndKalye = 1,
         BasketballCourt = 2,
         OldNeighborhood = 3,
-        FiestaArena = 4
+        FiestaArena = 4,
+        TournamentArena = 5
     }
 
     public enum MissionCategory
@@ -261,7 +262,7 @@ namespace TeksMaster.Core
             CardId = cardId;
             StarRank = Mathf.Clamp(starRank, 1, 5);
             DuplicateCount = Mathf.Max(0, duplicateCount);
-            FusionStage = Mathf.Clamp(fusionStage, 0, 5);
+            FusionStage = Mathf.Max(0, fusionStage);
         }
 
         private float GetStatScale()

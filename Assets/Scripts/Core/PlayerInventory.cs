@@ -145,6 +145,7 @@ namespace TeksMaster.Core
         {
             AddUnlockedAreaInternal(BarangayAreaId.PlayersNeighborhood);
             AddUnlockedAreaInternal(BarangayAreaId.SariSariAndKalye);
+            AddUnlockedAreaInternal(BarangayAreaId.TournamentArena);
         }
 
         private bool AddUnlockedAreaInternal(BarangayAreaId area)
@@ -373,6 +374,62 @@ namespace TeksMaster.Core
                     SpecialCardRewardId = "adarna_phoenix"
                 },
 
+                // Area-Clear Exploration Missions (5)
+                new BarangayQuest
+                {
+                    Id = "area_clear_neighborhood",
+                    Title = "Clear Player's Neighborhood",
+                    Description = "Defeat every Teks rival in Player's Neighborhood.",
+                    Category = MissionCategory.Exploration,
+                    TargetCount = 4,
+                    CoinReward = 220,
+                    GemReward = 10
+                },
+                new BarangayQuest
+                {
+                    Id = "area_clear_kalye",
+                    Title = "Clear Sari-Sari & Kalye",
+                    Description = "Defeat every Teks rival along Sari-Sari & Kalye Street.",
+                    Category = MissionCategory.Exploration,
+                    TargetCount = 5,
+                    CoinReward = 260,
+                    GemReward = 12
+                },
+                new BarangayQuest
+                {
+                    Id = "area_clear_court",
+                    Title = "Clear Barangay Basketball Court",
+                    Description = "Defeat every Teks rival on the Barangay Basketball Court.",
+                    Category = MissionCategory.Exploration,
+                    TargetCount = 9,
+                    CoinReward = 420,
+                    GemReward = 20,
+                    HasPackReward = true,
+                    PackRewardType = ShopPackType.Rare
+                },
+                new BarangayQuest
+                {
+                    Id = "area_clear_old_neighborhood",
+                    Title = "Clear Old Neighborhood",
+                    Description = "Defeat every Teks rival in the Old Neighborhood.",
+                    Category = MissionCategory.Exploration,
+                    TargetCount = 6,
+                    CoinReward = 380,
+                    GemReward = 18
+                },
+                new BarangayQuest
+                {
+                    Id = "area_clear_fiesta",
+                    Title = "Clear Fiesta Teks Arena",
+                    Description = "Defeat every elite rival in the Fiesta Teks Arena!",
+                    Category = MissionCategory.Exploration,
+                    TargetCount = 4,
+                    CoinReward = 650,
+                    GemReward = 35,
+                    HasPackReward = true,
+                    PackRewardType = ShopPackType.Premium
+                },
+
                 // Achievement (4)
                 new BarangayQuest
                 {
@@ -398,7 +455,7 @@ namespace TeksMaster.Core
                 {
                     Id = "ach_tournament_1",
                     Title = "Barangay Tournament Champion",
-                    Description = "Win a 4-round Barangay Tournament bracket.",
+                    Description = "Win a 3-round Barangay Tournament bracket.",
                     Category = MissionCategory.Achievement,
                     TargetCount = 1,
                     CoinReward = 500,
@@ -574,6 +631,84 @@ namespace TeksMaster.Core
             return true;
         }
 
+        public int GetTotalOwnedCardCopies()
+        {
+            EnsureStarterCollection();
+            int total = 0;
+            for (int i = 0; i < ownedCards.Count; i++)
+            {
+                if (ownedCards[i] != null)
+                {
+                    total += ownedCards[i].Quantity;
+                }
+            }
+            return total;
+        }
+
+        public bool CanSellCard(string cardId, out string reason)
+        {
+            EnsureStarterCollection();
+            var owned = GetOwnedCardInternal(cardId);
+            var def = TeksDatabase.GetCard(cardId);
+            if (owned == null || def == null)
+            {
+                reason = "Card not owned";
+                return false;
+            }
+
+            if (GetTotalOwnedCardCopies() <= 1)
+            {
+                reason = "Cannot sell your last remaining card!";
+                return false;
+            }
+
+            reason = owned.DuplicateCount > 0
+                ? $"Sell 1 copy for +{def.SellPrice} Coins"
+                : $"Sell last copy for +{def.SellPrice} Coins";
+            return true;
+        }
+
+        public bool TrySellCard(string cardId, out int coinsEarned, out bool removedLastCopy, out string autoEquippedCardName)
+        {
+            coinsEarned = 0;
+            removedLastCopy = false;
+            autoEquippedCardName = string.Empty;
+
+            if (!CanSellCard(cardId, out _))
+            {
+                return false;
+            }
+
+            var owned = GetOwnedCardInternal(cardId);
+            var def = TeksDatabase.GetCard(cardId);
+            if (owned == null || def == null)
+            {
+                return false;
+            }
+
+            if (owned.DuplicateCount > 0)
+            {
+                owned.DuplicateCount -= 1;
+                removedLastCopy = false;
+            }
+            else
+            {
+                ownedCards.Remove(owned);
+                removedLastCopy = true;
+                if (equippedPamatoId == cardId && ownedCards.Count > 0)
+                {
+                    equippedPamatoId = ownedCards[0].CardId;
+                    var fallbackDef = TeksDatabase.GetCard(equippedPamatoId);
+                    autoEquippedCardName = fallbackDef != null ? fallbackDef.Name : equippedPamatoId;
+                }
+            }
+
+            coinsEarned = def.SellPrice;
+            coins += coinsEarned;
+            NotifyAndAutoSave();
+            return true;
+        }
+
         public bool TrySellDuplicate(string cardId, out int coinsEarned)
         {
             coinsEarned = 0;
@@ -609,7 +744,15 @@ namespace TeksMaster.Core
                 reason = $"Need {(defA != null ? defA.Name : recipe.IngredientAId)}";
                 return false;
             }
-            if (ownB == null)
+            if (recipe.IngredientAId == recipe.IngredientBId)
+            {
+                if (ownA.Quantity < 2)
+                {
+                    reason = $"Need 2x {(defA != null ? defA.Name : recipe.IngredientAId)}";
+                    return false;
+                }
+            }
+            else if (ownB == null)
             {
                 reason = $"Need {(defB != null ? defB.Name : recipe.IngredientBId)}";
                 return false;
@@ -633,8 +776,8 @@ namespace TeksMaster.Core
                 return false;
             }
 
-            var ownA = GetOwnedCard(recipe.IngredientAId);
-            var ownB = GetOwnedCard(recipe.IngredientBId);
+            var ownA = GetOwnedCardInternal(recipe.IngredientAId);
+            var ownB = GetOwnedCardInternal(recipe.IngredientBId);
             resultCard = TeksDatabase.GetCard(recipe.ResultCardId);
             if (resultCard == null)
             {
@@ -648,14 +791,53 @@ namespace TeksMaster.Core
             try
             {
                 coins -= recipe.CoinCost;
-                if (ownA != null && ownA.DuplicateCount > 0) ownA.DuplicateCount -= 1;
-                if (ownB != null && ownB.DuplicateCount > 0) ownB.DuplicateCount -= 1;
+                if (recipe.IngredientAId == recipe.IngredientBId)
+                {
+                    if (ownA != null)
+                    {
+                        if (ownA.DuplicateCount >= 2)
+                        {
+                            ownA.DuplicateCount -= 2;
+                        }
+                        else
+                        {
+                            ownedCards.Remove(ownA);
+                        }
+                    }
+                }
+                else
+                {
+                    if (ownA != null)
+                    {
+                        if (ownA.DuplicateCount > 0) ownA.DuplicateCount -= 1;
+                        else ownedCards.Remove(ownA);
+                    }
+                    if (ownB != null)
+                    {
+                        if (ownB.DuplicateCount > 0) ownB.DuplicateCount -= 1;
+                        else ownedCards.Remove(ownB);
+                    }
+                }
 
                 AddCard(resultCard.Id, 1);
+
+                // Ensure equipped Pamato is still owned (auto-equip forged card if equipped singleton was consumed)
+                if (GetOwnedCardInternal(equippedPamatoId) == null)
+                {
+                    if (GetOwnedCardInternal(resultCard.Id) != null)
+                    {
+                        equippedPamatoId = resultCard.Id;
+                    }
+                    else if (ownedCards.Count > 0)
+                    {
+                        equippedPamatoId = ownedCards[0].CardId;
+                    }
+                }
+
                 var ownedRes = GetOwnedCardInternal(resultCard.Id);
                 if (ownedRes != null)
                 {
-                    ownedRes.FusionStage = Mathf.Clamp(ownedRes.FusionStage + 1, 1, 5);
+                    ownedRes.FusionStage = Mathf.Max(1, ownedRes.FusionStage + 1);
                     newFusionStage = ownedRes.FusionStage;
                 }
                 ReportFusion(resultCard.Id, newFusionStage);
@@ -699,13 +881,19 @@ namespace TeksMaster.Core
                 var def = TeksDatabase.GetCard(ownedCards[i].CardId);
                 if (def != null && def.Rarity == rarity)
                 {
-                    availableDupes += ownedCards[i].DuplicateCount;
+                    availableDupes += ownedCards[i].Quantity;
                 }
             }
 
             if (availableDupes < 3)
             {
-                reason = $"Need 3 {TeksDatabase.GetRarityName(rarity)} Dupes ({availableDupes}/3)";
+                reason = $"Need 3 {TeksDatabase.GetRarityName(rarity)} Cards ({availableDupes}/3)";
+                return false;
+            }
+
+            if (GetTotalOwnedCardCopies() - 3 < 1)
+            {
+                reason = "Must keep at least 1 remaining card!";
                 return false;
             }
 
@@ -742,6 +930,8 @@ namespace TeksMaster.Core
             try
             {
                 int toConsume = 3;
+
+                // Pass 1: Consume duplicates first
                 for (int i = 0; i < ownedCards.Count && toConsume > 0; i++)
                 {
                     var def = TeksDatabase.GetCard(ownedCards[i].CardId);
@@ -753,12 +943,43 @@ namespace TeksMaster.Core
                     }
                 }
 
+                // Pass 2: Consume non-equipped singletons next
+                for (int i = ownedCards.Count - 1; i >= 0 && toConsume > 0; i--)
+                {
+                    var owned = ownedCards[i];
+                    var def = TeksDatabase.GetCard(owned.CardId);
+                    if (def != null && def.Rarity == rarity && owned.DuplicateCount == 0 && owned.CardId != equippedPamatoId)
+                    {
+                        ownedCards.RemoveAt(i);
+                        toConsume--;
+                    }
+                }
+
+                // Pass 3: Consume equipped singleton last if still needed
+                for (int i = ownedCards.Count - 1; i >= 0 && toConsume > 0; i--)
+                {
+                    var owned = ownedCards[i];
+                    var def = TeksDatabase.GetCard(owned.CardId);
+                    if (def != null && def.Rarity == rarity && owned.DuplicateCount == 0)
+                    {
+                        ownedCards.RemoveAt(i);
+                        toConsume--;
+                    }
+                }
+
                 coins -= coinCost;
                 AddCard(resultCard.Id, 1);
+
+                // Ensure equipped Pamato is still valid (auto-equip if equipped singleton was consumed)
+                if (GetOwnedCardInternal(equippedPamatoId) == null && ownedCards.Count > 0)
+                {
+                    equippedPamatoId = ownedCards[0].CardId;
+                }
+
                 var ownedRes = GetOwnedCardInternal(resultCard.Id);
                 if (ownedRes != null)
                 {
-                    ownedRes.FusionStage = Mathf.Clamp(ownedRes.FusionStage + 1, 1, 5);
+                    ownedRes.FusionStage = Mathf.Max(1, ownedRes.FusionStage + 1);
                     newFusionStage = ownedRes.FusionStage;
                 }
                 ReportFusion(resultCard.Id, newFusionStage);
@@ -769,7 +990,7 @@ namespace TeksMaster.Core
             }
 
             NotifyAndAutoSave();
-            message = $"SIMILAR FUSION! 3 {TeksDatabase.GetRarityName(rarity)} Dupes -> {resultCard.Name} (Stage {newFusionStage}, {TeksDatabase.GetRarityName(resultCard.Rarity)})!";
+            message = $"SIMILAR FUSION! 3 {TeksDatabase.GetRarityName(rarity)} Cards -> {resultCard.Name} (Stage {newFusionStage}, {TeksDatabase.GetRarityName(resultCard.Rarity)})!";
             return true;
         }
 
@@ -800,7 +1021,9 @@ namespace TeksMaster.Core
         public bool IsAreaStoryUnlocked(BarangayAreaId area)
         {
             EnsureStarterCollection();
-            if (area == BarangayAreaId.PlayersNeighborhood || area == BarangayAreaId.SariSariAndKalye)
+            if (area == BarangayAreaId.PlayersNeighborhood
+                || area == BarangayAreaId.SariSariAndKalye
+                || area == BarangayAreaId.TournamentArena)
                 return true;
 
             for (int i = 0; i < _unlockedAreas.Count; i++)
@@ -865,6 +1088,92 @@ namespace TeksMaster.Core
             return GetAreaWins(BarangayAreaId.PlayersNeighborhood) + GetAreaWins(BarangayAreaId.SariSariAndKalye);
         }
 
+        public List<string> GetAreaNpcIds(BarangayAreaId area)
+        {
+            var result = new List<string>();
+            var court = TeksMaster.World.BarangayCourtBuilder.Instance;
+            if (court != null && court.SpawnedOpponents != null && court.SpawnedOpponents.Count > 0)
+            {
+                for (int i = 0; i < court.SpawnedOpponents.Count; i++)
+                {
+                    var npc = court.SpawnedOpponents[i];
+                    if (npc == null || npc.AreaId != area) continue;
+                    string id = NormalizeId(npc.GetEffectiveNpcId());
+                    if (!string.IsNullOrEmpty(id) && !result.Contains(id))
+                    {
+                        result.Add(id);
+                    }
+                }
+                if (result.Count > 0) return result;
+            }
+
+            // Static fallback IDs matching BarangayCourtBuilder.SpawnAllOpponents()
+            switch (area)
+            {
+                case BarangayAreaId.PlayersNeighborhood:
+                    result.Add("dodong");
+                    result.Add("ate_lorna");
+                    result.Add("master_panday");
+                    result.Add("ai_nica");
+                    break;
+                case BarangayAreaId.SariSariAndKalye:
+                    result.Add("mark");
+                    result.Add("ai_junjun");
+                    result.Add("ai_bea");
+                    result.Add("manong_driver");
+                    result.Add("ai_tonton");
+                    break;
+                case BarangayAreaId.BasketballCourt:
+                    result.Add("carlo");
+                    result.Add("ai_gelo");
+                    result.Add("ai_kiko");
+                    result.Add("ai_may");
+                    result.Add("ai_sarah");
+                    result.Add("ai_galo");
+                    result.Add("ai_mia");
+                    result.Add("boss_tisoy");
+                    result.Add("kapitan_kid");
+                    break;
+                case BarangayAreaId.OldNeighborhood:
+                    result.Add("joshua");
+                    result.Add("ai_toto");
+                    result.Add("kuya_bert");
+                    result.Add("lolo_teks");
+                    result.Add("ai_marco");
+                    result.Add("ai_ella");
+                    break;
+                case BarangayAreaId.FiestaArena:
+                    result.Add("teks_master");
+                    result.Add("kuya_ronnie");
+                    result.Add("boss_macky");
+                    result.Add("fiesta_champ_rico");
+                    break;
+            }
+
+            return result;
+        }
+
+        public int GetDefeatedNpcCountInArea(BarangayAreaId area, out int totalInArea)
+        {
+            var ids = GetAreaNpcIds(area);
+            totalInArea = ids.Count;
+            int defeated = 0;
+            for (int i = 0; i < ids.Count; i++)
+            {
+                if (HasDefeatedNpc(ids[i]))
+                {
+                    defeated++;
+                }
+            }
+            return defeated;
+        }
+
+        public bool AreAllNpcsDefeatedInArea(BarangayAreaId area)
+        {
+            int defeated = GetDefeatedNpcCountInArea(area, out int total);
+            return total > 0 && defeated >= total;
+        }
+
         public List<BarangayAreaId> EvaluateAreaUnlocks()
         {
             EnsureStarterCollection();
@@ -873,7 +1182,9 @@ namespace TeksMaster.Core
             if (!IsAreaStoryUnlocked(BarangayAreaId.BasketballCourt))
             {
                 bool beatStarters = HasDefeatedNpc("dodong") && HasDefeatedNpc("mark");
-                if (beatStarters || GetStarterAreaWins() >= 2)
+                bool clearedStarterArea = AreAllNpcsDefeatedInArea(BarangayAreaId.PlayersNeighborhood)
+                    || AreAllNpcsDefeatedInArea(BarangayAreaId.SariSariAndKalye);
+                if (beatStarters || clearedStarterArea || GetStarterAreaWins() >= 2)
                 {
                     if (UnlockArea(BarangayAreaId.BasketballCourt))
                     {
@@ -884,7 +1195,9 @@ namespace TeksMaster.Core
 
             if (!IsAreaStoryUnlocked(BarangayAreaId.OldNeighborhood))
             {
-                if (HasDefeatedNpc("carlo") || GetAreaWins(BarangayAreaId.BasketballCourt) >= 2)
+                if (HasDefeatedNpc("carlo")
+                    || AreAllNpcsDefeatedInArea(BarangayAreaId.BasketballCourt)
+                    || GetAreaWins(BarangayAreaId.BasketballCourt) >= 2)
                 {
                     if (UnlockArea(BarangayAreaId.OldNeighborhood))
                     {
@@ -895,7 +1208,9 @@ namespace TeksMaster.Core
 
             if (!IsAreaStoryUnlocked(BarangayAreaId.FiestaArena))
             {
-                if (HasDefeatedNpc("joshua") || GetAreaWins(BarangayAreaId.OldNeighborhood) >= 2)
+                if (HasDefeatedNpc("joshua")
+                    || AreAllNpcsDefeatedInArea(BarangayAreaId.OldNeighborhood)
+                    || GetAreaWins(BarangayAreaId.OldNeighborhood) >= 2)
                 {
                     if (UnlockArea(BarangayAreaId.FiestaArena))
                     {
@@ -916,6 +1231,7 @@ namespace TeksMaster.Core
                 BarangayAreaId.BasketballCourt => "Defeat Dodong & Mark (or win 2 Starter Area matches)",
                 BarangayAreaId.OldNeighborhood => "Defeat Carlo (or win 2 Basketball Court matches)",
                 BarangayAreaId.FiestaArena => "Defeat Joshua (or win 2 Old Neighborhood matches)",
+                BarangayAreaId.TournamentArena => "Open Arena (Unlocked — Pay Entry Fee to Compete)",
                 _ => "Explore the Barangay"
             };
         }
@@ -956,6 +1272,7 @@ namespace TeksMaster.Core
             try
             {
                 AdvanceStoryNpcMission(key);
+                SyncAreaClearMissionProgress();
                 newlyUnlockedAreas = EvaluateAreaUnlocks();
             }
             finally
@@ -1176,6 +1493,7 @@ namespace TeksMaster.Core
                     SetQuestProgressMaxInternal("story_defeat_champion", 1);
                 }
 
+                SyncAreaClearMissionProgress();
                 newlyUnlocked = EvaluateAreaUnlocks();
             }
             finally
@@ -1629,7 +1947,7 @@ namespace TeksMaster.Core
                 for (int i = 0; i < data.UnlockedAreas.Count; i++)
                 {
                     int raw = data.UnlockedAreas[i];
-                    if (raw >= 0 && raw <= 4) AddUnlockedAreaInternal((BarangayAreaId)raw);
+                    if (raw >= 0 && raw <= 5) AddUnlockedAreaInternal((BarangayAreaId)raw);
                 }
             }
 
@@ -1639,7 +1957,7 @@ namespace TeksMaster.Core
                 for (int i = 0; i < data.AreaWins.Count; i++)
                 {
                     var rec = data.AreaWins[i];
-                    if (rec != null && rec.AreaId >= 0 && rec.AreaId <= 4)
+                    if (rec != null && rec.AreaId >= 0 && rec.AreaId <= 5)
                     {
                         _areaWins.Add(new AreaWinRecord((BarangayAreaId)rec.AreaId, rec.WinCount));
                     }
@@ -1684,6 +2002,7 @@ namespace TeksMaster.Core
             }
 
             EnsureAllMissionTemplates();
+            EvaluateAreaUnlocks();
             SyncPassiveMissionProgress();
         }
 
@@ -1773,6 +2092,29 @@ namespace TeksMaster.Core
             SetQuestProgressMaxInternal("col_own_25", uniqueOwned);
         }
 
+        public void SyncAreaClearMissionProgress()
+        {
+            SyncSingleAreaClearMission("area_clear_neighborhood", BarangayAreaId.PlayersNeighborhood);
+            SyncSingleAreaClearMission("area_clear_kalye", BarangayAreaId.SariSariAndKalye);
+            SyncSingleAreaClearMission("area_clear_court", BarangayAreaId.BasketballCourt);
+            SyncSingleAreaClearMission("area_clear_old_neighborhood", BarangayAreaId.OldNeighborhood);
+            SyncSingleAreaClearMission("area_clear_fiesta", BarangayAreaId.FiestaArena);
+        }
+
+        private void SyncSingleAreaClearMission(string questId, BarangayAreaId area)
+        {
+            int defeated = GetDefeatedNpcCountInArea(area, out int totalInArea);
+            var q = FindQuestById(questId);
+            if (q != null)
+            {
+                if (totalInArea > 0)
+                {
+                    q.TargetCount = totalInArea;
+                }
+                SetQuestProgressMaxInternal(questId, defeated);
+            }
+        }
+
         private void SyncPassiveMissionProgress()
         {
             SyncCollectionMissionProgress();
@@ -1791,6 +2133,54 @@ namespace TeksMaster.Core
             {
                 AdvanceStoryNpcMission(_defeatedNpcIds[i]);
             }
+            SyncAreaClearMissionProgress();
+        }
+
+        public void ResetProgressToZero()
+        {
+            bool prevSuppress = _suppressAutoSave;
+            _suppressAutoSave = true;
+            try
+            {
+                coins = 2450;
+                gems = 25;
+                equippedPamatoId = "hero";
+
+                MatchesWon = 0;
+                MatchesPlayed = 0;
+                WinStreak = 0;
+                BestWinStreak = 0;
+                TournamentsWon = 0;
+                ChallengesCompleted = 0;
+                FreePlayUnlockAll = false;
+                LastDailyMissionDate = string.Empty;
+                LastDailyFreeDrawDate = string.Empty;
+
+                ownedCards.Clear();
+                _unlockedAreas.Clear();
+                _areaWins.Clear();
+                _defeatedNpcIds.Clear();
+                _discoveredHiddenCardIds.Clear();
+                _quests.Clear();
+
+                _initialized = false;
+                EnsureStarterCollection();
+                CheckAndResetDailyMissionsIfNeeded();
+
+                TeksSaveSystem.DeleteSaveFilesForce();
+            }
+            finally
+            {
+                _suppressAutoSave = prevSuppress;
+            }
+
+            if (Application.isPlaying)
+            {
+                SaveToDisk();
+            }
+
+            OnAreasChanged?.Invoke();
+            OnInventoryChanged?.Invoke();
         }
 
         private static string NormalizeId(string id)

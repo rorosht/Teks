@@ -8,6 +8,7 @@ namespace TeksMaster.Visuals
     {
         private static readonly Dictionary<string, Texture2D> _shirtTexCache = new Dictionary<string, Texture2D>();
         private static readonly Dictionary<string, Sprite> _avatarPortraitCache = new Dictionary<string, Sprite>();
+        private static readonly Dictionary<string, Sprite> _npcPortraitCache = new Dictionary<string, Sprite>();
         private static Texture2D _faceTex;
 
         public static Texture2D GetCharacterFaceTexture(Color skinTone)
@@ -206,6 +207,209 @@ namespace TeksMaster.Visuals
             tex.Apply();
             var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
             _avatarPortraitCache[key] = sprite;
+            return sprite;
+        }
+
+        public static Sprite GetNpcPortraitSprite(string npcName, AIDifficulty difficulty, bool isChampion)
+        {
+            string normName = string.IsNullOrWhiteSpace(npcName) ? "npc" : npcName.Trim().ToLowerInvariant();
+            string key = $"{normName}_{(int)difficulty}_{(isChampion ? 1 : 0)}";
+            if (_npcPortraitCache.TryGetValue(key, out var cached) && cached != null)
+                return cached;
+
+            const int size = 128;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
+
+            // Deterministic FNV-1a seed from npcName
+            uint hash = 2166136261u;
+            for (int i = 0; i < normName.Length; i++)
+            {
+                hash ^= normName[i];
+                hash *= 16777619u;
+            }
+
+            Color frameCol;
+            Color bgTop;
+            Color bgBot;
+            switch (difficulty)
+            {
+                case AIDifficulty.Easy:
+                    frameCol = new Color(0.30f, 0.86f, 0.48f);
+                    bgTop = new Color(0.14f, 0.44f, 0.28f);
+                    bgBot = new Color(0.06f, 0.16f, 0.12f);
+                    break;
+                case AIDifficulty.Hard:
+                    frameCol = new Color(0.98f, 0.54f, 0.18f);
+                    bgTop = new Color(0.56f, 0.24f, 0.12f);
+                    bgBot = new Color(0.20f, 0.08f, 0.06f);
+                    break;
+                case AIDifficulty.Extreme:
+                    frameCol = new Color(0.94f, 0.26f, 0.38f);
+                    bgTop = new Color(0.48f, 0.12f, 0.28f);
+                    bgBot = new Color(0.16f, 0.05f, 0.14f);
+                    break;
+                default:
+                    frameCol = new Color(0.32f, 0.72f, 0.98f);
+                    bgTop = new Color(0.14f, 0.34f, 0.58f);
+                    bgBot = new Color(0.07f, 0.13f, 0.24f);
+                    break;
+            }
+
+            if (isChampion)
+            {
+                frameCol = new Color(1.0f, 0.84f, 0.22f);
+                bgTop = Color.Lerp(bgTop, new Color(0.58f, 0.38f, 0.08f), 0.45f);
+            }
+
+            for (int y = 0; y < size; y++)
+            {
+                float ny = (float)y / size;
+                Color c = Color.Lerp(bgBot, bgTop, ny);
+                for (int x = 0; x < size; x++)
+                {
+                    tex.SetPixel(x, y, c);
+                }
+            }
+
+            Color[] skinPalette =
+            {
+                new Color(0.82f, 0.60f, 0.44f),
+                new Color(0.75f, 0.52f, 0.37f),
+                new Color(0.68f, 0.46f, 0.32f),
+                new Color(0.86f, 0.66f, 0.50f)
+            };
+            Color[] hairPalette =
+            {
+                new Color(0.09f, 0.08f, 0.08f),
+                new Color(0.18f, 0.12f, 0.09f),
+                new Color(0.12f, 0.10f, 0.12f),
+                new Color(0.26f, 0.16f, 0.10f)
+            };
+            Color[] shirtPalette =
+            {
+                new Color(0.88f, 0.24f, 0.24f),
+                new Color(0.20f, 0.56f, 0.88f),
+                new Color(0.22f, 0.68f, 0.38f),
+                new Color(0.92f, 0.64f, 0.16f),
+                new Color(0.56f, 0.28f, 0.78f),
+                new Color(0.92f, 0.92f, 0.94f)
+            };
+            Color[] trimPalette =
+            {
+                new Color(1.0f, 0.84f, 0.22f),
+                new Color(0.96f, 0.96f, 0.98f),
+                new Color(0.16f, 0.20f, 0.30f),
+                new Color(0.96f, 0.36f, 0.24f)
+            };
+
+            Color skin = skinPalette[hash % (uint)skinPalette.Length];
+            Color hair = hairPalette[(hash >> 3) % (uint)hairPalette.Length];
+            Color shirt = isChampion
+                ? new Color(0.16f, 0.14f, 0.22f)
+                : shirtPalette[(hash >> 6) % (uint)shirtPalette.Length];
+            Color trim = isChampion
+                ? new Color(1.0f, 0.84f, 0.22f)
+                : trimPalette[(hash >> 9) % (uint)trimPalette.Length];
+            int hairStyle = (int)((hash >> 12) % 4u);
+
+            // Shoulders & jersey
+            FillEllipse(tex, 64, 18, 44, 30, shirt);
+            FillEllipse(tex, 64, 34, 18, 12, trim);
+            FillRect(tex, 54, 32, 20, 18, skin);
+
+            // Hair back for longer style
+            if (hairStyle == 3)
+            {
+                FillEllipse(tex, 64, 70, 33, 33, hair);
+            }
+
+            // Head
+            FillEllipse(tex, 64, 70, 27, 31, skin);
+
+            // Hair styles
+            if (hairStyle == 0)
+            {
+                // Spiky barangay cut
+                FillEllipse(tex, 64, 92, 29, 15, hair);
+                FillRect(tex, 42, 95, 10, 11, hair);
+                FillRect(tex, 58, 97, 12, 13, hair);
+                FillRect(tex, 76, 95, 10, 11, hair);
+            }
+            else if (hairStyle == 1)
+            {
+                // Side-swept bangs
+                FillEllipse(tex, 64, 92, 30, 15, hair);
+                FillRect(tex, 38, 84, 24, 12, hair);
+            }
+            else if (hairStyle == 2)
+            {
+                // Street cap / bandana headband
+                FillEllipse(tex, 64, 92, 29, 15, hair);
+                FillRect(tex, 36, 86, 56, 7, trim);
+            }
+            else
+            {
+                // Rounded bob / wavy cut
+                FillEllipse(tex, 64, 93, 30, 14, hair);
+            }
+
+            // Eyebrows (confident angle for Hard/Extreme/Champion)
+            Color browCol = new Color(0.10f, 0.08f, 0.07f);
+            if (difficulty == AIDifficulty.Hard || difficulty == AIDifficulty.Extreme || isChampion)
+            {
+                FillRect(tex, 44, 79, 14, 3, browCol);
+                FillRect(tex, 70, 79, 14, 3, browCol);
+            }
+            else
+            {
+                FillRect(tex, 44, 80, 14, 3, browCol);
+                FillRect(tex, 70, 80, 14, 3, browCol);
+            }
+
+            // Eyes
+            FillCircle(tex, 52, 70, 5, Color.white);
+            FillCircle(tex, 76, 70, 5, Color.white);
+            FillCircle(tex, 53, 70, 3, Color.black);
+            FillCircle(tex, 77, 70, 3, Color.black);
+            FillCircle(tex, 54, 72, 1, Color.white);
+            FillCircle(tex, 78, 72, 1, Color.white);
+
+            // Confident grin / smirk
+            for (int x = 54; x <= 74; x++)
+            {
+                float norm = (x - 64f) / 10f;
+                int y = Mathf.RoundToInt(52f + norm * norm * 3.5f);
+                FillCircle(tex, x, y, 2, new Color(0.38f, 0.15f, 0.13f));
+            }
+
+            // Golden crown accent for champions
+            if (isChampion)
+            {
+                Color gold = new Color(1.0f, 0.86f, 0.22f);
+                Color gem = new Color(0.95f, 0.22f, 0.28f);
+                FillRect(tex, 42, 102, 44, 8, gold);
+                FillRect(tex, 44, 110, 8, 9, gold);
+                FillRect(tex, 59, 110, 10, 12, gold);
+                FillRect(tex, 76, 110, 8, 9, gold);
+                FillCircle(tex, 64, 106, 3, gem);
+            }
+
+            // Colored difficulty / champion frame border
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    if (x < 4 || x >= size - 4 || y < 4 || y >= size - 4)
+                    {
+                        tex.SetPixel(x, y, frameCol);
+                    }
+                }
+            }
+
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+            _npcPortraitCache[key] = sprite;
             return sprite;
         }
 

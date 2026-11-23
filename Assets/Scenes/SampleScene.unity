@@ -118,6 +118,7 @@ NavMeshSettings:
     preserveTilesOutsideBounds: 0
     debug:
       m_Flags: 0
+  m_NavMeshData: {fileID: 0}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -205,7 +206,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0.11169684, y: 0.26841515, z: -0.031351432, w: 0.9562919}
-  m_LocalPosition: {x: -7.4, y: 4.9, z: -12.6}
+  m_LocalPosition: {x: -7.18, y: 6.65, z: -12.25}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -441,6 +442,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1122978357}
   - component: {fileID: 1122978356}
+  - component: {fileID: 1122978360}
+  - component: {fileID: 1122978359}
+  - component: {fileID: 1122978358}
   m_Layer: 0
   m_Name: TeksGameManager
   m_TagString: Untagged
@@ -475,6 +479,81 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1122978358
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1122978352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6cb3b06d3e1e4240b007b125e70cefe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TeksMaster.World.BarangayCourtBuilder
+--- !u!114 &1122978359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1122978352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1b4c1baffefff0499b1ad02f1eeeb81, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TeksMaster.Shop.ShopManager
+  secondsUntilRefresh: 299.9
+--- !u!114 &1122978360
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1122978352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd2037cc1f99fbf4ba347870722af9e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TeksMaster.Core.PlayerInventory
+  playerNickname: TeksMaster
+  coins: 2450
+  gems: 25
+  selectedGender: 0
+  equippedPamatoId: hero
+  ownedCards:
+  - CardId: hero
+    StarRank: 5
+    DuplicateCount: 1
+    FusionStage: 0
+  - CardId: bakunawa
+    StarRank: 5
+    DuplicateCount: 1
+    FusionStage: 0
+  - CardId: mecha_bathala
+    StarRank: 4
+    DuplicateCount: 2
+    FusionStage: 0
+  - CardId: kapitan_barangay
+    StarRank: 2
+    DuplicateCount: 1
+    FusionStage: 0
+  - CardId: tikbalang_striker
+    StarRank: 2
+    DuplicateCount: 3
+    FusionStage: 0
+  - CardId: kid_kidlat
+    StarRank: 1
+    DuplicateCount: 2
+    FusionStage: 0
+  - CardId: bantay_kalye
+    StarRank: 1
+    DuplicateCount: 3
+    FusionStage: 0
+  - CardId: nuno_guard
+    StarRank: 1
+    DuplicateCount: 2
+    FusionStage: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

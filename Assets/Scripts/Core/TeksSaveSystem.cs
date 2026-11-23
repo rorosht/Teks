@@ -130,6 +130,11 @@ namespace TeksMaster.Core
         public static void DeleteSave()
         {
             if (!Application.isPlaying) return;
+            DeleteSaveFilesForce();
+        }
+
+        public static void DeleteSaveFilesForce()
+        {
             TryDeleteFile(SaveFilePath);
             TryDeleteFile(BackupFilePath);
             TryDeleteFile(TempFilePath);
@@ -216,7 +221,7 @@ namespace TeksMaster.Core
 
                 card.StarRank = Mathf.Clamp(card.StarRank, 1, 5);
                 card.DuplicateCount = Mathf.Max(0, card.DuplicateCount);
-                card.FusionStage = Mathf.Clamp(card.FusionStage, 0, 5);
+                card.FusionStage = Mathf.Max(0, card.FusionStage);
 
                 OwnedTeksCard existing = null;
                 for (int j = 0; j < cleanedCards.Count; j++)
@@ -241,15 +246,16 @@ namespace TeksMaster.Core
             }
             data.OwnedCards = cleanedCards;
 
-            // Sanitize UnlockedAreas (Areas 0 and 1 always unlocked)
+            // Sanitize UnlockedAreas (Areas 0, 1, and 5 always unlocked)
             if (data.UnlockedAreas == null) data.UnlockedAreas = new List<int>();
             var cleanedAreas = new List<int>();
             AddUniqueAreaInt(cleanedAreas, (int)BarangayAreaId.PlayersNeighborhood);
             AddUniqueAreaInt(cleanedAreas, (int)BarangayAreaId.SariSariAndKalye);
+            AddUniqueAreaInt(cleanedAreas, (int)BarangayAreaId.TournamentArena);
             for (int i = 0; i < data.UnlockedAreas.Count; i++)
             {
                 int areaInt = data.UnlockedAreas[i];
-                if (areaInt >= 0 && areaInt <= 4)
+                if (areaInt >= 0 && areaInt <= 5)
                 {
                     AddUniqueAreaInt(cleanedAreas, areaInt);
                 }
@@ -263,7 +269,7 @@ namespace TeksMaster.Core
             for (int i = 0; i < data.AreaWins.Count; i++)
             {
                 var rec = data.AreaWins[i];
-                if (rec == null || rec.AreaId < 0 || rec.AreaId > 4) continue;
+                if (rec == null || rec.AreaId < 0 || rec.AreaId > 5) continue;
                 int wins = Mathf.Max(0, rec.WinCount);
                 bool merged = false;
                 for (int j = 0; j < cleanedAreaWins.Count; j++)

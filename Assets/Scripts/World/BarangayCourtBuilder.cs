@@ -11,8 +11,13 @@ namespace TeksMaster.World
     {
         public static BarangayCourtBuilder Instance { get; private set; }
 
+        public const string TournamentHostDisplayName = "KUYA REF (TOURNAMENT HOST)";
+
         public Transform CourtRoot { get; private set; }
-        public Vector3 StoreInteractionPoint { get; private set; } = new Vector3(7.9f, 0f, 5.4f);
+        public Transform TournamentHostTransform { get; private set; }
+        public Vector3 StoreInteractionPoint { get; private set; } = new Vector3(-4.5f, 0f, -11.2f);
+        public Vector3 TournamentInteractionPoint { get; private set; } = new Vector3(-22.8f, 0f, -22.2f);
+        public Vector3 TournamentBattleCenter { get; private set; } = new Vector3(-22.8f, 0f, -28.5f);
         public List<Vector3> StoreInteractionPoints { get; } = new List<Vector3>();
         public List<NpcOpponent> SpawnedOpponents { get; } = new List<NpcOpponent>();
         public List<HiddenCardCollectible> SpawnedHiddenCards { get; } = new List<HiddenCardCollectible>();
@@ -139,16 +144,16 @@ namespace TeksMaster.World
             {
                 AreaId = BarangayAreaId.SariSariAndKalye,
                 Name = "SARI-SARI & KALYE",
-                Subtitle = "Kalye Kiosk, Jeepney, Fishball Cart & Mark",
+                Subtitle = "Aling Nena's Kalye Kiosk, Jeepney, Fishball Cart & Mark",
                 UnlockHint = "Starting Area (Unlocked)",
-                SpawnPosition = new Vector3(-2.5f, 0f, -13.2f),
+                SpawnPosition = new Vector3(-2.5f, 0f, -11.4f),
                 SpawnYaw = 180f
             },
             new BarangayZoneInfo
             {
                 AreaId = BarangayAreaId.BasketballCourt,
                 Name = "BASKETBALL COURT",
-                Subtitle = "Main Court, Aling Nena's Store & Carlo",
+                Subtitle = "Main Court, Sideline Bleachers & Carlo",
                 UnlockHint = "Defeat Dodong & Mark (or win 2 Starter Area matches)",
                 SpawnPosition = new Vector3(-3.8f, 0f, -4.6f),
                 SpawnYaw = 34f
@@ -168,23 +173,43 @@ namespace TeksMaster.World
                 Name = "FIESTA TEKS ARENA",
                 Subtitle = "Covered Stage, Banderitas & Teks Master",
                 UnlockHint = "Defeat Joshua (or win 2 Old Neighborhood matches)",
-                SpawnPosition = new Vector3(18.5f, 0f, -15.5f),
+                SpawnPosition = new Vector3(18.5f, 0f, -25.5f),
                 SpawnYaw = 115f
+            },
+            new BarangayZoneInfo
+            {
+                AreaId = BarangayAreaId.TournamentArena,
+                Name = "TOURNAMENT ARENA",
+                Subtitle = "3-Round Championship Bracket, Trophy Podium & Kuya Ref",
+                UnlockHint = "Open Arena (Pay 150 Coins Entry Fee to Compete)",
+                SpawnPosition = new Vector3(-22.8f, 0f, -22.0f),
+                SpawnYaw = 180f
             }
         };
 
         public static BarangayAreaId GetAreaAtPosition(Vector3 pos)
         {
-            if (pos.x <= -14.5f) return BarangayAreaId.OldNeighborhood;
-            if (pos.x >= 14.5f)
+            if (pos.x <= -14.5f && pos.z <= -20.8f)
             {
-                return pos.z <= -12.2f
-                    ? BarangayAreaId.FiestaArena
-                    : BarangayAreaId.PlayersNeighborhood;
+                return BarangayAreaId.TournamentArena;
             }
-            return pos.z <= -8.4f
-                ? BarangayAreaId.SariSariAndKalye
-                : BarangayAreaId.BasketballCourt;
+            if (pos.x >= 14.5f && pos.z <= -20.8f)
+            {
+                return BarangayAreaId.FiestaArena;
+            }
+            if (pos.x <= -14.5f && pos.z > -8.4f)
+            {
+                return BarangayAreaId.OldNeighborhood;
+            }
+            if (pos.x >= 14.5f && pos.z > -11.5f)
+            {
+                return BarangayAreaId.PlayersNeighborhood;
+            }
+            if (pos.x > -14.5f && pos.x < 14.5f && pos.z > -8.4f)
+            {
+                return BarangayAreaId.BasketballCourt;
+            }
+            return BarangayAreaId.SariSariAndKalye;
         }
 
         public static string GetAreaDisplayName(BarangayAreaId area)
@@ -196,6 +221,7 @@ namespace TeksMaster.World
                 case BarangayAreaId.BasketballCourt: return "BASKETBALL COURT";
                 case BarangayAreaId.OldNeighborhood: return "OLD NEIGHBORHOOD";
                 case BarangayAreaId.FiestaArena: return "FIESTA TEKS ARENA";
+                case BarangayAreaId.TournamentArena: return "TOURNAMENT ARENA";
                 default: return "BARANGAY";
             }
         }
@@ -219,7 +245,7 @@ namespace TeksMaster.World
 
         public void BuildWorldIfNeeded()
         {
-            const string versionMarker = "WorldVersion_V5";
+            const string versionMarker = "WorldVersion_V7";
             if (_built && CourtRoot != null && CourtRoot.Find(versionMarker) != null)
             {
                 // Verify materials aren't stale/missing shaders (prevents magenta screen when Reload Domain is disabled)
@@ -240,6 +266,7 @@ namespace TeksMaster.World
             }
 
             _built = true;
+            TournamentHostTransform = null;
             SpawnedOpponents.Clear();
             SpawnedHiddenCards.Clear();
             SpawnedAreaGates.Clear();
@@ -258,8 +285,8 @@ namespace TeksMaster.World
             BuildBasketballHoop("RightHoop", new Vector3(13.2f, 0f, 0f), faceRight: false);
             BuildCenterCircleTeksPile();
             BuildBleachersAndShadySidelines();
-            BuildSariSariStore();
             BuildExtendedBarangayZones();
+            BuildTournamentArena();
             BuildAreaGates();
             BuildBarangayHousesAndUtilityPoles();
             SpawnAllOpponents();
@@ -390,9 +417,9 @@ namespace TeksMaster.World
 
         private void BuildGroundAndCourt()
         {
-            // Dusty barangay road & ground apron covering the extended neighborhood
+            // Dusty barangay road & ground apron covering the extended neighborhood & South arenas
             var groundMat = CardArtGenerator.CreateLitMaterial(new Color(0.47f, 0.44f, 0.40f), 0.1f);
-            CreateBox("StreetGround", CourtRoot, new Vector3(0f, -0.06f, 0f), new Vector3(110f, 0.1f, 95f), groundMat, keepCollider: true);
+            CreateBox("StreetGround", CourtRoot, new Vector3(0f, -0.06f, -12f), new Vector3(115f, 0.1f, 105f), groundMat, keepCollider: true);
 
             // Main weathered concrete basketball court
             var courtMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.14f, 0f, CardArtGenerator.GetCourtFloorTexture());
@@ -409,15 +436,15 @@ namespace TeksMaster.World
             // Invisible physics surface collider at y=0 across ALL Barangay zones so cards land cleanly anywhere
             var floorColliderGo = new GameObject("CourtPhysicsSurface");
             floorColliderGo.transform.SetParent(CourtRoot, false);
-            floorColliderGo.transform.position = new Vector3(0f, -0.05f, 0f);
+            floorColliderGo.transform.position = new Vector3(0f, -0.05f, -12f);
             var box = floorColliderGo.AddComponent<BoxCollider>();
-            box.size = new Vector3(110f, 0.1f, 95f);
+            box.size = new Vector3(115f, 0.1f, 105f);
 
-            // Extended Barangay perimeter barriers (allows exploring South Street, East Plaza, West Tambayan, Fiesta Arena)
+            // Extended Barangay perimeter barriers (spanning z in [-38.5, +12.2])
             CreateInvisibleWall("BoundaryNorth", new Vector3(0f, 2f, 12.2f), new Vector3(72f, 5f, 0.4f));
-            CreateInvisibleWall("BoundarySouth", new Vector3(0f, 2f, -25.5f), new Vector3(72f, 5f, 0.4f));
-            CreateInvisibleWall("BoundaryWest", new Vector3(-31.5f, 2f, -6f), new Vector3(0.4f, 5f, 44f));
-            CreateInvisibleWall("BoundaryEast", new Vector3(32.5f, 2f, -6f), new Vector3(0.4f, 5f, 44f));
+            CreateInvisibleWall("BoundarySouth", new Vector3(0f, 2f, -38.5f), new Vector3(72f, 5f, 0.4f));
+            CreateInvisibleWall("BoundaryWest", new Vector3(-31.5f, 2f, -13.15f), new Vector3(0.4f, 5f, 52f));
+            CreateInvisibleWall("BoundaryEast", new Vector3(32.5f, 2f, -13.15f), new Vector3(0.4f, 5f, 52f));
         }
 
         private void CreateInvisibleWall(string name, Vector3 pos, Vector3 size)
@@ -439,38 +466,38 @@ namespace TeksMaster.World
             if (wireMat.HasProperty("_BaseMap")) wireMat.SetTextureScale("_BaseMap", new Vector2(8f, 3f));
             if (wireMat.HasProperty("_MainTex")) wireMat.SetTextureScale("_MainTex", new Vector2(8f, 3f));
 
-            // Back fence segments (leaving space for the Sari-Sari store at x = 5.6..13.0 and behind-store walkthrough inside Court)
-            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 8.4f), new Vector3(5.6f, 0f, 8.4f), 3.1f, postMat, wireMat);
+            // Continuous North basketball court fence from (-14.4, 0, 8.4) to (14.4, 0, 8.4)
+            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 8.4f), new Vector3(14.4f, 0f, 8.4f), 3.1f, postMat, wireMat);
 
             // Seal NW & NE perimeter gaps north of z = 8.4 up to BoundaryNorth (z = 12.2) so players cannot bypass locked gates
             BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 8.4f), new Vector3(-14.4f, 0f, 12.2f), 3.1f, postMat, wireMat);
             BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, 8.4f), new Vector3(14.4f, 0f, 12.2f), 3.1f, postMat, wireMat);
 
-            // Left court fence with wide walkthrough gate (z ∈ [-3.0, +3.0]) to Old Neighborhood (West Tambayan Alley)
+            // Left court fence with wide walkthrough gate (z in [-3.0, +3.0]) to Old Neighborhood (West Tambayan Alley)
             BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -8.4f), new Vector3(-14.4f, 0f, -3.0f), 3.1f, postMat, wireMat);
             BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 3.0f), new Vector3(-14.4f, 0f, 8.4f), 3.1f, postMat, wireMat);
 
-            // Right court fence with wide walkthrough gate (z ∈ [-3.0, +3.0]) to Player's Neighborhood (East Plaza)
+            // Right court fence with wide walkthrough gate (z in [-3.0, +3.0]) to Player's Neighborhood (East Plaza)
             BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -8.4f), new Vector3(14.4f, 0f, -3.0f), 3.1f, postMat, wireMat);
             BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, 3.0f), new Vector3(14.4f, 0f, 8.4f), 3.1f, postMat, wireMat);
 
-            // South court fence along z = -8.4 with centered walkthrough gateway (x ∈ [-3.2, +3.2]) to Sari-Sari & Kalye
+            // South court fence along z = -8.4 with centered walkthrough gateway (x in [-3.2, +3.2]) to Sari-Sari & Kalye
             BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -8.4f), new Vector3(-3.2f, 0f, -8.4f), 2.5f, postMat, wireMat);
             BuildFenceSpan(fenceGroup, new Vector3(3.2f, 0f, -8.4f), new Vector3(14.4f, 0f, -8.4f), 2.5f, postMat, wireMat);
 
-            // SW Kalye -> Old Neighborhood border along x = -14.4 (z ∈ [-25.5, -8.4]), leaving Kalye road gate z ∈ [-18.6, -12.4]
-            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -25.5f), new Vector3(-14.4f, 0f, -18.6f), 2.6f, postMat, wireMat);
-            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -12.4f), new Vector3(-14.4f, 0f, -8.4f), 2.6f, postMat, wireMat);
+            // Old Neighborhood South border along z = -8.4 (North of Highway, leaving Kalye West gate x in [-25.1, -18.9])
+            BuildFenceSpan(fenceGroup, new Vector3(-31.5f, 0f, -8.4f), new Vector3(-25.1f, 0f, -8.4f), 2.5f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(-18.9f, 0f, -8.4f), new Vector3(-14.4f, 0f, -8.4f), 2.5f, postMat, wireMat);
 
-            // NOTE: x = 14.4, z ∈ [-12.2, -8.4] stays COMPLETELY OPEN as the starter walkway between Area 0 (PlayersNeighborhood) & Area 1 (SariSariAndKalye).
+            // NOTE: Highway corridor z in [-18.5, -11.5] stays 100% CLEAR of fences and gates from West to East.
+            // Starter walkway between Area 0 (PlayersNeighborhood) & Area 1 (SariSariAndKalye) at x = 14.4, z in [-11.5, -8.4] stays OPEN.
 
-            // Fiesta Arena West border along x = 14.4 (z ∈ [-25.5, -12.2]), leaving Fiesta West Archway gate z ∈ [-18.8, -12.6]
-            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -25.5f), new Vector3(14.4f, 0f, -18.8f), 2.6f, postMat, wireMat);
-            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -12.6f), new Vector3(14.4f, 0f, -12.2f), 2.6f, postMat, wireMat);
+            // Fiesta Arena West border along x = 14.5 (South of Highway, z in [-38.5, -20.8])
+            BuildFenceSpan(fenceGroup, new Vector3(14.5f, 0f, -38.5f), new Vector3(14.5f, 0f, -20.8f), 2.6f, postMat, wireMat);
 
-            // Fiesta Arena North border along z = -12.2 (x ∈ [14.4, 32.5]), leaving Fiesta North Rope gate x ∈ [19.6, 25.8]
-            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -12.2f), new Vector3(19.6f, 0f, -12.2f), 2.2f, postMat, wireMat);
-            BuildFenceSpan(fenceGroup, new Vector3(25.8f, 0f, -12.2f), new Vector3(32.5f, 0f, -12.2f), 2.2f, postMat, wireMat);
+            // Fiesta Arena North border along z = -20.8 (South of Highway, leaving single entrance gate x in [20.4, 26.6])
+            BuildFenceSpan(fenceGroup, new Vector3(14.5f, 0f, -20.8f), new Vector3(20.4f, 0f, -20.8f), 2.4f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(26.6f, 0f, -20.8f), new Vector3(32.5f, 0f, -20.8f), 2.4f, postMat, wireMat);
         }
 
         private void BuildFenceSpan(Transform parent, Vector3 start, Vector3 end, float height, Material postMat, Material wireMat)
@@ -530,29 +557,26 @@ namespace TeksMaster.World
             var gateGroup = new GameObject("AreaGates").transform;
             gateGroup.SetParent(CourtRoot, false);
 
-            // Area 2: Basketball Court (East & South gateways)
+            // Area 2: Basketball Court (East & South gateways — front sign faces approaching player!)
             CreateAreaGate(
                 gateGroup, "Gate_Court_East", BarangayAreaId.BasketballCourt,
-                "Basketball Court", new Vector3(14.4f, 0f, 0f), Quaternion.Euler(0f, 90f, 0f), 6.0f, 2.4f);
+                "Basketball Court", new Vector3(14.4f, 0f, 0f), Quaternion.Euler(0f, -90f, 0f), 6.0f, 2.4f);
             CreateAreaGate(
                 gateGroup, "Gate_Court_South", BarangayAreaId.BasketballCourt,
                 "Basketball Court", new Vector3(0f, 0f, -8.4f), Quaternion.identity, 6.4f, 2.4f);
 
-            // Area 3: Old Neighborhood (Court West & Kalye West gateways)
+            // Area 3: Old Neighborhood (Court West & Kalye West North-of-Highway gateways)
             CreateAreaGate(
                 gateGroup, "Gate_OldNeighborhood_CourtWest", BarangayAreaId.OldNeighborhood,
-                "Old Neighborhood", new Vector3(-14.4f, 0f, 0f), Quaternion.Euler(0f, 90f, 0f), 6.0f, 2.4f);
+                "Old Neighborhood", new Vector3(-14.4f, 0f, 0f), Quaternion.Euler(0f, -90f, 0f), 6.0f, 2.4f);
             CreateAreaGate(
                 gateGroup, "Gate_OldNeighborhood_KalyeWest", BarangayAreaId.OldNeighborhood,
-                "Old Neighborhood", new Vector3(-14.4f, 0f, -15.5f), Quaternion.Euler(0f, 90f, 0f), 6.2f, 2.4f);
+                "Old Neighborhood", new Vector3(-22.0f, 0f, -8.4f), Quaternion.identity, 6.2f, 2.4f);
 
-            // Area 4: Fiesta Teks Arena (West Archway & North Rope gateways)
+            // Area 4: Fiesta Teks Arena (Single North entrance South of Highway — faces North toward Kalye Highway!)
             CreateAreaGate(
-                gateGroup, "Gate_Fiesta_WestArchway", BarangayAreaId.FiestaArena,
-                "Fiesta Teks Arena", new Vector3(14.4f, 0f, -15.7f), Quaternion.Euler(0f, 90f, 0f), 6.2f, 2.4f);
-            CreateAreaGate(
-                gateGroup, "Gate_Fiesta_NorthRope", BarangayAreaId.FiestaArena,
-                "Fiesta Teks Arena", new Vector3(22.7f, 0f, -12.2f), Quaternion.identity, 6.2f, 2.4f);
+                gateGroup, "Gate_Fiesta_North", BarangayAreaId.FiestaArena,
+                "Fiesta Teks Arena", new Vector3(23.5f, 0f, -20.8f), Quaternion.Euler(0f, 180f, 0f), 6.2f, 2.4f);
         }
 
         private void CreateAreaGate(
@@ -692,107 +716,6 @@ namespace TeksMaster.World
             CreateCylinder("UmbrellaCanopy", shady, new Vector3(0.8f, 2.7f, 0.2f), new Vector3(2.8f, 0.14f, 2.8f), umbrellaMat, false);
         }
 
-        private void BuildSariSariStore()
-        {
-            var store = new GameObject("SariSariStore").transform;
-            store.SetParent(CourtRoot, false);
-            store.position = new Vector3(9.2f, 0f, 7.6f);
-
-            Material mintWallMat = CardArtGenerator.CreateLitMaterial(new Color(0.55f, 0.78f, 0.67f), 0.18f);
-            Material woodMat = CardArtGenerator.CreateLitMaterial(new Color(0.46f, 0.29f, 0.16f), 0.2f);
-            Material roofMat = CardArtGenerator.CreateLitMaterial(new Color(0.46f, 0.50f, 0.55f), 0.35f, 0.4f);
-            Material darkInterior = CardArtGenerator.CreateLitMaterial(new Color(0.12f, 0.10f, 0.09f), 0.05f);
-            Material signBoardBg = CardArtGenerator.CreateLitMaterial(new Color(0.96f, 0.86f, 0.64f), 0.15f);
-            Material ledBg = CardArtGenerator.CreateLitMaterial(new Color(0.10f, 0.14f, 0.16f), 0.2f);
-            Material teksBannerMat = CardArtGenerator.CreateLitMaterial(new Color(0.12f, 0.36f, 0.26f), 0.2f);
-
-            // Store structure
-            CreateBox("StoreBackWall", store, new Vector3(0f, 1.55f, 1.3f), new Vector3(6.8f, 3.1f, 0.25f), mintWallMat, true);
-            CreateBox("StoreLeftWall", store, new Vector3(-3.3f, 1.55f, 0f), new Vector3(0.25f, 3.1f, 2.8f), mintWallMat, true);
-            CreateBox("StoreRightWall", store, new Vector3(3.3f, 1.55f, 0f), new Vector3(0.25f, 3.1f, 2.8f), mintWallMat, true);
-            CreateBox("StoreInteriorBack", store, new Vector3(-1.3f, 1.55f, 1.15f), new Vector3(3.8f, 2.8f, 0.05f), darkInterior, false);
-
-            // Front lower wall & counter ledge
-            CreateBox("FrontLowerWall", store, new Vector3(-1.35f, 0.62f, -1.25f), new Vector3(3.75f, 1.24f, 0.25f), mintWallMat, true);
-            CreateBox("CounterTop", store, new Vector3(-1.35f, 1.28f, -1.32f), new Vector3(3.85f, 0.10f, 0.55f), woodMat, true);
-            CreateBox("RightWallFront", store, new Vector3(1.9f, 1.55f, -1.25f), new Vector3(2.8f, 3.1f, 0.25f), mintWallMat, true);
-
-            // Corrugated tin roof overhang
-            var roof = CreateBox("StoreRoof", store, new Vector3(0f, 3.35f, -0.35f), new Vector3(7.4f, 0.14f, 4.1f), roofMat, false);
-            roof.transform.localRotation = Quaternion.Euler(10f, 0f, 0f);
-
-            // Wooden crate beside counter (like in image_0.png)
-            CreateBox("WoodenCrate", store, new Vector3(-2.85f, 0.30f, -1.85f), new Vector3(0.75f, 0.60f, 0.65f), woodMat, true);
-
-            // Colorful hanging snack packets (chichirya strips) in front window
-            Color[] snackColors = {
-                new Color(0.94f, 0.24f, 0.22f),
-                new Color(0.98f, 0.80f, 0.16f),
-                new Color(0.22f, 0.78f, 0.36f),
-                new Color(0.24f, 0.56f, 0.94f)
-            };
-            for (int col = 0; col < 4; col++)
-            {
-                float px = -2.65f + col * 0.82f;
-                for (int row = 0; row < 3; row++)
-                {
-                    Material snackMat = CardArtGenerator.CreateLitMaterial(snackColors[(col + row) % snackColors.Length], 0.35f);
-                    CreateBox($"SnackPacket_{col}_{row}", store, new Vector3(px, 2.38f - row * 0.30f, -1.35f), new Vector3(0.22f, 0.24f, 0.05f), snackMat, false);
-                }
-            }
-
-            // Roof Signboard: "SARI-SARI STORE" + Roof LED Timer: "NEW CARDS IN 04:59"
-            CreateBox("SignSariSariBg", store, new Vector3(-1.45f, 3.88f, -1.55f), new Vector3(3.1f, 1.05f, 0.16f), signBoardBg, false);
-            CreateWorldText("SariSariTitleText", store, new Vector3(-1.45f, 3.88f, -1.66f), "SARI-SARI\nSTORE", 26, new Color(0.42f, 0.16f, 0.08f));
-
-            CreateBox("RoofTimerBg", store, new Vector3(1.85f, 3.88f, -1.55f), new Vector3(2.9f, 1.05f, 0.16f), ledBg, false);
-            var roofTimer = CreateWorldText("StoreTimerText_Roof", store, new Vector3(1.85f, 3.88f, -1.66f), "NEW CARDS IN\n04:59", 24, new Color(0.55f, 1.0f, 0.45f));
-            _storeTimerMeshes.Add(roofTimer);
-
-            // Right wall "TEKS CARDS" display rack + 4 miniature 3D rotating shop cards + lower LED timer
-            CreateBox("TeksCardsHeaderBg", store, new Vector3(1.85f, 2.75f, -1.42f), new Vector3(2.55f, 0.42f, 0.08f), teksBannerMat, false);
-            CreateWorldText("TeksRackHeaderText", store, new Vector3(1.85f, 2.75f, -1.48f), "TEKS CARDS", 22, new Color(1.0f, 0.88f, 0.25f));
-
-            CreateBox("TeksRackBoard", store, new Vector3(1.85f, 2.02f, -1.40f), new Vector3(2.55f, 0.96f, 0.06f), darkInterior, false);
-            for (int i = 0; i < 4; i++)
-            {
-                float cardX = 0.92f + i * 0.62f;
-                var cardQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                cardQuad.name = "StoreRackCard_" + i;
-                cardQuad.transform.SetParent(store, false);
-                cardQuad.transform.localPosition = new Vector3(cardX, 2.02f, -1.445f);
-                cardQuad.transform.localScale = new Vector3(0.48f, 0.68f, 1f);
-                SafeDestroy(cardQuad.GetComponent<Collider>());
-                var rend = cardQuad.GetComponent<Renderer>();
-                rend.sharedMaterial = CardArtGenerator.CreateLitMaterial(Color.white, 0.25f);
-                _storeRackCardRenderers.Add(rend);
-            }
-
-            CreateBox("WallTimerBg", store, new Vector3(1.85f, 0.98f, -1.42f), new Vector3(2.55f, 0.88f, 0.08f), ledBg, false);
-            var wallTimer = CreateWorldText("StoreTimerText_Wall", store, new Vector3(1.85f, 0.98f, -1.48f), "NEW CARDS IN\n04:59", 21, new Color(0.55f, 1.0f, 0.45f));
-            _storeTimerMeshes.Add(wallTimer);
-
-            // Tindera Vendor (Aling Nena) inside the store window
-            var tindera = new GameObject("AlingNena_Tindera");
-            tindera.transform.SetParent(store, false);
-            tindera.transform.localPosition = new Vector3(-1.35f, 0.15f, -0.35f);
-            tindera.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-            CharacterVisualBuilder.BuildCharacterVisual(
-                tindera,
-                CharacterOutfitRole.Tindera,
-                new Color(0.92f, 0.56f, 0.20f),
-                new Color(0.24f, 0.28f, 0.42f),
-                new Color(0.75f, 0.52f, 0.37f),
-                new Color(0.18f, 0.42f, 0.68f)
-            );
-
-            StoreInteractionPoint = new Vector3(7.9f, 0f, 5.4f);
-            if (!StoreInteractionPoints.Contains(StoreInteractionPoint))
-            {
-                StoreInteractionPoints.Add(StoreInteractionPoint);
-            }
-        }
-
         public void RefreshStoreDisplayCards()
         {
             if (ShopManager.Instance == null) return;
@@ -831,17 +754,17 @@ namespace TeksMaster.World
             Material tireMat = CardArtGenerator.CreateLitMaterial(new Color(0.10f, 0.10f, 0.12f), 0.15f);
             Material cartYellowMat = CardArtGenerator.CreateLitMaterial(new Color(0.96f, 0.78f, 0.18f), 0.30f);
 
-            // 1. SOUTH ZONE: Kalye / Barangay Main Street (z = -11 .. -21)
-            CreateBox("KalyeAsphaltRoad", zones, new Vector3(0f, -0.008f, -15.5f), new Vector3(62f, 0.02f, 8.6f), asphaltMat, false);
-            for (int i = -4; i <= 4; i++)
+            // 1. SOUTH ZONE: Clear Kalye Highway (z in [-18.5, -11.5], center z = -15.0, width 7.0, length 68)
+            CreateBox("KalyeAsphaltRoad", zones, new Vector3(0f, -0.008f, -15.0f), new Vector3(68f, 0.02f, 7.0f), asphaltMat, false);
+            for (int i = -5; i <= 5; i++)
             {
-                CreateBox("RoadDash_" + i, zones, new Vector3(i * 6.0f, 0.004f, -15.5f), new Vector3(3.0f, 0.01f, 0.22f), lanePaintMat, false);
+                CreateBox("RoadDash_" + i, zones, new Vector3(i * 6.0f, 0.004f, -15.0f), new Vector3(3.0f, 0.01f, 0.22f), lanePaintMat, false);
             }
 
-            // Parked Pinoy Jeepney on the Kalye (South-Right)
+            // Parked Pinoy Jeepney in the South lane of the Kalye Asphalt Road (z in [-17.8, -15.6], leaving North lane open)
             var jeep = new GameObject("BarangayJeepney").transform;
             jeep.SetParent(zones, false);
-            jeep.position = new Vector3(8.5f, 0f, -17.5f);
+            jeep.position = new Vector3(8.5f, 0f, -16.7f);
             jeep.rotation = Quaternion.Euler(0f, -90f, 0f);
             CreateBox("JeepLowerBody", jeep, new Vector3(0f, 0.95f, 0f), new Vector3(2.2f, 1.15f, 5.4f), jeepRedMat, true);
             CreateBox("JeepUpperStripe", jeep, new Vector3(0f, 1.58f, -0.3f), new Vector3(2.15f, 0.35f, 4.4f), jeepBlueMat, false);
@@ -852,37 +775,69 @@ namespace TeksMaster.World
             CreateCylinder("WheelFR", jeep, new Vector3(1.12f, 0.42f, 1.85f), new Vector3(0.42f, 0.16f, 0.42f), tireMat, false).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
             CreateCylinder("WheelRL", jeep, new Vector3(-1.12f, 0.42f, -1.65f), new Vector3(0.42f, 0.16f, 0.42f), tireMat, false).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
             CreateCylinder("WheelRR", jeep, new Vector3(1.12f, 0.42f, -1.65f), new Vector3(0.42f, 0.16f, 0.42f), tireMat, false).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
-            CreateWorldText("JeepSign", jeep, new Vector3(0f, 1.95f, 1.92f), "BARANGAY EXPRESS", 18, new Color(1.0f, 0.88f, 0.20f));
+            var jeepSign = CreateWorldText("JeepSign", jeep, new Vector3(0f, 1.95f, 1.92f), "BARANGAY EXPRESS", 48, new Color(1.0f, 0.88f, 0.20f), 0.18f, 0.12f);
+            jeepSign.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
-            // Street Food / Fishball Cart on the Kalye sidewalk (South-Left)
+            // Street Food / Fishball Cart shifted left on the Kalye North Sidewalk so Basketball Court entrance stays wide open
             var cart = new GameObject("FishballCart").transform;
             cart.SetParent(zones, false);
-            cart.position = new Vector3(-8.5f, 0f, -11.4f);
+            cart.position = new Vector3(-12.4f, 0f, -10.0f);
             CreateBox("CartBody", cart, new Vector3(0f, 0.68f, 0f), new Vector3(1.8f, 0.95f, 1.0f), cartYellowMat, true);
             CreateBox("CartTop", cart, new Vector3(0f, 1.18f, 0f), new Vector3(1.9f, 0.08f, 1.1f), chromeMat, false);
             CreateCylinder("CartUmbrellaPole", cart, new Vector3(0f, 1.95f, 0f), new Vector3(0.06f, 1.0f, 0.06f), woodMat, false);
             CreateCylinder("CartUmbrellaTop", cart, new Vector3(0f, 2.85f, 0f), new Vector3(2.5f, 0.12f, 2.5f), jeepRedMat, false);
-            CreateWorldText("FishballSign", cart, new Vector3(0f, 0.85f, -0.54f), "FISHBALL & TAHO", 18, new Color(0.35f, 0.12f, 0.05f));
+            CreateWorldText("FishballSign", cart, new Vector3(0f, 0.85f, -0.54f), "FISHBALL & TAHO", 48, new Color(0.35f, 0.12f, 0.05f), 0.18f, 0.11f);
 
-            // Starter Kalye Sari-Sari Kiosk (allows shopping in Areas 0 & 1 before Basketball Court unlocks)
+            // Upgraded Kalye Sari-Sari Store Kiosk shifted left so the Basketball Court South Entrance (x in [-3.2, +3.2]) is completely open
             var kalyeKiosk = new GameObject("KalyeSariSariKiosk").transform;
             kalyeKiosk.SetParent(zones, false);
-            kalyeKiosk.position = new Vector3(-4.2f, 0f, -10.6f);
+            kalyeKiosk.position = new Vector3(-7.6f, 0f, -9.8f);
             Material kioskWallMat = CardArtGenerator.CreateLitMaterial(new Color(0.50f, 0.78f, 0.66f), 0.18f);
             Material kioskSignBg = CardArtGenerator.CreateLitMaterial(new Color(0.96f, 0.86f, 0.64f), 0.15f);
             Material kioskLedBg = CardArtGenerator.CreateLitMaterial(new Color(0.10f, 0.14f, 0.16f), 0.20f);
-            CreateBox("KioskBase", kalyeKiosk, new Vector3(0f, 0.56f, 0f), new Vector3(3.1f, 1.12f, 1.45f), kioskWallMat, true);
-            CreateBox("KioskBackWall", kalyeKiosk, new Vector3(0f, 1.45f, 0.62f), new Vector3(3.1f, 2.50f, 0.20f), kioskWallMat, true);
-            CreateBox("KioskLeftPost", kalyeKiosk, new Vector3(-1.45f, 1.85f, -0.62f), new Vector3(0.16f, 1.55f, 0.16f), woodMat, false);
-            CreateBox("KioskRightPost", kalyeKiosk, new Vector3(1.45f, 1.85f, -0.62f), new Vector3(0.16f, 1.55f, 0.16f), woodMat, false);
-            CreateBox("KioskCounter", kalyeKiosk, new Vector3(0f, 1.15f, -0.70f), new Vector3(3.25f, 0.10f, 0.48f), woodMat, true);
-            var kioskRoof = CreateBox("KioskAwning", kalyeKiosk, new Vector3(0f, 2.74f, -0.18f), new Vector3(3.6f, 0.14f, 2.25f), roofMat, false);
-            kioskRoof.transform.localRotation = Quaternion.Euler(11f, 0f, 0f);
-            CreateBox("KioskSignBg", kalyeKiosk, new Vector3(0f, 3.16f, -0.82f), new Vector3(2.85f, 0.72f, 0.12f), kioskSignBg, false);
-            CreateWorldText("KioskSignText", kalyeKiosk, new Vector3(0f, 3.16f, -0.90f), "KALYE SARI-SARI\nTEKS KIOSK", 19, new Color(0.42f, 0.16f, 0.08f));
-            CreateBox("KioskTimerBg", kalyeKiosk, new Vector3(0f, 0.68f, -0.76f), new Vector3(2.1f, 0.56f, 0.06f), kioskLedBg, false);
-            var kioskTimer = CreateWorldText("StoreTimerText_Kalye", kalyeKiosk, new Vector3(0f, 0.68f, -0.81f), "NEW CARDS IN\n04:59", 17, new Color(0.55f, 1.0f, 0.45f));
+            Material darkInterior = CardArtGenerator.CreateLitMaterial(new Color(0.12f, 0.10f, 0.09f), 0.05f);
+            Material teksBannerMat = CardArtGenerator.CreateLitMaterial(new Color(0.12f, 0.36f, 0.26f), 0.20f);
+
+            // Left counter bay (Aling Nena window) + Right display bay (4-card Teks Rack)
+            CreateBox("KioskBackWall", kalyeKiosk, new Vector3(0f, 1.45f, 0.82f), new Vector3(5.6f, 2.9f, 0.22f), kioskWallMat, true);
+            CreateBox("KioskLeftWall", kalyeKiosk, new Vector3(-2.70f, 1.45f, 0f), new Vector3(0.22f, 2.9f, 1.75f), kioskWallMat, true);
+            CreateBox("KioskRightWall", kalyeKiosk, new Vector3(2.70f, 1.45f, 0f), new Vector3(0.22f, 2.9f, 1.75f), kioskWallMat, true);
+            CreateBox("KioskInteriorBack", kalyeKiosk, new Vector3(-1.15f, 1.45f, 0.68f), new Vector3(3.0f, 2.55f, 0.05f), darkInterior, false);
+            CreateBox("KioskBase", kalyeKiosk, new Vector3(-1.15f, 0.56f, -0.78f), new Vector3(3.05f, 1.12f, 0.24f), kioskWallMat, true);
+            CreateBox("KioskCounter", kalyeKiosk, new Vector3(-1.15f, 1.16f, -0.86f), new Vector3(3.18f, 0.10f, 0.48f), woodMat, true);
+            CreateBox("KioskRightWallFront", kalyeKiosk, new Vector3(1.52f, 1.45f, -0.78f), new Vector3(2.35f, 2.9f, 0.24f), kioskWallMat, true);
+            CreateBox("KioskWoodenCrate", kalyeKiosk, new Vector3(-2.45f, 0.28f, -1.25f), new Vector3(0.62f, 0.56f, 0.52f), woodMat, true);
+            var kioskRoof = CreateBox("KioskAwning", kalyeKiosk, new Vector3(0f, 3.05f, -0.18f), new Vector3(6.2f, 0.14f, 2.65f), roofMat, false);
+            kioskRoof.transform.localRotation = Quaternion.Euler(10f, 0f, 0f);
+
+            // Roof Signboard + Roof LED Timer
+            CreateBox("KioskSignBg", kalyeKiosk, new Vector3(-1.25f, 3.56f, -0.95f), new Vector3(3.0f, 0.84f, 0.14f), kioskSignBg, false);
+            CreateWorldText("KioskSignText", kalyeKiosk, new Vector3(-1.25f, 3.56f, -1.04f), "ALING NENA'S\nSARI-SARI STORE", 52, new Color(0.42f, 0.16f, 0.08f), 0.19f, 0.13f);
+            CreateBox("KioskTimerBg", kalyeKiosk, new Vector3(1.52f, 3.56f, -0.95f), new Vector3(2.35f, 0.84f, 0.14f), kioskLedBg, false);
+            var kioskTimer = CreateWorldText("StoreTimerText_Kalye", kalyeKiosk, new Vector3(1.52f, 3.56f, -1.04f), "NEW CARDS IN\n04:59", 48, new Color(0.55f, 1.0f, 0.45f), 0.18f, 0.12f);
             _storeTimerMeshes.Add(kioskTimer);
+
+            // Right wall "TEKS CARDS" display rack + 4 rotating 3D shop cards
+            CreateBox("TeksCardsHeaderBg", kalyeKiosk, new Vector3(1.52f, 2.52f, -0.93f), new Vector3(2.18f, 0.36f, 0.08f), teksBannerMat, false);
+            CreateWorldText("TeksRackHeaderText", kalyeKiosk, new Vector3(1.52f, 2.52f, -0.99f), "TEKS CARDS", 48, new Color(1.0f, 0.88f, 0.25f), 0.18f, 0.12f);
+            CreateBox("TeksRackBoard", kalyeKiosk, new Vector3(1.52f, 1.78f, -0.92f), new Vector3(2.18f, 0.88f, 0.06f), darkInterior, false);
+            for (int i = 0; i < 4; i++)
+            {
+                float cardX = 0.74f + i * 0.52f;
+                var cardQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                cardQuad.name = "StoreRackCard_" + i;
+                cardQuad.transform.SetParent(kalyeKiosk, false);
+                cardQuad.transform.localPosition = new Vector3(cardX, 1.78f, -0.965f);
+                cardQuad.transform.localScale = new Vector3(0.42f, 0.60f, 1f);
+                SafeDestroy(cardQuad.GetComponent<Collider>());
+                var rend = cardQuad.GetComponent<Renderer>();
+                rend.sharedMaterial = CardArtGenerator.CreateLitMaterial(Color.white, 0.25f);
+                _storeRackCardRenderers.Add(rend);
+            }
+
+            CreateBox("KioskWallTimerBg", kalyeKiosk, new Vector3(1.52f, 0.88f, -0.93f), new Vector3(2.18f, 0.72f, 0.08f), kioskLedBg, false);
+            var wallTimer = CreateWorldText("StoreTimerText_Wall", kalyeKiosk, new Vector3(1.52f, 0.88f, -0.99f), "NEW CARDS IN\n04:59", 48, new Color(0.55f, 1.0f, 0.45f), 0.17f, 0.11f);
+            _storeTimerMeshes.Add(wallTimer);
 
             Color[] kioskSnacks = {
                 new Color(0.86f, 0.18f, 0.20f),
@@ -893,16 +848,30 @@ namespace TeksMaster.World
             for (int c = 0; c < 4; c++)
             {
                 Material sm = CardArtGenerator.CreateLitMaterial(kioskSnacks[c % kioskSnacks.Length], 0.30f);
-                CreateBox("KioskSnack_" + c, kalyeKiosk, new Vector3(-0.95f + c * 0.62f, 2.08f, -0.66f), new Vector3(0.20f, 0.24f, 0.05f), sm, false);
+                CreateBox("KioskSnack_" + c, kalyeKiosk, new Vector3(-2.10f + c * 0.62f, 2.24f, -0.84f), new Vector3(0.20f, 0.24f, 0.05f), sm, false);
             }
 
-            Vector3 kalyeStorePoint = new Vector3(-4.2f, 0f, -11.6f);
-            if (!StoreInteractionPoints.Contains(kalyeStorePoint))
+            // Aling Nena Tindera inside the Kalye Sari-Sari Kiosk window
+            var tindera = new GameObject("AlingNena_Tindera");
+            tindera.transform.SetParent(kalyeKiosk, false);
+            tindera.transform.localPosition = new Vector3(-1.15f, 0.12f, -0.10f);
+            tindera.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            CharacterVisualBuilder.BuildCharacterVisual(
+                tindera,
+                CharacterOutfitRole.Tindera,
+                new Color(0.92f, 0.56f, 0.20f),
+                new Color(0.24f, 0.28f, 0.42f),
+                new Color(0.75f, 0.52f, 0.37f),
+                new Color(0.18f, 0.42f, 0.68f)
+            );
+
+            StoreInteractionPoint = new Vector3(-7.6f, 0f, -11.2f);
+            if (!StoreInteractionPoints.Contains(StoreInteractionPoint))
             {
-                StoreInteractionPoints.Add(kalyeStorePoint);
+                StoreInteractionPoints.Add(StoreInteractionPoint);
             }
 
-            // 2. EAST ZONE: Player's Neighborhood & Barangay Plaza Park (x = +15 .. +31, z > -12.2)
+            // 2. EAST ZONE: Player's Neighborhood & Barangay Plaza Park (x = +15 .. +31, z > -11.5)
             CreateBox("EastPlazaLawn", zones, new Vector3(22.5f, -0.009f, 0f), new Vector3(14f, 0.02f, 18f), grassMat, false);
             CreateBox("EastPlazaPatio", zones, new Vector3(22.2f, 0.002f, 0f), new Vector3(10.5f, 0.02f, 12.5f), plazaTileMat, false);
 
@@ -923,7 +892,7 @@ namespace TeksMaster.World
             CreateBox("HomeRoofPeak", playerHouse, new Vector3(0f, 3.92f, 0f), new Vector3(2.80f, 0.46f, 2.90f), roofMat, false);
             CreateBox("HomePorchLamp", playerHouse, new Vector3(-1.82f, 2.42f, 0f), new Vector3(0.18f, 0.18f, 0.18f), porchGlowMat, false);
             CreateBox("HomeSignBg", playerHouse, new Vector3(-1.76f, 2.95f, 0f), new Vector3(0.10f, 0.52f, 2.15f), homeTrimMat, false);
-            var homeLabel = CreateWorldText("HomeSignText", playerHouse, new Vector3(-1.83f, 2.95f, 0f), "MY HOUSE", 19, new Color(1.0f, 0.94f, 0.40f));
+            var homeLabel = CreateWorldText("HomeSignText", playerHouse, new Vector3(-1.83f, 2.95f, 0f), "MY HOUSE", 52, new Color(1.0f, 0.94f, 0.40f), 0.20f, 0.13f);
             homeLabel.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
 
             // Plaza Bench (for bench sitter Ate Lorna)
@@ -946,9 +915,11 @@ namespace TeksMaster.World
             CreateCylinder("KuboPost4", kubo, new Vector3(2.0f, 1.55f, 2.0f), new Vector3(0.14f, 1.45f, 0.14f), woodMat, true);
             CreateBox("KuboRoofLower", kubo, new Vector3(0f, 3.15f, 0f), new Vector3(5.6f, 0.24f, 5.6f), roofMat, false);
             CreateBox("KuboRoofPeak", kubo, new Vector3(0f, 3.55f, 0f), new Vector3(3.4f, 0.55f, 3.4f), roofMat, false);
-            CreateWorldText("PlazaSign", kubo, new Vector3(0f, 3.25f, -2.85f), "BARANGAY PLAZA", 20, new Color(1.0f, 0.90f, 0.35f));
+            Material signBoardMat = CardArtGenerator.CreateLitMaterial(new Color(0.14f, 0.30f, 0.22f), 0.16f);
+            CreateBox("PlazaSignBg", kubo, new Vector3(0f, 3.28f, -2.86f), new Vector3(3.1f, 0.68f, 0.12f), signBoardMat, false);
+            CreateWorldText("PlazaSign", kubo, new Vector3(0f, 3.28f, -2.94f), "BARANGAY PLAZA", 52, new Color(1.0f, 0.90f, 0.35f), 0.20f, 0.13f);
 
-            // 3. WEST ZONE: Old Neighborhood & Waiting Shed (x = -16 .. -29)
+            // 3. WEST ZONE: Old Neighborhood & Waiting Shed (x = -16 .. -29, z > -8.4)
             CreateBox("WestTambayanPad", zones, new Vector3(-22.2f, 0.002f, 0f), new Vector3(13f, 0.02f, 16f), plazaTileMat, false);
 
             var shed = new GameObject("WestWaitingShed").transform;
@@ -960,18 +931,20 @@ namespace TeksMaster.World
             CreateCylinder("ShedPostR", shed, new Vector3(2.4f, 1.45f, -1.1f), new Vector3(0.12f, 1.45f, 0.12f), chromeMat, true);
             var shedRoof = CreateBox("ShedRoof", shed, new Vector3(0f, 2.85f, 0f), new Vector3(5.8f, 0.16f, 3.2f), jeepBlueMat, false);
             shedRoof.transform.localRotation = Quaternion.Euler(8f, 0f, 0f);
-            CreateWorldText("ShedSign", shed, new Vector3(0f, 2.95f, -1.65f), "OLD NEIGHBORHOOD\nTAMBAYAN SHED", 18, new Color(1.0f, 0.88f, 0.24f));
+            CreateBox("ShedSignBg", shed, new Vector3(0f, 2.98f, -1.66f), new Vector3(3.4f, 0.86f, 0.12f), signBoardMat, false);
+            CreateWorldText("ShedSign", shed, new Vector3(0f, 2.98f, -1.74f), "OLD NEIGHBORHOOD\nTAMBAYAN SHED", 50, new Color(1.0f, 0.88f, 0.24f), 0.19f, 0.13f);
 
-            // 4. SOUTH-EAST SEPARATE ZONE: Barangay Fiesta Stage & Teks Arena (x = +17 .. +31, z = -12 .. -24)
+            // 4. SOUTH-EAST SEPARATE ZONE: Barangay Fiesta Stage & Teks Arena (South of Highway: x in [14.5, 32.0], z in [-36.5, -20.8])
             var fiesta = new GameObject("BarangayFiestaArena").transform;
             fiesta.SetParent(zones, false);
-            fiesta.position = new Vector3(23.5f, 0f, -18.5f);
+            fiesta.position = new Vector3(23.5f, 0f, -28.5f);
 
             CreateBox("FiestaFloorPad", fiesta, new Vector3(0f, 0.004f, 0f), new Vector3(13.5f, 0.02f, 11.5f), plazaTileMat, false);
             CreateBox("FiestaStagePlatform", fiesta, new Vector3(3.4f, 0.35f, -2.6f), new Vector3(5.4f, 0.70f, 3.6f), woodMat, true);
             CreateBox("FiestaStageBackdrop", fiesta, new Vector3(3.4f, 2.30f, -4.3f), new Vector3(5.4f, 3.2f, 0.25f), jeepBlueMat, true);
             CreateBox("FiestaStageRoof", fiesta, new Vector3(3.4f, 4.05f, -2.5f), new Vector3(6.2f, 0.22f, 4.4f), roofMat, false);
-            CreateWorldText("FiestaStageSign", fiesta, new Vector3(3.4f, 3.15f, -4.12f), "BARANGAY FIESTA\nTEKS ARENA", 22, new Color(1.0f, 0.88f, 0.22f));
+            var fiestaSign = CreateWorldText("FiestaStageSign", fiesta, new Vector3(3.4f, 3.15f, -4.12f), "BARANGAY FIESTA\nTEKS ARENA", 56, new Color(1.0f, 0.88f, 0.22f), 0.22f, 0.14f);
+            fiestaSign.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
             // Overhead colorful Filipino Fiesta Banderitas (bunting flags) strung across the Fiesta Arena
             Material[] flagMats = { jeepRedMat, cartYellowMat, jeepBlueMat, grassMat };
@@ -986,10 +959,11 @@ namespace TeksMaster.World
                 flag.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
             }
 
-            // Directional Wooden Barangay Street Signposts at the Basketball Court Exits
-            BuildDirectionSign(zones, new Vector3(-14.8f, 0f, 3.6f), Quaternion.Euler(0f, -90f, 0f), "OLD NEIGHBORHOOD\nWEST ALLEY ->", woodMat);
-            BuildDirectionSign(zones, new Vector3(14.8f, 0f, 3.6f), Quaternion.Euler(0f, 90f, 0f), "PLAYER'S\nNEIGHBORHOOD ->", woodMat);
-            BuildDirectionSign(zones, new Vector3(4.6f, 0f, -9.2f), Quaternion.Euler(0f, 180f, 0f), "SARI-SARI, KALYE &\nFIESTA ARENA", woodMat);
+            // Directional Wooden Barangay Street Signposts at Area Entrances (all cleanly outside Highway z in [-18.5, -11.5])
+            BuildDirectionSign(zones, new Vector3(-14.8f, 0f, 3.6f), Quaternion.Euler(0f, -90f, 0f), "OLD NEIGHBORHOOD\nWEST ALLEY", woodMat);
+            BuildDirectionSign(zones, new Vector3(14.8f, 0f, 3.6f), Quaternion.Euler(0f, 90f, 0f), "PLAYER'S\nNEIGHBORHOOD", woodMat);
+            BuildDirectionSign(zones, new Vector3(4.6f, 0f, -9.2f), Quaternion.identity, "KALYE, SARI-SARI &\nSOUTH ARENAS", woodMat);
+            BuildDirectionSign(zones, new Vector3(17.8f, 0f, -19.8f), Quaternion.Euler(0f, 180f, 0f), "FIESTA TEKS ARENA\nSOUTH ENTRANCE", woodMat);
         }
 
         private void BuildDirectionSign(Transform parent, Vector3 pos, Quaternion rot, string text, Material woodMat)
@@ -999,8 +973,119 @@ namespace TeksMaster.World
             sign.position = pos;
             sign.rotation = rot;
             CreateCylinder("SignPost", sign, new Vector3(0f, 1.3f, 0f), new Vector3(0.08f, 1.3f, 0.08f), woodMat, false);
-            CreateBox("SignBoard", sign, new Vector3(0f, 2.25f, 0f), new Vector3(2.2f, 0.78f, 0.10f), CardArtGenerator.CreateLitMaterial(new Color(0.14f, 0.34f, 0.22f), 0.15f), false);
-            CreateWorldText("SignLabel", sign, new Vector3(0f, 2.25f, -0.08f), text, 17, new Color(1.0f, 0.92f, 0.32f));
+            CreateBox("SignBoard", sign, new Vector3(0f, 2.25f, 0f), new Vector3(2.8f, 0.92f, 0.10f), CardArtGenerator.CreateLitMaterial(new Color(0.14f, 0.34f, 0.22f), 0.15f), false);
+            CreateWorldText("SignLabelFront", sign, new Vector3(0f, 2.25f, -0.07f), text, 50, new Color(1.0f, 0.92f, 0.32f), 0.19f, 0.13f);
+        }
+
+        private void BuildTournamentArena()
+        {
+            // South-West 3D Tournament Arena: x in [-31.0, -14.5], z in [-36.5, -20.8], center (-22.8, 0, -28.5)
+            var arena = new GameObject("BarangayTournamentArena").transform;
+            arena.SetParent(CourtRoot, false);
+            arena.position = new Vector3(-22.8f, 0f, -28.5f);
+
+            Material padMat = CardArtGenerator.CreateLitMaterial(new Color(0.24f, 0.30f, 0.42f), 0.18f);
+            Material ringOuterMat = CardArtGenerator.CreateLitMaterial(new Color(0.94f, 0.72f, 0.16f), 0.35f, 0.25f);
+            Material ringInnerMat = CardArtGenerator.CreateLitMaterial(new Color(0.16f, 0.22f, 0.32f), 0.16f);
+            Material pillarMat = CardArtGenerator.CreateLitMaterial(new Color(0.18f, 0.24f, 0.38f), 0.25f);
+            Material goldMat = CardArtGenerator.CreateLitMaterial(new Color(0.98f, 0.80f, 0.18f), 0.55f, 0.55f);
+            Material silverMat = CardArtGenerator.CreateLitMaterial(new Color(0.76f, 0.80f, 0.86f), 0.50f, 0.50f);
+            Material bronzeMat = CardArtGenerator.CreateLitMaterial(new Color(0.78f, 0.48f, 0.24f), 0.45f, 0.40f);
+            Material trophyGlowMat = CardArtGenerator.CreateUnlitEmissiveMaterial(new Color(1.0f, 0.86f, 0.24f), 1.9f);
+            Material concreteMat = CardArtGenerator.CreateLitMaterial(new Color(0.56f, 0.55f, 0.52f), 0.15f);
+            Material woodMat = CardArtGenerator.CreateLitMaterial(new Color(0.52f, 0.34f, 0.18f), 0.20f);
+            Material boothWallMat = CardArtGenerator.CreateLitMaterial(new Color(0.16f, 0.34f, 0.58f), 0.22f);
+            Material boothAwningMat = CardArtGenerator.CreateLitMaterial(new Color(0.84f, 0.22f, 0.18f), 0.25f);
+            Material signBoardMat = CardArtGenerator.CreateLitMaterial(new Color(0.10f, 0.14f, 0.24f), 0.20f);
+
+            // Arena Floor Pad (14m x 12m)
+            CreateBox("TournamentFloorPad", arena, new Vector3(0f, 0.005f, 0f), new Vector3(14.0f, 0.02f, 12.0f), padMat, false);
+
+            // Central Battle Ring (centered at (-22.8, 0, -28.5))
+            CreateBox("BattleRingOuter", arena, new Vector3(0f, 0.012f, 0f), new Vector3(5.6f, 0.02f, 5.6f), ringOuterMat, false);
+            CreateBox("BattleRingInner", arena, new Vector3(0f, 0.018f, 0f), new Vector3(5.0f, 0.02f, 5.0f), ringInnerMat, false);
+            CreateBox("BattleRingCenterLine", arena, new Vector3(0f, 0.024f, 0f), new Vector3(4.8f, 0.01f, 0.12f), ringOuterMat, false);
+
+            // Low perimeter walls around SW arena (leaving North entrance open at x in [-3.1, +3.1], local z = +7.7 -> world z = -20.8)
+            CreateBox("ArenaWallEast", arena, new Vector3(8.1f, 0.55f, 0f), new Vector3(0.28f, 1.1f, 15.6f), pillarMat, true);
+            CreateBox("ArenaWallWest", arena, new Vector3(-8.1f, 0.55f, 0f), new Vector3(0.28f, 1.1f, 15.6f), pillarMat, true);
+            CreateBox("ArenaWallSouth", arena, new Vector3(0f, 0.55f, -7.8f), new Vector3(16.4f, 1.1f, 0.28f), pillarMat, true);
+            CreateBox("ArenaWallNorthL", arena, new Vector3(-5.6f, 0.55f, 7.7f), new Vector3(5.0f, 1.1f, 0.28f), pillarMat, true);
+            CreateBox("ArenaWallNorthR", arena, new Vector3(5.6f, 0.55f, 7.7f), new Vector3(5.0f, 1.1f, 0.28f), pillarMat, true);
+
+            // Entrance Archway at world (-22.8, 0, -20.8) -> local (0, 0, +7.7)
+            var arch = new GameObject("TournamentEntranceArchway").transform;
+            arch.SetParent(arena, false);
+            arch.localPosition = new Vector3(0f, 0f, 7.7f);
+            CreateBox("ArchPillarL", arch, new Vector3(-3.1f, 2.0f, 0f), new Vector3(0.48f, 4.0f, 0.48f), pillarMat, true);
+            CreateBox("ArchPillarR", arch, new Vector3(3.1f, 2.0f, 0f), new Vector3(0.48f, 4.0f, 0.48f), pillarMat, true);
+            CreateBox("ArchHeaderFrame", arch, new Vector3(0f, 3.85f, 0f), new Vector3(6.8f, 1.15f, 0.22f), goldMat, false);
+            CreateBox("ArchHeaderBoard", arch, new Vector3(0f, 3.85f, 0f), new Vector3(6.4f, 0.96f, 0.26f), signBoardMat, false);
+            var archSignFront = CreateWorldText("TournamentArchSignFront", arch, new Vector3(0f, 3.85f, 0.16f), "TOURNAMENT ARENA", 56, new Color(1.0f, 0.88f, 0.24f), 0.22f, 0.15f);
+            archSignFront.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            // West Bleachers (local x = -6.4, facing East)
+            var westBleachers = new GameObject("TournamentBleachersWest").transform;
+            westBleachers.SetParent(arena, false);
+            westBleachers.localPosition = new Vector3(-6.4f, 0f, 0f);
+            CreateBox("WestTier1", westBleachers, new Vector3(0.45f, 0.22f, 0f), new Vector3(0.95f, 0.44f, 8.6f), concreteMat, true);
+            CreateBox("WestTier2", westBleachers, new Vector3(-0.45f, 0.55f, 0f), new Vector3(0.95f, 1.10f, 8.6f), concreteMat, true);
+            CreateBox("WestPlank1", westBleachers, new Vector3(0.45f, 0.46f, 0f), new Vector3(0.55f, 0.06f, 8.5f), woodMat, false);
+            CreateBox("WestPlank2", westBleachers, new Vector3(-0.45f, 1.12f, 0f), new Vector3(0.55f, 0.06f, 8.5f), woodMat, false);
+
+            // South Bleachers (local z = -6.2, facing North)
+            var southBleachers = new GameObject("TournamentBleachersSouth").transform;
+            southBleachers.SetParent(arena, false);
+            southBleachers.localPosition = new Vector3(0f, 0f, -6.2f);
+            CreateBox("SouthTier1", southBleachers, new Vector3(0f, 0.22f, 0.45f), new Vector3(9.0f, 0.44f, 0.95f), concreteMat, true);
+            CreateBox("SouthTier2", southBleachers, new Vector3(0f, 0.55f, -0.45f), new Vector3(9.0f, 1.10f, 0.95f), concreteMat, true);
+            CreateBox("SouthPlank1", southBleachers, new Vector3(0f, 0.46f, 0.45f), new Vector3(8.9f, 0.06f, 0.55f), woodMat, false);
+            CreateBox("SouthPlank2", southBleachers, new Vector3(0f, 1.12f, -0.45f), new Vector3(8.9f, 0.06f, 0.55f), woodMat, false);
+
+            // Golden Trophy Podium on East side of Arena (local x = +6.0, z = 0)
+            var podium = new GameObject("TournamentTrophyPodium").transform;
+            podium.SetParent(arena, false);
+            podium.localPosition = new Vector3(6.0f, 0f, 0f);
+            CreateBox("Podium1st", podium, new Vector3(0f, 0.55f, 0f), new Vector3(1.4f, 1.10f, 1.6f), goldMat, true);
+            CreateBox("Podium2nd", podium, new Vector3(0f, 0.38f, 1.55f), new Vector3(1.3f, 0.76f, 1.3f), silverMat, true);
+            CreateBox("Podium3rd", podium, new Vector3(0f, 0.26f, -1.55f), new Vector3(1.3f, 0.52f, 1.3f), bronzeMat, true);
+            CreateCylinder("TrophyBase", podium, new Vector3(0f, 1.20f, 0f), new Vector3(0.36f, 0.10f, 0.36f), goldMat, false);
+            CreateCylinder("TrophyStem", podium, new Vector3(0f, 1.48f, 0f), new Vector3(0.12f, 0.22f, 0.12f), goldMat, false);
+            CreateCylinder("TrophyCup", podium, new Vector3(0f, 1.88f, 0f), new Vector3(0.42f, 0.28f, 0.42f), trophyGlowMat, false);
+            var podiumSign = CreateWorldText("TrophyPodiumSign", podium, new Vector3(-0.74f, 0.58f, 0f), "1ST PRIZE\n600 COINS", 48, new Color(0.14f, 0.10f, 0.04f), 0.17f, 0.11f);
+            podiumSign.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+
+            // Registration Booth + Host NPC ("Kuya Ref") at world (-22.8, 0, -23.0) -> local (0, 0, +5.5)
+            var booth = new GameObject("TournamentRegistrationBooth").transform;
+            booth.SetParent(arena, false);
+            booth.localPosition = new Vector3(0f, 0f, 5.5f);
+            CreateBox("BoothDesk", booth, new Vector3(0f, 0.55f, 0.35f), new Vector3(2.8f, 1.10f, 0.75f), boothWallMat, true);
+            CreateBox("BoothCounterTop", booth, new Vector3(0f, 1.13f, 0.38f), new Vector3(3.0f, 0.08f, 0.90f), woodMat, true);
+            CreateBox("BoothPostL", booth, new Vector3(-1.35f, 1.45f, 0.35f), new Vector3(0.14f, 2.90f, 0.14f), goldMat, false);
+            CreateBox("BoothPostR", booth, new Vector3(1.35f, 1.45f, 0.35f), new Vector3(0.14f, 2.90f, 0.14f), goldMat, false);
+            var boothRoof = CreateBox("BoothAwning", booth, new Vector3(0f, 2.88f, 0.25f), new Vector3(3.3f, 0.14f, 1.75f), boothAwningMat, false);
+            boothRoof.transform.localRotation = Quaternion.Euler(-8f, 0f, 0f);
+            CreateBox("BoothSignBg", booth, new Vector3(0f, 3.30f, 0.45f), new Vector3(3.0f, 0.76f, 0.12f), signBoardMat, false);
+            var boothSignFront = CreateWorldText("BoothSignFront", booth, new Vector3(0f, 3.30f, 0.53f), "KUYA REF BOOTH\n[E] 3-ROUND CUP", 48, new Color(1.0f, 0.90f, 0.30f), 0.18f, 0.12f);
+            boothSignFront.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            // Host NPC ("Kuya Ref") standing behind the registration desk facing North
+            var kuyaRef = new GameObject("KuyaRef_TournamentHost");
+            kuyaRef.transform.SetParent(booth, false);
+            kuyaRef.transform.localPosition = new Vector3(0f, 0f, -0.35f);
+            kuyaRef.transform.localRotation = Quaternion.identity;
+            TournamentHostTransform = kuyaRef.transform;
+            CharacterVisualBuilder.BuildCharacterVisual(
+                kuyaRef,
+                CharacterOutfitRole.MaleKid,
+                new Color(0.96f, 0.96f, 0.98f),
+                new Color(0.12f, 0.12f, 0.16f),
+                new Color(0.74f, 0.50f, 0.36f),
+                new Color(0.95f, 0.76f, 0.18f)
+            );
+
+            TournamentInteractionPoint = new Vector3(-22.8f, 0f, -22.2f);
+            TournamentBattleCenter = new Vector3(-22.8f, 0f, -28.5f);
         }
 
         private void BuildBarangayHousesAndUtilityPoles()
@@ -1012,40 +1097,71 @@ namespace TeksMaster.World
                 CardArtGenerator.CreateLitMaterial(new Color(0.84f, 0.72f, 0.54f), 0.1f),
                 CardArtGenerator.CreateLitMaterial(new Color(0.78f, 0.64f, 0.50f), 0.1f),
                 CardArtGenerator.CreateLitMaterial(new Color(0.68f, 0.76f, 0.72f), 0.1f),
-                CardArtGenerator.CreateLitMaterial(new Color(0.82f, 0.62f, 0.56f), 0.1f)
+                CardArtGenerator.CreateLitMaterial(new Color(0.82f, 0.62f, 0.56f), 0.1f),
+                CardArtGenerator.CreateLitMaterial(new Color(0.88f, 0.80f, 0.62f), 0.1f)
             };
             Material tinRoofMat = CardArtGenerator.CreateLitMaterial(new Color(0.56f, 0.38f, 0.30f), 0.25f, 0.25f);
             Material windowMat = CardArtGenerator.CreateLitMaterial(new Color(0.18f, 0.22f, 0.28f), 0.4f);
+            Material doorMat = CardArtGenerator.CreateLitMaterial(new Color(0.42f, 0.24f, 0.14f), 0.2f);
+            Material porchMat = CardArtGenerator.CreateLitMaterial(new Color(0.64f, 0.60f, 0.54f), 0.15f);
+            Material lampGlowMat = CardArtGenerator.CreateUnlitEmissiveMaterial(new Color(1.0f, 0.88f, 0.52f), 1.35f);
 
-            Vector3[] housePositions = {
-                new Vector3(-16f, 0f, 14f),
-                new Vector3(-9.5f, 0f, 15.2f),
-                new Vector3(-2.5f, 0f, 14.8f),
-                new Vector3(3.2f, 0f, 15.8f),
-                new Vector3(16.8f, 0f, 14.5f),
-                new Vector3(-33.5f, 0f, 4.5f),
-                new Vector3(-33.2f, 0f, -5.5f),
-                new Vector3(34.5f, 0f, 3.0f),
-                new Vector3(34.5f, 0f, -7.0f)
+            int houseIndex = 0;
+
+            // Existing North & Side Perimeter Houses
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-16f, 0f, 14f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-9.5f, 0f, 15.2f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-2.5f, 0f, 14.8f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(3.2f, 0f, 15.8f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(16.8f, 0f, 14.5f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-33.5f, 0f, 4.5f), -90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-33.2f, 0f, -5.5f), -90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(34.5f, 0f, 3.0f), 90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(34.5f, 0f, -7.0f), 90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+
+            // North Perimeter Fill (yaw = 0)
+            Vector3[] northFill = {
+                new Vector3(9.8f, 0f, 14.8f),
+                new Vector3(23.4f, 0f, 15.0f),
+                new Vector3(29.8f, 0f, 14.6f),
+                new Vector3(-23.0f, 0f, 14.6f),
+                new Vector3(-29.2f, 0f, 14.8f)
             };
-
-            for (int i = 0; i < housePositions.Length; i++)
+            for (int i = 0; i < northFill.Length; i++)
             {
-                float hHeight = 4.2f + (i % 3) * 1.4f;
-                float hWidth = 4.8f + (i % 2) * 1.1f;
-                Vector3 pos = housePositions[i];
-
-                var house = new GameObject("BarangayHouse_" + i).transform;
-                house.SetParent(backdrop, false);
-                house.position = pos;
-
-                CreateBox("Walls", house, new Vector3(0f, hHeight * 0.5f, 0f), new Vector3(hWidth, hHeight, 4.4f), houseWalls[i % houseWalls.Length], false);
-                var roof = CreateBox("Roof", house, new Vector3(0f, hHeight + 0.3f, 0f), new Vector3(hWidth + 0.7f, 0.25f, 5.1f), tinRoofMat, false);
-                roof.transform.localRotation = Quaternion.Euler(8f, 0f, 0f);
-
-                CreateBox("Win1", house, new Vector3(-1.1f, hHeight * 0.65f, -2.23f), new Vector3(0.95f, 0.85f, 0.08f), windowMat, false);
-                CreateBox("Win2", house, new Vector3(1.1f, hHeight * 0.65f, -2.23f), new Vector3(0.95f, 0.85f, 0.08f), windowMat, false);
+                BuildBarangayHouse(backdrop, houseIndex++, northFill[i], 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
             }
+
+            // South Highway Residential Row (yaw = 180, solid colliders & porch details facing highway)
+            Vector3[] southHighwayRow = {
+                new Vector3(-11.2f, 0f, -23.6f),
+                new Vector3(-5.2f, 0f, -24.0f),
+                new Vector3(0.8f, 0f, -23.6f),
+                new Vector3(6.8f, 0f, -24.0f),
+                new Vector3(11.8f, 0f, -23.6f)
+            };
+            for (int i = 0; i < southHighwayRow.Length; i++)
+            {
+                BuildBarangayHouse(backdrop, houseIndex++, southHighwayRow[i], 180f, true, true, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            }
+
+            // South Backdrop Row (yaw = 180, non-colliding depth skyline)
+            Vector3[] southBackdropRow = {
+                new Vector3(-9.5f, 0f, -31.8f),
+                new Vector3(-2.5f, 0f, -32.2f),
+                new Vector3(4.5f, 0f, -31.8f),
+                new Vector3(10.5f, 0f, -32.2f)
+            };
+            for (int i = 0; i < southBackdropRow.Length; i++)
+            {
+                BuildBarangayHouse(backdrop, houseIndex++, southBackdropRow[i], 180f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            }
+
+            // West & East Perimeter Extensions
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -23.5f), -90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -31.5f), -90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -23.5f), 90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -31.5f), 90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
 
             // Wooden Meralco Utility Poles & Overhead Power Lines
             Material poleMat = CardArtGenerator.CreateLitMaterial(new Color(0.36f, 0.25f, 0.16f), 0.15f);
@@ -1063,7 +1179,7 @@ namespace TeksMaster.World
             BuildSaggingWire(backdrop, poleA + Vector3.up * 7.2f, poleB + Vector3.up * 7.2f, wireMat);
             BuildSaggingWire(backdrop, poleB + Vector3.up * 7.8f, poleC + Vector3.up * 7.8f, wireMat);
 
-            // Banana / Palm Trees behind the Sari-Sari store & fence
+            // Banana / Palm Trees around the perimeter
             Material leafMat = CardArtGenerator.CreateLitMaterial(new Color(0.24f, 0.56f, 0.22f), 0.2f);
             Vector3[] treePositions = {
                 new Vector3(7.5f, 0f, 11.4f),
@@ -1086,6 +1202,45 @@ namespace TeksMaster.World
                     frond.transform.localRotation = Quaternion.Euler(22f, ang, 0f);
                     frond.transform.localPosition += frond.transform.forward * 1.15f;
                 }
+            }
+        }
+
+        private void BuildBarangayHouse(
+            Transform parent,
+            int index,
+            Vector3 pos,
+            float yaw,
+            bool keepCollider,
+            bool addPorchDetail,
+            Material[] houseWalls,
+            Material tinRoofMat,
+            Material windowMat,
+            Material doorMat,
+            Material porchMat,
+            Material lampGlowMat)
+        {
+            float hHeight = 4.2f + (index % 3) * 1.2f;
+            float hWidth = 4.6f + (index % 2) * 0.9f;
+
+            var house = new GameObject("BarangayHouse_" + index).transform;
+            house.SetParent(parent, false);
+            house.position = pos;
+            house.rotation = Quaternion.Euler(0f, yaw, 0f);
+
+            CreateBox("Walls", house, new Vector3(0f, hHeight * 0.5f, 0f), new Vector3(hWidth, hHeight, 4.4f), houseWalls[index % houseWalls.Length], keepCollider);
+            var roof = CreateBox("Roof", house, new Vector3(0f, hHeight + 0.3f, 0f), new Vector3(hWidth + 0.7f, 0.25f, 5.1f), tinRoofMat, false);
+            roof.transform.localRotation = Quaternion.Euler(8f, 0f, 0f);
+
+            CreateBox("Win1", house, new Vector3(-1.1f, hHeight * 0.65f, -2.23f), new Vector3(0.95f, 0.85f, 0.08f), windowMat, false);
+            CreateBox("Win2", house, new Vector3(1.1f, hHeight * 0.65f, -2.23f), new Vector3(0.95f, 0.85f, 0.08f), windowMat, false);
+
+            if (addPorchDetail)
+            {
+                CreateBox("FrontDoor", house, new Vector3(0f, 1.05f, -2.23f), new Vector3(1.05f, 2.05f, 0.08f), doorMat, false);
+                CreateBox("PorchStep", house, new Vector3(0f, 0.14f, -2.55f), new Vector3(2.4f, 0.28f, 0.75f), porchMat, keepCollider);
+                var awning = CreateBox("PorchAwning", house, new Vector3(0f, 2.55f, -2.65f), new Vector3(2.8f, 0.12f, 1.1f), tinRoofMat, false);
+                awning.transform.localRotation = Quaternion.Euler(14f, 0f, 0f);
+                CreateBox("PorchLamp", house, new Vector3(0.75f, 2.15f, -2.28f), new Vector3(0.18f, 0.18f, 0.14f), lampGlowMat, false);
             }
         }
 
@@ -1128,9 +1283,9 @@ namespace TeksMaster.World
             dodong.WinBanter = "Haha! Sabi sa'yo swerte 'tong Bantay Kalye ko eh!";
             dodong.LoseBanter = "Ayos! Galing mo na — puntahan mo naman si Mark sa Kalye!";
 
-            // Story 2: Mark (Easy) — Sari-Sari & Kalye
+            // Story 2: Mark (Easy) — Sari-Sari & Kalye (North Sidewalk beside Kalye Kiosk, clear of Court Entrance)
             var mark = CreateOpponent("Mark", AIDifficulty.Easy, "tumbang_striker", 2, 60,
-                new Vector3(-3.2f, 0f, -12.2f), Quaternion.Euler(0f, 165f, 0f),
+                new Vector3(-3.8f, 0f, -10.8f), Quaternion.Euler(0f, 165f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.92f, 0.44f, 0.16f), new Color(0.16f, 0.26f, 0.46f), new Color(0.96f, 0.84f, 0.22f),
                 isSeated: false, isWandering: false, isBenchSitter: false,
@@ -1164,9 +1319,9 @@ namespace TeksMaster.World
             joshua.WinBanter = "Matibay pa rin ang Old Neighborhood! Balik ka pag handa ka na!";
             joshua.LoseBanter = "Respeto! Bukas na ang Fiesta Teks Arena — naghihintay si Teks Master!";
 
-            // Story 5: Teks Master (Extreme Champion) — Fiesta Teks Arena
+            // Story 5: Teks Master (Extreme Champion) — Fiesta Teks Arena (South of Highway, Δz = -10.0)
             var teksMaster = CreateOpponent("Teks Master", AIDifficulty.Extreme, "adarna_phoenix", 5, 500,
-                new Vector3(26.4f, 0f, -17.4f), Quaternion.Euler(0f, -80f, 0f),
+                new Vector3(26.4f, 0f, -27.4f), Quaternion.Euler(0f, -80f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(1.0f, 0.76f, 0.14f), new Color(0.16f, 0.12f, 0.28f), new Color(1.0f, 0.92f, 0.34f),
                 isSeated: false, isWandering: false, isBenchSitter: false,
@@ -1256,9 +1411,9 @@ namespace TeksMaster.World
             kapitan.WinBanter = "Walang makakatalo sa Hari ng Court!";
             kapitan.LoseBanter = "Ikaw na bagong Teks Master ng Barangay!!";
 
-            // 5. SOUTH ZONE (Sari-Sari & Kalye) AI Opponents
+            // 5. SOUTH ZONE (Sari-Sari & Kalye — North Sidewalk & South Shoulder, clear of Highway asphalt)
             var junjun = CreateOpponent("AI Junjun", AIDifficulty.Easy, "tumbang_striker", 2, 70,
-                new Vector3(-6.2f, 0f, -12.6f), Quaternion.Euler(0f, 25f, 0f),
+                new Vector3(-7.4f, 0f, -10.8f), Quaternion.Euler(0f, 160f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.24f, 0.72f, 0.42f), new Color(0.20f, 0.24f, 0.34f), new Color(0.95f, 0.78f, 0.20f),
                 isSeated: false, isWandering: true);
@@ -1266,7 +1421,7 @@ namespace TeksMaster.World
             junjun.AmbientCallouts = new[] { "Fishball & Teks!", "70 Coins lang, tara!", "Tumbang Striker ko 'to!" };
 
             var bea = CreateOpponent("AI Bea", AIDifficulty.Medium, "patintero_flash", 3, 140,
-                new Vector3(2.8f, 0f, -13.2f), Quaternion.Euler(0f, -20f, 0f),
+                new Vector3(2.8f, 0f, -10.8f), Quaternion.Euler(0f, -165f, 0f),
                 CharacterOutfitRole.FemaleKid,
                 new Color(0.96f, 0.50f, 0.16f), new Color(0.18f, 0.28f, 0.56f), new Color(1.0f, 0.86f, 0.22f),
                 isSeated: false, isWandering: true);
@@ -1274,7 +1429,7 @@ namespace TeksMaster.World
             bea.AmbientCallouts = new[] { "Kalye Showdown tayo!", "140 Coins, palag?", "Wala kang laban sa bilis ko!" };
 
             var manong = CreateOpponent("Manong Driver", AIDifficulty.Hard, "jeepney_mech", 4, 300,
-                new Vector3(6.2f, 0f, -14.2f), Quaternion.Euler(0f, -45f, 0f),
+                new Vector3(4.6f, 0f, -19.4f), Quaternion.Euler(0f, -25f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.86f, 0.20f, 0.22f), new Color(0.18f, 0.36f, 0.72f), new Color(0.95f, 0.85f, 0.22f),
                 isSeated: false, isWandering: false);
@@ -1330,9 +1485,9 @@ namespace TeksMaster.World
             lolo.LoseBanter = "Kahanga-hanga! Ikaw na ang susunod na Teks Legend!";
 
             // 8. EXTRA NEIGHBORHOOD OPPONENTS (Placed ONLY in Separate External Areas — Keeping Basketball Court Clean!)
-            // South Kalye Street (by Fishball Cart)
+            // South Kalye Street (by Fishball Cart on North Sidewalk)
             var tonton = CreateOpponent("AI Tonton", AIDifficulty.Easy, "balut_drone", 2, 65,
-                new Vector3(-10.5f, 0f, -13.2f), Quaternion.Euler(0f, 40f, 0f),
+                new Vector3(-12.2f, 0f, -11.2f), Quaternion.Euler(0f, 150f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.96f, 0.82f, 0.22f), new Color(0.18f, 0.36f, 0.64f), new Color(0.88f, 0.24f, 0.24f),
                 isSeated: false, isWandering: true);
@@ -1365,9 +1520,9 @@ namespace TeksMaster.World
             ella.ChallengeQuote = "Tara dito sa Waiting Shed! Friendly Teks, 75 Coins!";
             ella.AmbientCallouts = new[] { "Waiting Shed Teks!", "Sorbetes Bot freeze!", "75 Coins tara!" };
 
-            // 9. SOUTH-EAST FIESTA TEKS ARENA ELITE CHALLENGERS
+            // 9. SOUTH-EAST FIESTA TEKS ARENA ELITE CHALLENGERS (shifted South of Highway by Δz = -10.0)
             var ronnie = CreateOpponent("Kuya Ronnie", AIDifficulty.Hard, "rizal_vanguard", 4, 270,
-                new Vector3(19.6f, 0f, -18.5f), Quaternion.Euler(0f, 65f, 0f),
+                new Vector3(19.6f, 0f, -28.5f), Quaternion.Euler(0f, 65f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.16f, 0.34f, 0.78f), new Color(0.86f, 0.20f, 0.22f), new Color(1.0f, 0.86f, 0.24f),
                 isSeated: false, isWandering: false);
@@ -1375,7 +1530,7 @@ namespace TeksMaster.World
             ronnie.AmbientCallouts = new[] { "Manila Vanguard!", "270 Coins Fiesta Match!", "Fiesta Arena Challenger!" };
 
             var macky = CreateOpponent("Boss Macky", AIDifficulty.Hard, "minokawa", 4, 290,
-                new Vector3(23.2f, 0f, -15.6f), Quaternion.Euler(0f, -165f, 0f),
+                new Vector3(23.2f, 0f, -25.6f), Quaternion.Euler(0f, -165f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.36f, 0.14f, 0.58f), new Color(0.88f, 0.30f, 0.14f), new Color(1.0f, 0.80f, 0.20f),
                 isSeated: false, isWandering: false);
@@ -1385,7 +1540,7 @@ namespace TeksMaster.World
             macky.LoseBanter = "Solid ng Pamato mo! Harapin mo sina Rico at Teks Master!";
 
             var rico = CreateOpponent("Fiesta Champ Rico", AIDifficulty.Boss, "sun_dragon_hero", 5, 750,
-                new Vector3(21.2f, 0f, -20.8f), Quaternion.Euler(0f, 35f, 0f),
+                new Vector3(21.2f, 0f, -30.8f), Quaternion.Euler(0f, 35f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(1.0f, 0.68f, 0.12f), new Color(0.12f, 0.64f, 0.92f), new Color(1.0f, 0.90f, 0.28f),
                 isSeated: false, isWandering: false);
@@ -1410,13 +1565,13 @@ namespace TeksMaster.World
 
             // Area 1: Sari-Sari & Kalye (2 Hidden Cards)
             CreateHiddenCard(hiddenGroup, "hidden_behind_jeepney", "scrap_trisikad",
-                BarangayAreaId.SariSariAndKalye, new Vector3(8.5f, 0.30f, -20.2f), "Behind Barangay Jeepney", 50, 5);
+                BarangayAreaId.SariSariAndKalye, new Vector3(12.4f, 0.30f, -16.7f), "Behind Barangay Jeepney", 50, 5);
             CreateHiddenCard(hiddenGroup, "hidden_fishball_corner", "cyber_taho_bot",
-                BarangayAreaId.SariSariAndKalye, new Vector3(-12.2f, 0.30f, -10.4f), "Fishball Alley Corner", 60, 5);
+                BarangayAreaId.SariSariAndKalye, new Vector3(-13.8f, 0.30f, -9.4f), "Fishball Alley Corner", 60, 5);
 
             // Area 2: Basketball Court (4 Hidden Cards)
             CreateHiddenCard(hiddenGroup, "hidden_behind_sarisari", "agila_kid",
-                BarangayAreaId.BasketballCourt, new Vector3(9.4f, 0.35f, 10.2f), "Behind Sari-Sari Store", 75, 8);
+                BarangayAreaId.BasketballCourt, new Vector3(12.2f, 0.35f, 6.8f), "NE Court Corner", 75, 8);
             CreateHiddenCard(hiddenGroup, "hidden_under_shady_bench", "tikbalang_striker",
                 BarangayAreaId.BasketballCourt, new Vector3(11.4f, 0.22f, -6.65f), "Under Shady Bench", 75, 8);
             CreateHiddenCard(hiddenGroup, "hidden_beside_bleachers", "luksong_tinik",
@@ -1430,9 +1585,9 @@ namespace TeksMaster.World
             CreateHiddenCard(hiddenGroup, "hidden_nw_alley_tree", "manananggal_wing",
                 BarangayAreaId.OldNeighborhood, new Vector3(-16.6f, 0.30f, 10.6f), "Near NW Alley Palm Tree", 95, 10);
 
-            // Area 4: Fiesta Teks Arena (1 Hidden Card)
+            // Area 4: Fiesta Teks Arena (1 Hidden Card — shifted South of Highway by Δz = -10.0)
             CreateHiddenCard(hiddenGroup, "hidden_behind_fiesta_stage", "ibong_adarna",
-                BarangayAreaId.FiestaArena, new Vector3(26.9f, 0.35f, -24.1f), "Behind Fiesta Stage", 150, 15);
+                BarangayAreaId.FiestaArena, new Vector3(26.9f, 0.35f, -34.1f), "Behind Fiesta Stage", 150, 15);
         }
 
         private void CreateHiddenCard(
@@ -1533,21 +1688,30 @@ namespace TeksMaster.World
             actor.SetPose(CharacterPoseMode.SittingOnCourt);
         }
 
-        private TextMesh CreateWorldText(string name, Transform parent, Vector3 localPos, string text, int fontSize, Color color)
+        private TextMesh CreateWorldText(
+            string name,
+            Transform parent,
+            Vector3 localPos,
+            string text,
+            int fontSize,
+            Color color,
+            float characterSize = 0.20f,
+            float worldScale = 0.13f)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
-            go.transform.localScale = Vector3.one * 0.1f;
+            go.transform.localScale = Vector3.one * worldScale;
 
             var tm = go.AddComponent<TextMesh>();
             tm.text = text;
-            tm.fontSize = fontSize;
-            tm.characterSize = 0.85f;
+            tm.fontSize = Mathf.Clamp(fontSize, 48, 60);
+            tm.characterSize = Mathf.Clamp(characterSize, 0.16f, 0.24f);
             tm.anchor = TextAnchor.MiddleCenter;
             tm.alignment = TextAlignment.Center;
             tm.color = color;
             tm.fontStyle = FontStyle.Bold;
+            go.AddComponent<FrontOnlySignText>();
             return tm;
         }
 

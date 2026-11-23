@@ -29,7 +29,8 @@ namespace TeksMaster.Gameplay
         private float _targetFaceUpProb = 0.5f;
         private bool _decidedOutcome;
         private bool _targetFaceUp;
-        private bool _appliedLandingNudge;
+        private bool _hasTouchedGround;
+        private float _groundSlideTimer;
         private float _popTimer = -1f;
 
         private static readonly Vector3 VisualBaseScale = Vector3.one * 1.25f;
@@ -81,16 +82,16 @@ namespace TeksMaster.Gameplay
             Destroy(backFace.GetComponent<Collider>());
             backFace.GetComponent<Renderer>().sharedMaterial = CardArtGenerator.CreateLitMaterial(Color.white, 0.12f, 0f, CardArtGenerator.GetCardBackTexture());
 
-            // Physics setup
+            // Physics setup — zero bounce so teks cards never rebound off the concrete
             var col = root.AddComponent<BoxCollider>();
             col.size = new Vector3(0.275f, 0.020f, 0.388f);
-            var physMat = new PhysicsMaterial("TeksCardBounceMat")
+            var physMat = new PhysicsMaterial("TeksCardNoBounceMat")
             {
-                bounciness = 0.26f,
-                dynamicFriction = 0.72f,
-                staticFriction = 0.80f,
-                bounceCombine = PhysicsMaterialCombine.Average,
-                frictionCombine = PhysicsMaterialCombine.Average
+                bounciness = 0f,
+                dynamicFriction = 0.92f,
+                staticFriction = 0.95f,
+                bounceCombine = PhysicsMaterialCombine.Minimum,
+                frictionCombine = PhysicsMaterialCombine.Maximum
             };
             col.material = physMat;
 
@@ -122,7 +123,8 @@ namespace TeksMaster.Gameplay
             HasSettled = false;
             _flightElapsed = 0f;
             _settledTimer = 0f;
-            _appliedLandingNudge = false;
+            _hasTouchedGround = false;
+            _groundSlideTimer = 0f;
             _popTimer = -1f;
             if (!_hasSpawnRarity || rarity != CardRarity.Common)
             {
@@ -130,7 +132,7 @@ namespace TeksMaster.Gameplay
             }
             if (_visualRoot != null) _visualRoot.localScale = VisualBaseScale;
 
-            // Strictly driven by targetFaceUpProbability (card rarity has 0% effect on flip outcome)
+            // Strictly driven by targetFaceUpProbability
             _targetFaceUpProb = Mathf.Clamp01(targetFaceUpProbability);
             _decidedOutcome = true;
             _targetFaceUp = Random.value < _targetFaceUpProb;
@@ -145,30 +147,47 @@ namespace TeksMaster.Gameplay
 
         private void OnCollisionEnter(Collision collision)
         {
-            if (HasSettled || !_decidedOutcome || _appliedLandingNudge || _rb == null) return;
+            if (HasSettled || !_decidedOutcome || _rb == null) return;
 
-            if (_flightElapsed > 0.16f && collision.gameObject.name == "CourtPhysicsSurface")
+            bool isGroundHit = collision.gameObject.name == "CourtPhysicsSurface" || transform.position.y < 0.15f;
+            if (_flightElapsed > 0.12f && isGroundHit)
             {
-                _appliedLandingNudge = true;
-                ApplyGentleOutcomeNudge();
+                HandleGroundContact();
             }
         }
 
-        private void ApplyGentleOutcomeNudge()
+        private void HandleGroundContact()
         {
-            if (_rb == null) return;
+            if (_rb == null || HasSettled) return;
 
-            bool currentlyFaceUp = IsFaceUp;
-            if (currentlyFaceUp != _targetFaceUp)
+            _hasTouchedGround = true;
+
+            // Immediately kill any vertical rebound so the card never bounces off the floor
+            Vector3 v = _rb.linearVelocity;
+            _rb.linearVelocity = new Vector3(v.x * 0.35f, 0f, v.z * 0.35f);
+            _rb.angularVelocity *= 0.12f;
+
+            // Begin flattening onto the target side without lifting off the ground
+            Quaternion targetRot = GetTargetFlatRotation();
+            _rb.MoveRotation(Quaternion.Slerp(_rb.rotation, targetRot, 0.55f));
+        }
+
+        private Quaternion GetTargetFlatRotation()
+        {
+            Vector3 flatForward = transform.forward;
+            flatForward.y = 0f;
+            if (flatForward.sqrMagnitude < 0.0001f)
             {
-                _rb.AddForce(Vector3.up * 1.15f, ForceMode.Impulse);
-                Vector3 flipAxis = transform.right;
-                _rb.AddTorque(flipAxis * 3.1f, ForceMode.Impulse);
+                flatForward = Vector3.Cross(transform.right, Vector3.up);
+                flatForward.y = 0f;
             }
-            else
+            if (flatForward.sqrMagnitude < 0.0001f)
             {
-                _rb.angularVelocity *= 0.25f;
+                flatForward = Vector3.forward;
             }
+
+            Quaternion yawRot = Quaternion.LookRotation(flatForward.normalized, Vector3.up);
+            return _targetFaceUp ? yawRot : yawRot * Quaternion.Euler(0f, 0f, 180f);
         }
 
         private void FixedUpdate()
@@ -184,31 +203,68 @@ namespace TeksMaster.Gameplay
                 transform.position = p;
             }
 
-            if (_flightElapsed > 0.48f && transform.position.y < 0.20f)
+            if (_decidedOutcome && !_hasTouchedGround)
             {
-                Vector3 desiredUp = _targetFaceUp ? Vector3.up : Vector3.down;
-                Vector3 alignTorque = Vector3.Cross(transform.up, desiredUp);
-                _rb.AddTorque(alignTorque * 0.48f, ForceMode.Force);
+                // Safety ground-contact catch if card descends onto any non-named flat surface
+                if (_flightElapsed > 0.18f && _rb.linearVelocity.y <= 0f && transform.position.y <= 0.024f)
+                {
+                    HandleGroundContact();
+                }
+                else if (_flightElapsed > 0.25f && _rb.linearVelocity.y < 0f)
+                {
+                    // Mid-air descent alignment: preserve natural spin high up, smoothly orient to target side before touchdown
+                    float height = Mathf.Max(0f, transform.position.y - 0.011f);
+                    float proximity = Mathf.Clamp01(1f - height / 1.15f);
+                    Quaternion targetRot = GetTargetFlatRotation();
+                    float slerpRate = Mathf.Clamp01((2.4f + proximity * 14.5f) * Time.fixedDeltaTime);
+                    _rb.MoveRotation(Quaternion.Slerp(_rb.rotation, targetRot, slerpRate));
+
+                    Vector3 angVel = _rb.angularVelocity;
+                    float pitchRollDamp = Mathf.Lerp(0.95f, 0.68f, proximity);
+                    _rb.angularVelocity = new Vector3(
+                        angVel.x * pitchRollDamp,
+                        angVel.y * 0.94f,
+                        angVel.z * pitchRollDamp);
+                }
+            }
+
+            if (_hasTouchedGround)
+            {
+                _groundSlideTimer += Time.fixedDeltaTime;
+
+                // Strictly prevent any upward lift or rebound after ground contact
+                Vector3 v = _rb.linearVelocity;
+                if (v.y > 0f) v.y = 0f;
+                v.x *= 0.80f;
+                v.z *= 0.80f;
+                _rb.linearVelocity = v;
+                _rb.angularVelocity *= 0.55f;
+
+                Quaternion targetRot = GetTargetFlatRotation();
+                _rb.MoveRotation(Quaternion.Slerp(_rb.rotation, targetRot, Mathf.Clamp01(24f * Time.fixedDeltaTime)));
             }
 
             float linSpeed = _rb.linearVelocity.magnitude;
             float angSpeed = _rb.angularVelocity.magnitude;
 
-            if (_flightElapsed > 0.75f && linSpeed < 0.18f && angSpeed < 0.90f && transform.position.y < 0.12f)
+            if (_hasTouchedGround)
             {
-                _settledTimer += Time.fixedDeltaTime;
-                if (_settledTimer >= 0.22f || _flightElapsed > 3.2f)
+                if ((linSpeed < 0.16f && angSpeed < 0.85f) || _groundSlideTimer >= 0.32f)
                 {
-                    SnapFlatAndSettle();
+                    _settledTimer += Time.fixedDeltaTime;
+                    if (_settledTimer >= 0.10f || _groundSlideTimer >= 0.35f)
+                    {
+                        SnapFlatAndSettle();
+                    }
+                }
+                else
+                {
+                    _settledTimer = 0f;
                 }
             }
-            else if (_flightElapsed > 3.2f)
+            else if (_flightElapsed > 5.2f)
             {
                 SnapFlatAndSettle();
-            }
-            else
-            {
-                _settledTimer = 0f;
             }
         }
 

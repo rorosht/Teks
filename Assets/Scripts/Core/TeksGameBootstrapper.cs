@@ -75,21 +75,21 @@ namespace TeksMaster.Core
             GetOrAdd<TeksMatchManager>(gameObject);
             GetOrAdd<TeksGameModeManager>(gameObject);
 
-            // Spawn or reuse PlayerAvatar in Area 0 (Player's Neighborhood)
+            // Spawn or reuse PlayerAvatar cleanly on the main Kalye road (North lane, facing North toward court & store)
             var playerGo = GameObject.Find("PlayerAvatar");
             if (playerGo == null)
             {
                 playerGo = new GameObject("PlayerAvatar");
             }
             var player = GetOrAdd<PlayerController>(playerGo);
-            player.InitializePlayer(new Vector3(24.8f, 0f, 5.2f), Quaternion.Euler(0f, -145f, 0f));
+            player.InitializePlayer(new Vector3(0f, 0f, -14.2f), Quaternion.Euler(0f, 0f, 0f));
             player.ExternalInteractHandlerActive = true;
 
-            // Frame main camera nicely on startup
+            // Frame main camera nicely on startup behind the road spawn
             if (Camera.main != null)
             {
-                Camera.main.transform.position = new Vector3(-7.4f, 4.9f, -12.6f);
-                Camera.main.transform.LookAt(new Vector3(0.4f, 1.35f, 0.2f));
+                Camera.main.transform.position = new Vector3(0f, 4.8f, -23.5f);
+                Camera.main.transform.LookAt(new Vector3(0f, 1.35f, -13.5f));
             }
 
             var ui = GetOrAdd<TeksUIManager>(gameObject);
@@ -124,8 +124,8 @@ namespace TeksMaster.Core
             if (playerGo == null)
             {
                 playerGo = new GameObject("PlayerAvatar");
-                playerGo.transform.position = new Vector3(24.8f, 0f, 5.2f);
-                playerGo.transform.rotation = Quaternion.Euler(0f, -145f, 0f);
+                playerGo.transform.position = new Vector3(0f, 0f, -14.2f);
+                playerGo.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
                 CharacterVisualBuilder.BuildCharacterVisual(
                     playerGo,
                     CharacterOutfitRole.MaleKid,
@@ -142,8 +142,8 @@ namespace TeksMaster.Core
 
             if (Camera.main != null)
             {
-                Camera.main.transform.position = new Vector3(-7.4f, 4.9f, -12.6f);
-                Camera.main.transform.LookAt(new Vector3(0.4f, 1.35f, 0.2f));
+                Camera.main.transform.position = new Vector3(0f, 4.8f, -23.5f);
+                Camera.main.transform.LookAt(new Vector3(0f, 1.35f, -13.5f));
             }
         }
 

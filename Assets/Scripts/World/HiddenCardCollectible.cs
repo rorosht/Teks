@@ -440,7 +440,6 @@ namespace TeksMaster.World
         private GameObject _visualRoot;
         private Transform _lockEmblemPivot;
         private TextMesh _frontSignText;
-        private TextMesh _backSignText;
         private float _width = 6.0f;
         private float _height = 2.4f;
         private bool _initialized;
@@ -544,15 +543,11 @@ namespace TeksMaster.World
 
         private void UpdateSignText()
         {
-            string wrappedHint = WrapHintText(UnlockHint, 34);
+            string wrappedHint = WrapHintText(UnlockHint, 26);
             string boardCopy = $"LOCKED: {GateTitle.ToUpperInvariant()}\n{wrappedHint}";
             if (_frontSignText != null && _frontSignText.text != boardCopy)
             {
                 _frontSignText.text = boardCopy;
-            }
-            if (_backSignText != null && _backSignText.text != boardCopy)
-            {
-                _backSignText.text = boardCopy;
             }
         }
 
@@ -698,7 +693,7 @@ namespace TeksMaster.World
                 }
             }
 
-            // Central double-sided signboard
+            // Central front-only signboard
             float signY = Mathf.Min(_height - 0.38f, 1.88f);
             float signW = Mathf.Clamp(_width * 0.66f, 2.4f, 4.1f);
             CreateVisualBox("SignFrame", _visualRoot.transform, new Vector3(0f, signY, 0f),
@@ -706,13 +701,11 @@ namespace TeksMaster.World
             CreateVisualBox("SignBoard", _visualRoot.transform, new Vector3(0f, signY, 0f),
                 new Vector3(signW, 0.84f, 0.14f), signBoardMat);
 
-            string wrappedHint = WrapHintText(UnlockHint, 34);
+            string wrappedHint = WrapHintText(UnlockHint, 26);
             string boardCopy = $"LOCKED: {GateTitle.ToUpperInvariant()}\n{wrappedHint}";
 
             _frontSignText = CreateGateSignText("SignTextFront", _visualRoot.transform,
                 new Vector3(0f, signY, -0.09f), Quaternion.identity, boardCopy);
-            _backSignText = CreateGateSignText("SignTextBack", _visualRoot.transform,
-                new Vector3(0f, signY, 0.09f), Quaternion.Euler(0f, 180f, 0f), boardCopy);
 
             // Glowing emissive lock emblem above the signboard
             var lockPivot = new GameObject("LockEmblem");
@@ -736,16 +729,17 @@ namespace TeksMaster.World
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
             go.transform.localRotation = localRot;
-            go.transform.localScale = Vector3.one * 0.085f;
+            go.transform.localScale = Vector3.one * 0.11f;
 
             var tm = go.AddComponent<TextMesh>();
             tm.text = text;
-            tm.fontSize = 20;
-            tm.characterSize = 0.72f;
+            tm.fontSize = 52;
+            tm.characterSize = 0.20f;
             tm.anchor = TextAnchor.MiddleCenter;
             tm.alignment = TextAlignment.Center;
             tm.color = new Color(1.0f, 0.92f, 0.38f);
             tm.fontStyle = FontStyle.Bold;
+            go.AddComponent<FrontOnlySignText>();
             return tm;
         }
 
@@ -828,6 +822,33 @@ namespace TeksMaster.World
             if (obj == null) return;
             if (Application.isPlaying) Destroy(obj);
             else DestroyImmediate(obj);
+        }
+    }
+
+    /// <summary>
+    /// Ensures Unity built-in TextMesh signage is strictly visible from the front (-transform.forward)
+    /// and hidden whenever the camera views it from behind.
+    /// </summary>
+    public class FrontOnlySignText : MonoBehaviour
+    {
+        private Renderer _renderer;
+
+        private void Awake()
+        {
+            _renderer = GetComponent<Renderer>();
+        }
+
+        private void LateUpdate()
+        {
+            if (_renderer == null) _renderer = GetComponent<Renderer>();
+            if (_renderer == null || Camera.main == null) return;
+
+            Vector3 toCam = Camera.main.transform.position - transform.position;
+            bool visibleFromFront = Vector3.Dot(-transform.forward, toCam) > 0.02f;
+            if (_renderer.enabled != visibleFromFront)
+            {
+                _renderer.enabled = visibleFromFront;
+            }
         }
     }
 }
