@@ -309,6 +309,7 @@ namespace TeksMaster.UI
             _openedSubModalFromStartScreen = false;
             _openedSettingsFromPause = false;
 
+            CloseCardPickerModal();
             if (_inventoryModal != null) _inventoryModal.SetActive(false);
             if (_shopModal != null) _shopModal.SetActive(false);
             if (_questsModal != null) _questsModal.SetActive(false);
@@ -421,7 +422,7 @@ namespace TeksMaster.UI
             panel.anchorMin = new Vector2(0f, 1f);
             panel.anchorMax = new Vector2(0f, 1f);
             panel.pivot = new Vector2(0f, 1f);
-            panel.anchoredPosition = new Vector2(22f, -190f);
+            panel.anchoredPosition = new Vector2(22f, -206f);
             AddOutline(panel.gameObject, new Color(0.92f, 0.72f, 0.20f), 1.5f);
             _missionTrackerPanel = panel.gameObject;
 
@@ -2176,6 +2177,12 @@ namespace TeksMaster.UI
             {
                 if (mm.State == MatchState.WagerScreen)
                 {
+                    if (_cardPickerModal != null && _cardPickerModal.activeSelf)
+                    {
+                        CloseCardPickerModal();
+                        return;
+                    }
+                    CloseCardPickerModal();
                     if (_wagerModal != null) _wagerModal.SetActive(false);
                     mm.CancelChallenge();
                     SyncPlayerMovementLock();
@@ -2223,13 +2230,15 @@ namespace TeksMaster.UI
                    (_settingsModal != null && _settingsModal.activeSelf) ||
                    (_profileModal != null && _profileModal.activeSelf) ||
                    (_hiddenCardRevealModal != null && _hiddenCardRevealModal.activeSelf) ||
-                   (_exitConfirmModal != null && _exitConfirmModal.activeSelf);
+                   (_exitConfirmModal != null && _exitConfirmModal.activeSelf) ||
+                   (_cardPickerModal != null && _cardPickerModal.activeSelf);
         }
 
         private void CloseAllModals()
         {
             _openedSettingsFromPause = false;
             CloseSellConfirmModal();
+            CloseCardPickerModal();
 
             if (_inventoryModal != null) _inventoryModal.SetActive(false);
             if (_shopModal != null) _shopModal.SetActive(false);

@@ -744,7 +744,15 @@ namespace TeksMaster.Core
                 reason = $"Need {(defA != null ? defA.Name : recipe.IngredientAId)}";
                 return false;
             }
-            if (ownB == null)
+            if (recipe.IngredientAId == recipe.IngredientBId)
+            {
+                if (ownA.Quantity < 2)
+                {
+                    reason = $"Need 2x {(defA != null ? defA.Name : recipe.IngredientAId)}";
+                    return false;
+                }
+            }
+            else if (ownB == null)
             {
                 reason = $"Need {(defB != null ? defB.Name : recipe.IngredientBId)}";
                 return false;
@@ -768,8 +776,8 @@ namespace TeksMaster.Core
                 return false;
             }
 
-            var ownA = GetOwnedCard(recipe.IngredientAId);
-            var ownB = GetOwnedCard(recipe.IngredientBId);
+            var ownA = GetOwnedCardInternal(recipe.IngredientAId);
+            var ownB = GetOwnedCardInternal(recipe.IngredientBId);
             resultCard = TeksDatabase.GetCard(recipe.ResultCardId);
             if (resultCard == null)
             {
@@ -783,10 +791,49 @@ namespace TeksMaster.Core
             try
             {
                 coins -= recipe.CoinCost;
-                if (ownA != null && ownA.DuplicateCount > 0) ownA.DuplicateCount -= 1;
-                if (ownB != null && ownB.DuplicateCount > 0) ownB.DuplicateCount -= 1;
+                if (recipe.IngredientAId == recipe.IngredientBId)
+                {
+                    if (ownA != null)
+                    {
+                        if (ownA.DuplicateCount >= 2)
+                        {
+                            ownA.DuplicateCount -= 2;
+                        }
+                        else
+                        {
+                            ownedCards.Remove(ownA);
+                        }
+                    }
+                }
+                else
+                {
+                    if (ownA != null)
+                    {
+                        if (ownA.DuplicateCount > 0) ownA.DuplicateCount -= 1;
+                        else ownedCards.Remove(ownA);
+                    }
+                    if (ownB != null)
+                    {
+                        if (ownB.DuplicateCount > 0) ownB.DuplicateCount -= 1;
+                        else ownedCards.Remove(ownB);
+                    }
+                }
 
                 AddCard(resultCard.Id, 1);
+
+                // Ensure equipped Pamato is still owned (auto-equip forged card if equipped singleton was consumed)
+                if (GetOwnedCardInternal(equippedPamatoId) == null)
+                {
+                    if (GetOwnedCardInternal(resultCard.Id) != null)
+                    {
+                        equippedPamatoId = resultCard.Id;
+                    }
+                    else if (ownedCards.Count > 0)
+                    {
+                        equippedPamatoId = ownedCards[0].CardId;
+                    }
+                }
+
                 var ownedRes = GetOwnedCardInternal(resultCard.Id);
                 if (ownedRes != null)
                 {

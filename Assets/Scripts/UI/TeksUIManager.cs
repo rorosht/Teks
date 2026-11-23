@@ -156,7 +156,11 @@ namespace TeksMaster.UI
         private Text _wagerAmountText;
         private Text _wagerBonusInfoText;
         private int _selectedWagerAmount = 100;
-        private int _wagerCardCycleIndex = 0;
+
+        // Card Picker Modal (opened from Wager Modal)
+        private GameObject _cardPickerModal;
+        private Text _cardPickerSubtitleText;
+        private Transform _cardPickerGridContent;
 
         // Sell Confirmation Modal
         private GameObject _sellConfirmModal;
@@ -177,6 +181,9 @@ namespace TeksMaster.UI
         private class NpcTagEntry
         {
             public NpcOpponent Npc;
+            public Transform TargetTransform;
+            public string StaticLabel;
+            public float VerticalOffset = 1.78f;
             public RectTransform Root;
             public Text Label;
             public Image Arrow;
@@ -217,6 +224,7 @@ namespace TeksMaster.UI
             CreateShopModal();
             CreateQuestsModal();
             CreateWagerModal();
+            CreateCardPickerModal();
             BuildExtendedUI();
             CreateSellConfirmModal();
             CreateStartScreen();
@@ -339,6 +347,47 @@ namespace TeksMaster.UI
                     Arrow = arrowImg,
                     SpeechBubble = bubbleRt.gameObject,
                     SpeechLabel = speechTxt
+                });
+            }
+
+            if (court.TournamentHostTransform != null)
+            {
+                var hostPill = CreateRoundedPanel("Tag_TournamentHost", _npcTagsLayer, new Color(0.14f, 0.10f, 0.04f, 0.92f), new Vector2(278f, 36f));
+                AddOutline(hostPill.gameObject, new Color(1.0f, 0.80f, 0.22f), 2f);
+                var hostBtn = hostPill.gameObject.AddComponent<Button>();
+                hostBtn.onClick.AddListener(() =>
+                {
+                    if (TeksMatchManager.Instance == null || TeksMatchManager.Instance.State == MatchState.Idle)
+                    {
+                        CloseAllModals();
+                        OpenTournamentModal();
+                    }
+                });
+
+                var hostLbl = CreateText("Label", hostPill, BarangayCourtBuilder.TournamentHostDisplayName, 15, FontStyle.Bold, new Color(1.0f, 0.88f, 0.34f), TextAnchor.MiddleCenter);
+                StretchFull(hostLbl.rectTransform, 6f);
+
+                var hostArrowGo = new GameObject("Arrow", typeof(RectTransform), typeof(Image));
+                hostArrowGo.transform.SetParent(hostPill, false);
+                var hostArrowRt = hostArrowGo.GetComponent<RectTransform>();
+                hostArrowRt.anchorMin = new Vector2(0.5f, 0f);
+                hostArrowRt.anchorMax = new Vector2(0.5f, 0f);
+                hostArrowRt.anchoredPosition = new Vector2(0f, -8f);
+                hostArrowRt.sizeDelta = new Vector2(16f, 11f);
+                var hostArrowImg = hostArrowGo.GetComponent<Image>();
+                hostArrowImg.sprite = CardArtGenerator.GetTriangleSprite(true);
+                hostArrowImg.color = new Color(1.0f, 0.80f, 0.22f);
+                hostArrowImg.raycastTarget = false;
+
+                _npcTags.Add(new NpcTagEntry
+                {
+                    Npc = null,
+                    TargetTransform = court.TournamentHostTransform,
+                    StaticLabel = BarangayCourtBuilder.TournamentHostDisplayName,
+                    VerticalOffset = 1.78f,
+                    Root = hostPill,
+                    Label = hostLbl,
+                    Arrow = hostArrowImg
                 });
             }
         }
@@ -1221,37 +1270,7 @@ namespace TeksMaster.UI
             _wagerPlayerCardText.rectTransform.anchoredPosition = new Vector2(56f, -66f);
             _wagerPlayerCardText.rectTransform.sizeDelta = new Vector2(204f, 40f);
 
-            var cycleBtn = CreateButton("CyclePamatoBtn", playerBox, "< SWITCH CARD >", new Color(0.24f, 0.42f, 0.68f), 13, () =>
-            {
-                var mm = TeksMatchManager.Instance;
-                var inv = PlayerInventory.Instance;
-                if (inv == null) return;
-
-                IReadOnlyList<OwnedTeksCard> allowed = mm != null ? mm.GetAllowedPamatoCards() : inv.OwnedCards;
-                if (allowed == null || allowed.Count == 0) return;
-
-                int curIdx = -1;
-                for (int i = 0; i < allowed.Count; i++)
-                {
-                    if (allowed[i].CardId == inv.EquippedPamatoId)
-                    {
-                        curIdx = i;
-                        break;
-                    }
-                }
-                _wagerCardCycleIndex = (curIdx + 1) % allowed.Count;
-                string nextCardId = allowed[_wagerCardCycleIndex].CardId;
-                if (mm != null)
-                {
-                    mm.TrySelectPamatoCard(nextCardId, out string msg);
-                    if (!string.IsNullOrEmpty(msg)) ShowToast(msg);
-                }
-                else
-                {
-                    inv.EquipPamato(nextCardId);
-                }
-                PopulateWagerModal();
-            });
+            var cycleBtn = CreateButton("CyclePamatoBtn", playerBox, "CHOOSE CARD", new Color(0.24f, 0.42f, 0.68f), 13, OpenCardPickerModal);
             var cyRt = cycleBtn.GetComponent<RectTransform>();
             cyRt.anchoredPosition = new Vector2(0f, -114f);
             cyRt.sizeDelta = new Vector2(180f, 30f);
@@ -1319,6 +1338,7 @@ namespace TeksMaster.UI
 
             var startBtn = CreateButton("StartMatchBtn", window, "START FLICK MATCH!", new Color(0.18f, 0.74f, 0.32f), 20, () =>
             {
+                CloseCardPickerModal();
                 _wagerModal.SetActive(false);
                 TeksMatchManager.Instance?.BeginFlickMatch(_selectedWagerAmount);
             });
@@ -1328,6 +1348,7 @@ namespace TeksMaster.UI
 
             var cancelBtn = CreateButton("CancelWagerBtn", window, "CANCEL", new Color(0.55f, 0.24f, 0.26f), 18, () =>
             {
+                CloseCardPickerModal();
                 _wagerModal.SetActive(false);
                 TeksMatchManager.Instance?.CancelChallenge();
             });
@@ -1336,6 +1357,184 @@ namespace TeksMaster.UI
             caRt.sizeDelta = new Vector2(160f, 44f);
 
             _wagerModal.SetActive(false);
+        }
+
+        private void CreateCardPickerModal()
+        {
+            _cardPickerModal = CreateModalBackdrop("CardPickerModal", new Vector2(820f, 520f), out RectTransform window);
+            AddOutline(window.gameObject, new Color(0.42f, 0.72f, 1.0f), 2.5f);
+
+            var header = CreateText("CardPickerTitle", window, "CHOOSE YOUR PAMATO CARD", 24, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
+            header.rectTransform.anchorMin = new Vector2(0f, 1f);
+            header.rectTransform.anchorMax = new Vector2(0.80f, 1f);
+            header.rectTransform.offsetMin = new Vector2(24f, -46f);
+            header.rectTransform.offsetMax = new Vector2(0f, -10f);
+
+            _cardPickerSubtitleText = CreateText("CardPickerSubtitle", window, "Allowed Cards: 0", 13, FontStyle.Bold, new Color(0.76f, 0.90f, 1.0f), TextAnchor.MiddleLeft);
+            _cardPickerSubtitleText.rectTransform.anchorMin = new Vector2(0f, 1f);
+            _cardPickerSubtitleText.rectTransform.anchorMax = new Vector2(0.80f, 1f);
+            _cardPickerSubtitleText.rectTransform.offsetMin = new Vector2(24f, -74f);
+            _cardPickerSubtitleText.rectTransform.offsetMax = new Vector2(0f, -46f);
+
+            var closeBtn = CreateButton("CloseCardPickerBtn", window, "CLOSE", new Color(0.84f, 0.20f, 0.20f), 15, CloseCardPickerModal);
+            var clRt = closeBtn.GetComponent<RectTransform>();
+            clRt.anchorMin = new Vector2(1f, 1f);
+            clRt.anchorMax = new Vector2(1f, 1f);
+            clRt.anchoredPosition = new Vector2(-68f, -38f);
+            clRt.sizeDelta = new Vector2(96f, 36f);
+
+            CreateScrollView("CardPickerScroll", window, new Vector2(20f, 20f), new Vector2(-20f, -84f), out _cardPickerGridContent);
+            var grid = _cardPickerGridContent.gameObject.AddComponent<GridLayoutGroup>();
+            grid.cellSize = new Vector2(180f, 198f);
+            grid.spacing = new Vector2(10f, 12f);
+            grid.padding = new RectOffset(8, 8, 8, 8);
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 4;
+
+            var fitter = _cardPickerGridContent.gameObject.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            _cardPickerModal.SetActive(false);
+        }
+
+        private void OpenCardPickerModal()
+        {
+            if (_cardPickerModal == null) return;
+            PopulateCardPickerModal();
+            _cardPickerModal.transform.SetAsLastSibling();
+            if (_toastPanel != null) _toastPanel.transform.SetAsLastSibling();
+            _cardPickerModal.SetActive(true);
+        }
+
+        private void CloseCardPickerModal()
+        {
+            if (_cardPickerModal != null) _cardPickerModal.SetActive(false);
+        }
+
+        private void PopulateCardPickerModal()
+        {
+            var mm = TeksMatchManager.Instance;
+            var inv = PlayerInventory.Instance;
+            if (inv == null || _cardPickerGridContent == null) return;
+
+            for (int i = _cardPickerGridContent.childCount - 1; i >= 0; i--)
+            {
+                Destroy(_cardPickerGridContent.GetChild(i).gameObject);
+            }
+
+            IReadOnlyList<OwnedTeksCard> allowed = mm != null ? mm.GetAllowedPamatoCards() : inv.OwnedCards;
+            int allowedCount = allowed != null ? allowed.Count : 0;
+
+            if (_cardPickerSubtitleText != null)
+            {
+                if (mm != null && mm.HasCardRestriction && !string.IsNullOrEmpty(mm.CardRestrictionLabel))
+                {
+                    _cardPickerSubtitleText.text = $"Allowed Cards: {allowedCount}   •   Restriction: {mm.CardRestrictionLabel}";
+                }
+                else
+                {
+                    _cardPickerSubtitleText.text = $"Allowed Cards: {allowedCount}   •   Click any card to equip as your Pamato";
+                }
+            }
+
+            if (allowed == null || allowed.Count == 0) return;
+
+            var activePamato = mm != null ? mm.GetActivePlayerPamato(out _) : inv.GetEquippedPamato(out _);
+            string equippedId = activePamato != null ? activePamato.CardId : inv.EquippedPamatoId;
+
+            for (int i = 0; i < allowed.Count; i++)
+            {
+                var owned = allowed[i];
+                if (owned == null) continue;
+                var def = TeksDatabase.GetCard(owned.CardId);
+                if (def == null) continue;
+
+                bool isEquipped = owned.CardId == equippedId;
+                Color rarityCol = TeksDatabase.GetRarityColor(def.Rarity);
+                int chubPct = Mathf.RoundToInt(TeksMatchManager.CalculatePlayerChubProbability(def.Rarity, owned.StarRank) * 100f);
+
+                var tile = CreateRoundedPanel(
+                    "PickCard_" + def.Id,
+                    _cardPickerGridContent,
+                    isEquipped ? new Color(0.14f, 0.24f, 0.34f, 1f) : new Color(0.11f, 0.16f, 0.25f, 1f),
+                    new Vector2(180f, 198f)
+                );
+                AddOutline(tile.gameObject, isEquipped ? new Color(1.0f, 0.85f, 0.22f) : rarityCol, isEquipped ? 3f : 2f);
+
+                string capturedCardId = owned.CardId;
+                var tileBtn = tile.gameObject.AddComponent<Button>();
+                tileBtn.onClick.AddListener(() =>
+                {
+                    TeksAudioManager.Instance?.PlayUiClick();
+                    var curMm = TeksMatchManager.Instance;
+                    var curInv = PlayerInventory.Instance;
+                    if (curMm != null)
+                    {
+                        curMm.TrySelectPamatoCard(capturedCardId, out string msg);
+                        if (!string.IsNullOrEmpty(msg)) ShowToast(msg);
+                    }
+                    else if (curInv != null)
+                    {
+                        curInv.EquipPamato(capturedCardId);
+                    }
+                    CloseCardPickerModal();
+                    PopulateWagerModal();
+                });
+
+                // Card Portrait Frame
+                var artFrame = CreateRoundedPanel("ArtFrame", tile, rarityCol, new Vector2(72f, 96f));
+                artFrame.anchorMin = new Vector2(0.5f, 1f);
+                artFrame.anchorMax = new Vector2(0.5f, 1f);
+                artFrame.anchoredPosition = new Vector2(0f, -58f);
+                artFrame.GetComponent<Image>().raycastTarget = false;
+
+                var artImg = CreateImage("Art", artFrame, CardArtGenerator.GetCardPortraitSprite(def, owned.StarRank));
+                StretchFull(artImg.rectTransform, 3f);
+
+                if (isEquipped)
+                {
+                    var eqBadge = CreateRoundedPanel("EquippedBadge", tile, new Color(0.14f, 0.72f, 0.32f, 0.96f), new Vector2(72f, 20f));
+                    eqBadge.anchorMin = new Vector2(1f, 1f);
+                    eqBadge.anchorMax = new Vector2(1f, 1f);
+                    eqBadge.anchoredPosition = new Vector2(-42f, -15f);
+                    eqBadge.GetComponent<Image>().raycastTarget = false;
+                    AddOutline(eqBadge.gameObject, new Color(1.0f, 0.88f, 0.32f), 1f);
+
+                    var eqTxt = CreateText("EqTxt", eqBadge, "EQUIPPED", 10, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                    StretchFull(eqTxt.rectTransform, 1f);
+                }
+
+                // Card Name
+                var nameTxt = CreateText("Name", tile, def.Name, 13, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                nameTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
+                nameTxt.rectTransform.anchorMax = new Vector2(1f, 0f);
+                nameTxt.rectTransform.offsetMin = new Vector2(6f, 56f);
+                nameTxt.rectTransform.offsetMax = new Vector2(-6f, 84f);
+
+                // Rarity + Level + Fusion Stage
+                string fusionStr = owned.FusionStage > 0 ? $" • F{owned.FusionStage}" : string.Empty;
+                var metaTxt = CreateText("Meta", tile, $"{TeksDatabase.GetRarityName(def.Rarity)}  •  Lv.{owned.StarRank}{fusionStr}", 11, FontStyle.Bold, rarityCol, TextAnchor.MiddleCenter);
+                metaTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
+                metaTxt.rectTransform.anchorMax = new Vector2(1f, 0f);
+                metaTxt.rectTransform.offsetMin = new Vector2(6f, 34f);
+                metaTxt.rectTransform.offsetMax = new Vector2(-6f, 56f);
+
+                // Live CHUB% Pill
+                var chubPill = CreateRoundedPanel("ChubPill", tile, new Color(0.07f, 0.11f, 0.18f, 0.96f), new Vector2(146f, 24f));
+                chubPill.anchorMin = new Vector2(0.5f, 0f);
+                chubPill.anchorMax = new Vector2(0.5f, 0f);
+                chubPill.anchoredPosition = new Vector2(0f, 18f);
+                chubPill.GetComponent<Image>().raycastTarget = false;
+
+                var chubTxt = CreateText("ChubTxt", chubPill, $"{chubPct}% CHUB", 12, FontStyle.Bold, new Color(0.45f, 0.98f, 0.58f), TextAnchor.MiddleCenter);
+                StretchFull(chubTxt.rectTransform, 2f);
+            }
+
+            var contentRt = _cardPickerGridContent as RectTransform;
+            if (contentRt != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(contentRt);
+            }
         }
 
         private void CreateSellConfirmModal()
@@ -1583,6 +1782,10 @@ namespace TeksMaster.UI
             {
                 CloseSellConfirmModal();
             }
+            if (_cardPickerModal != null && _cardPickerModal.activeSelf && (_wagerModal == null || !_wagerModal.activeSelf))
+            {
+                CloseCardPickerModal();
+            }
 
             UpdateMatchLiveUI();
             UpdateNpcFloatingTags();
@@ -1597,6 +1800,11 @@ namespace TeksMaster.UI
 
             if (kb.escapeKey.wasPressedThisFrame)
             {
+                if (_cardPickerModal != null && _cardPickerModal.activeSelf)
+                {
+                    CloseCardPickerModal();
+                    return;
+                }
                 if (_sellConfirmModal != null && _sellConfirmModal.activeSelf)
                 {
                     CloseSellConfirmModal();
@@ -1816,7 +2024,7 @@ namespace TeksMaster.UI
             for (int i = 0; i < _npcTags.Count; i++)
             {
                 var entry = _npcTags[i];
-                if (entry.Npc == null || entry.Root == null) continue;
+                if (entry.Root == null || (entry.Npc == null && entry.TargetTransform == null)) continue;
 
                 if (!showTags)
                 {
@@ -1824,7 +2032,9 @@ namespace TeksMaster.UI
                     continue;
                 }
 
-                Vector3 worldPos = entry.Npc.GetTagWorldPosition();
+                Vector3 worldPos = entry.Npc != null
+                    ? entry.Npc.GetTagWorldPosition()
+                    : entry.TargetTransform.position + Vector3.up * entry.VerticalOffset;
                 Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
                 bool visible = screenPos.z > 0.2f && screenPos.x > -50f && screenPos.x < Screen.width + 50f && screenPos.y > -50f && screenPos.y < Screen.height + 50f;
                 entry.Root.gameObject.SetActive(visible);
@@ -1832,22 +2042,29 @@ namespace TeksMaster.UI
                 if (visible)
                 {
                     entry.Root.position = new Vector3(screenPos.x, screenPos.y, 0f);
-                    if (entry.Label != null)
+                    if (entry.Npc != null)
                     {
-                        string dynamicTag = entry.Npc.GetDisplayTag();
-                        if (entry.Label.text != dynamicTag)
+                        if (entry.Label != null)
                         {
-                            entry.Label.text = dynamicTag;
+                            string dynamicTag = entry.Npc.GetDisplayTag();
+                            if (entry.Label.text != dynamicTag)
+                            {
+                                entry.Label.text = dynamicTag;
+                            }
+                        }
+                        if (entry.SpeechBubble != null && entry.SpeechLabel != null)
+                        {
+                            bool showSpeech = entry.Npc.IsPlayerWithin(7.2f);
+                            entry.SpeechBubble.SetActive(showSpeech);
+                            if (showSpeech)
+                            {
+                                entry.SpeechLabel.text = "\"" + entry.Npc.GetActiveCallout() + "\"";
+                            }
                         }
                     }
-                    if (entry.SpeechBubble != null && entry.SpeechLabel != null)
+                    else if (entry.Label != null && !string.IsNullOrEmpty(entry.StaticLabel) && entry.Label.text != entry.StaticLabel)
                     {
-                        bool showSpeech = entry.Npc.IsPlayerWithin(7.2f);
-                        entry.SpeechBubble.SetActive(showSpeech);
-                        if (showSpeech)
-                        {
-                            entry.SpeechLabel.text = "\"" + entry.Npc.GetActiveCallout() + "\"";
-                        }
+                        entry.Label.text = entry.StaticLabel;
                     }
                 }
             }
@@ -1906,6 +2123,7 @@ namespace TeksMaster.UI
 
             if (mm.State == MatchState.Idle)
             {
+                CloseCardPickerModal();
                 _wagerModal.SetActive(false);
                 _matchHudRoot.SetActive(false);
                 if (_cardFlipShowcaseRoot != null) _cardFlipShowcaseRoot.SetActive(false);
@@ -1916,6 +2134,7 @@ namespace TeksMaster.UI
 
             if (mm.State == MatchState.WagerScreen)
             {
+                CloseCardPickerModal();
                 _matchHudRoot.SetActive(false);
                 if (_cardFlipShowcaseRoot != null) _cardFlipShowcaseRoot.SetActive(false);
                 _selectedWagerAmount = mm.CurrentCoinWager;
@@ -1925,6 +2144,7 @@ namespace TeksMaster.UI
                 return;
             }
 
+            CloseCardPickerModal();
             _wagerModal.SetActive(false);
             _matchHudRoot.SetActive(true);
             SyncPlayerMovementLock();

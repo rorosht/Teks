@@ -11,7 +11,10 @@ namespace TeksMaster.World
     {
         public static BarangayCourtBuilder Instance { get; private set; }
 
+        public const string TournamentHostDisplayName = "KUYA REF (TOURNAMENT HOST)";
+
         public Transform CourtRoot { get; private set; }
+        public Transform TournamentHostTransform { get; private set; }
         public Vector3 StoreInteractionPoint { get; private set; } = new Vector3(-4.5f, 0f, -11.2f);
         public Vector3 TournamentInteractionPoint { get; private set; } = new Vector3(-22.8f, 0f, -22.2f);
         public Vector3 TournamentBattleCenter { get; private set; } = new Vector3(-22.8f, 0f, -28.5f);
@@ -263,6 +266,7 @@ namespace TeksMaster.World
             }
 
             _built = true;
+            TournamentHostTransform = null;
             SpawnedOpponents.Clear();
             SpawnedHiddenCards.Clear();
             SpawnedAreaGates.Clear();
@@ -757,10 +761,10 @@ namespace TeksMaster.World
                 CreateBox("RoadDash_" + i, zones, new Vector3(i * 6.0f, 0.004f, -15.0f), new Vector3(3.0f, 0.01f, 0.22f), lanePaintMat, false);
             }
 
-            // Parked Pinoy Jeepney on the South Highway Shoulder (clear of highway lanes z in [-18.5, -11.5])
+            // Parked Pinoy Jeepney in the South lane of the Kalye Asphalt Road (z in [-17.8, -15.6], leaving North lane open)
             var jeep = new GameObject("BarangayJeepney").transform;
             jeep.SetParent(zones, false);
-            jeep.position = new Vector3(8.5f, 0f, -19.2f);
+            jeep.position = new Vector3(8.5f, 0f, -16.7f);
             jeep.rotation = Quaternion.Euler(0f, -90f, 0f);
             CreateBox("JeepLowerBody", jeep, new Vector3(0f, 0.95f, 0f), new Vector3(2.2f, 1.15f, 5.4f), jeepRedMat, true);
             CreateBox("JeepUpperStripe", jeep, new Vector3(0f, 1.58f, -0.3f), new Vector3(2.15f, 0.35f, 4.4f), jeepBlueMat, false);
@@ -914,8 +918,6 @@ namespace TeksMaster.World
             Material signBoardMat = CardArtGenerator.CreateLitMaterial(new Color(0.14f, 0.30f, 0.22f), 0.16f);
             CreateBox("PlazaSignBg", kubo, new Vector3(0f, 3.28f, -2.86f), new Vector3(3.1f, 0.68f, 0.12f), signBoardMat, false);
             CreateWorldText("PlazaSign", kubo, new Vector3(0f, 3.28f, -2.94f), "BARANGAY PLAZA", 52, new Color(1.0f, 0.90f, 0.35f), 0.20f, 0.13f);
-            var plazaSignBack = CreateWorldText("PlazaSignBack", kubo, new Vector3(0f, 3.28f, -2.78f), "BARANGAY PLAZA", 52, new Color(1.0f, 0.90f, 0.35f), 0.20f, 0.13f);
-            plazaSignBack.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
             // 3. WEST ZONE: Old Neighborhood & Waiting Shed (x = -16 .. -29, z > -8.4)
             CreateBox("WestTambayanPad", zones, new Vector3(-22.2f, 0.002f, 0f), new Vector3(13f, 0.02f, 16f), plazaTileMat, false);
@@ -931,8 +933,6 @@ namespace TeksMaster.World
             shedRoof.transform.localRotation = Quaternion.Euler(8f, 0f, 0f);
             CreateBox("ShedSignBg", shed, new Vector3(0f, 2.98f, -1.66f), new Vector3(3.4f, 0.86f, 0.12f), signBoardMat, false);
             CreateWorldText("ShedSign", shed, new Vector3(0f, 2.98f, -1.74f), "OLD NEIGHBORHOOD\nTAMBAYAN SHED", 50, new Color(1.0f, 0.88f, 0.24f), 0.19f, 0.13f);
-            var shedSignBack = CreateWorldText("ShedSignBack", shed, new Vector3(0f, 2.98f, -1.58f), "OLD NEIGHBORHOOD\nTAMBAYAN SHED", 50, new Color(1.0f, 0.88f, 0.24f), 0.19f, 0.13f);
-            shedSignBack.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
             // 4. SOUTH-EAST SEPARATE ZONE: Barangay Fiesta Stage & Teks Arena (South of Highway: x in [14.5, 32.0], z in [-36.5, -20.8])
             var fiesta = new GameObject("BarangayFiestaArena").transform;
@@ -963,7 +963,7 @@ namespace TeksMaster.World
             BuildDirectionSign(zones, new Vector3(-14.8f, 0f, 3.6f), Quaternion.Euler(0f, -90f, 0f), "OLD NEIGHBORHOOD\nWEST ALLEY", woodMat);
             BuildDirectionSign(zones, new Vector3(14.8f, 0f, 3.6f), Quaternion.Euler(0f, 90f, 0f), "PLAYER'S\nNEIGHBORHOOD", woodMat);
             BuildDirectionSign(zones, new Vector3(4.6f, 0f, -9.2f), Quaternion.identity, "KALYE, SARI-SARI &\nSOUTH ARENAS", woodMat);
-            BuildDirectionSign(zones, new Vector3(17.8f, 0f, -19.8f), Quaternion.identity, "FIESTA TEKS ARENA\nSOUTH ENTRANCE", woodMat);
+            BuildDirectionSign(zones, new Vector3(17.8f, 0f, -19.8f), Quaternion.Euler(0f, 180f, 0f), "FIESTA TEKS ARENA\nSOUTH ENTRANCE", woodMat);
         }
 
         private void BuildDirectionSign(Transform parent, Vector3 pos, Quaternion rot, string text, Material woodMat)
@@ -975,8 +975,6 @@ namespace TeksMaster.World
             CreateCylinder("SignPost", sign, new Vector3(0f, 1.3f, 0f), new Vector3(0.08f, 1.3f, 0.08f), woodMat, false);
             CreateBox("SignBoard", sign, new Vector3(0f, 2.25f, 0f), new Vector3(2.8f, 0.92f, 0.10f), CardArtGenerator.CreateLitMaterial(new Color(0.14f, 0.34f, 0.22f), 0.15f), false);
             CreateWorldText("SignLabelFront", sign, new Vector3(0f, 2.25f, -0.07f), text, 50, new Color(1.0f, 0.92f, 0.32f), 0.19f, 0.13f);
-            var backText = CreateWorldText("SignLabelBack", sign, new Vector3(0f, 2.25f, 0.07f), text, 50, new Color(1.0f, 0.92f, 0.32f), 0.19f, 0.13f);
-            backText.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
         }
 
         private void BuildTournamentArena()
@@ -1023,9 +1021,8 @@ namespace TeksMaster.World
             CreateBox("ArchPillarR", arch, new Vector3(3.1f, 2.0f, 0f), new Vector3(0.48f, 4.0f, 0.48f), pillarMat, true);
             CreateBox("ArchHeaderFrame", arch, new Vector3(0f, 3.85f, 0f), new Vector3(6.8f, 1.15f, 0.22f), goldMat, false);
             CreateBox("ArchHeaderBoard", arch, new Vector3(0f, 3.85f, 0f), new Vector3(6.4f, 0.96f, 0.26f), signBoardMat, false);
-            CreateWorldText("TournamentArchSignFront", arch, new Vector3(0f, 3.85f, -0.16f), "TOURNAMENT ARENA", 56, new Color(1.0f, 0.88f, 0.24f), 0.22f, 0.15f);
-            var archSignBack = CreateWorldText("TournamentArchSignBack", arch, new Vector3(0f, 3.85f, 0.16f), "TOURNAMENT ARENA", 56, new Color(1.0f, 0.88f, 0.24f), 0.22f, 0.15f);
-            archSignBack.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            var archSignFront = CreateWorldText("TournamentArchSignFront", arch, new Vector3(0f, 3.85f, 0.16f), "TOURNAMENT ARENA", 56, new Color(1.0f, 0.88f, 0.24f), 0.22f, 0.15f);
+            archSignFront.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
             // West Bleachers (local x = -6.4, facing East)
             var westBleachers = new GameObject("TournamentBleachersWest").transform;
@@ -1069,15 +1066,15 @@ namespace TeksMaster.World
             var boothRoof = CreateBox("BoothAwning", booth, new Vector3(0f, 2.88f, 0.25f), new Vector3(3.3f, 0.14f, 1.75f), boothAwningMat, false);
             boothRoof.transform.localRotation = Quaternion.Euler(-8f, 0f, 0f);
             CreateBox("BoothSignBg", booth, new Vector3(0f, 3.30f, 0.45f), new Vector3(3.0f, 0.76f, 0.12f), signBoardMat, false);
-            CreateWorldText("BoothSignFront", booth, new Vector3(0f, 3.30f, 0.37f), "KUYA REF BOOTH\n[E] 3-ROUND CUP", 48, new Color(1.0f, 0.90f, 0.30f), 0.18f, 0.12f);
-            var boothSignBack = CreateWorldText("BoothSignBack", booth, new Vector3(0f, 3.30f, 0.53f), "KUYA REF BOOTH\n[E] 3-ROUND CUP", 48, new Color(1.0f, 0.90f, 0.30f), 0.18f, 0.12f);
-            boothSignBack.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            var boothSignFront = CreateWorldText("BoothSignFront", booth, new Vector3(0f, 3.30f, 0.53f), "KUYA REF BOOTH\n[E] 3-ROUND CUP", 48, new Color(1.0f, 0.90f, 0.30f), 0.18f, 0.12f);
+            boothSignFront.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
             // Host NPC ("Kuya Ref") standing behind the registration desk facing North
             var kuyaRef = new GameObject("KuyaRef_TournamentHost");
             kuyaRef.transform.SetParent(booth, false);
             kuyaRef.transform.localPosition = new Vector3(0f, 0f, -0.35f);
             kuyaRef.transform.localRotation = Quaternion.identity;
+            TournamentHostTransform = kuyaRef.transform;
             CharacterVisualBuilder.BuildCharacterVisual(
                 kuyaRef,
                 CharacterOutfitRole.MaleKid,
@@ -1568,7 +1565,7 @@ namespace TeksMaster.World
 
             // Area 1: Sari-Sari & Kalye (2 Hidden Cards)
             CreateHiddenCard(hiddenGroup, "hidden_behind_jeepney", "scrap_trisikad",
-                BarangayAreaId.SariSariAndKalye, new Vector3(8.5f, 0.30f, -20.9f), "Behind Barangay Jeepney", 50, 5);
+                BarangayAreaId.SariSariAndKalye, new Vector3(12.4f, 0.30f, -16.7f), "Behind Barangay Jeepney", 50, 5);
             CreateHiddenCard(hiddenGroup, "hidden_fishball_corner", "cyber_taho_bot",
                 BarangayAreaId.SariSariAndKalye, new Vector3(-12.2f, 0.30f, -10.4f), "Fishball Alley Corner", 60, 5);
 

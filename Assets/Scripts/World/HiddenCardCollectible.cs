@@ -440,7 +440,6 @@ namespace TeksMaster.World
         private GameObject _visualRoot;
         private Transform _lockEmblemPivot;
         private TextMesh _frontSignText;
-        private TextMesh _backSignText;
         private float _width = 6.0f;
         private float _height = 2.4f;
         private bool _initialized;
@@ -549,10 +548,6 @@ namespace TeksMaster.World
             if (_frontSignText != null && _frontSignText.text != boardCopy)
             {
                 _frontSignText.text = boardCopy;
-            }
-            if (_backSignText != null && _backSignText.text != boardCopy)
-            {
-                _backSignText.text = boardCopy;
             }
         }
 
@@ -698,7 +693,7 @@ namespace TeksMaster.World
                 }
             }
 
-            // Central double-sided signboard
+            // Central front-only signboard
             float signY = Mathf.Min(_height - 0.38f, 1.88f);
             float signW = Mathf.Clamp(_width * 0.66f, 2.4f, 4.1f);
             CreateVisualBox("SignFrame", _visualRoot.transform, new Vector3(0f, signY, 0f),
@@ -711,8 +706,6 @@ namespace TeksMaster.World
 
             _frontSignText = CreateGateSignText("SignTextFront", _visualRoot.transform,
                 new Vector3(0f, signY, -0.09f), Quaternion.identity, boardCopy);
-            _backSignText = CreateGateSignText("SignTextBack", _visualRoot.transform,
-                new Vector3(0f, signY, 0.09f), Quaternion.Euler(0f, 180f, 0f), boardCopy);
 
             // Glowing emissive lock emblem above the signboard
             var lockPivot = new GameObject("LockEmblem");

@@ -563,13 +563,13 @@ namespace TeksMaster.Gameplay
                 _flightCamFocus = Vector3.Lerp(_flightCamFocus, desiredFocus, Mathf.Clamp01(Time.deltaTime * 11f));
             }
 
-            // Centered directly behind the midpoint of both cards so they stay dead-center in POV from toss to touchdown
-            float backDist = Mathf.Clamp(1.05f + spread * 0.32f + maxY * 0.14f, 1.05f, 1.35f);
+            // Follow the cards smoothly high into the sky (pitching upward against sky/rooftops) and back down to the floor
+            Vector3 flatFocus = new Vector3(_flightCamFocus.x, 0f, _flightCamFocus.z);
+            float backDist = Mathf.Clamp(1.25f + spread * 0.30f + maxY * 0.14f, 1.25f, 1.65f);
             float sideOffset = 0f;
-            float camHeight = Mathf.Clamp(0.95f + mid.y * 0.65f + spread * 0.12f, 0.92f, 2.35f);
+            float camWorldY = Mathf.Clamp(0.92f + _flightCamFocus.y * 0.30f + spread * 0.10f, 0.88f, 1.68f);
 
-            Vector3 camPos = _flightCamFocus - _matchForward * backDist - _matchRight * sideOffset + Vector3.up * camHeight;
-            if (camPos.y < 0.72f) camPos.y = 0.72f;
+            Vector3 camPos = flatFocus - _matchForward * backDist - _matchRight * sideOffset + Vector3.up * camWorldY;
             Vector3 lookTarget = _flightCamFocus;
 
             camFollow.SetMatchCamera(camPos, lookTarget);
@@ -692,26 +692,24 @@ namespace TeksMaster.Gameplay
             if (State != MatchState.ReadyToFlick) return;
 
             float absVal = Mathf.Abs(NeedleValue);
-            float powerFactor;
+            float flickPower01 = Mathf.Clamp01(1f - absVal);
+            float powerFactor = Mathf.Lerp(0.88f, 1.12f, flickPower01);
             float spinBoost;
 
             // Flick meter controls launch power, spin feel & SFX intensity only — NEVER win probability
             if (absVal <= SweetSpotHalfWidth)
             {
-                powerFactor = 1.00f;
-                spinBoost = 1.22f;
+                spinBoost = 1.12f;
                 LastFlickRating = "SWEET SPOT! MAX SPIN & POWER!";
             }
             else if (absVal <= GoodZoneHalfWidth)
             {
-                powerFactor = 0.82f;
                 spinBoost = 1.00f;
                 LastFlickRating = "GOOD FLICK!";
             }
             else
             {
-                powerFactor = 0.62f;
-                spinBoost = 0.82f;
+                spinBoost = 0.88f;
                 LastFlickRating = "LIGHT FLICK!";
             }
 
@@ -727,6 +725,15 @@ namespace TeksMaster.Gameplay
                 {
                     player.Actor.SetHandCardVisible(false);
                     player.Actor.TriggerFlickAnimation();
+                }
+            }
+
+            if (ActiveOpponent != null)
+            {
+                var oppActor = ActiveOpponent.GetComponent<CharacterActor>();
+                if (oppActor != null)
+                {
+                    oppActor.TriggerSkyWatchAnimation(2.2f);
                 }
             }
 
@@ -762,7 +769,7 @@ namespace TeksMaster.Gameplay
                 ? ActiveOpponent.NpcName.Trim()
                 : "Opponent").ToUpper();
 
-            // 1. Player's Pamato Card (Left upward trajectory — strictly 2 cards in play)
+            // 1. Player's Pamato Card (Left high sky-arc trajectory — strictly 2 cards in play)
             _playerCard = TeksCardPhysics.SpawnPhysicalCard(
                 playerCardId, playerRank,
                 handPos - rightDir * 0.08f, Quaternion.Euler(15f, player != null ? player.transform.eulerAngles.y : 0f, 0f),
@@ -770,12 +777,12 @@ namespace TeksMaster.Gameplay
             _playerCard.RoleLabel = playerLabel;
             _spawnedCards.Add(_playerCard);
             _playerCard.LaunchFlick(
-                forwardDir * (0.58f + 0.10f * powerFactor) + Vector3.up * (4.15f * powerFactor) - rightDir * 0.18f,
-                new Vector3(26f * powerFactor * spinBoost, 6f, 14f * spinBoost),
+                forwardDir * (0.48f + 0.12f * powerFactor) + rightDir * (-0.17f) + Vector3.up * (5.95f * powerFactor),
+                rightDir * (15.2f * spinBoost) + Vector3.up * 2.2f + forwardDir * 1.8f,
                 playerChubProb,
                 playerRarity);
 
-            // 2. Opponent's Pamato Card (Right upward trajectory)
+            // 2. Opponent's Pamato Card (Right high sky-arc trajectory)
             _opponentCard = TeksCardPhysics.SpawnPhysicalCard(
                 oppCardId, oppRank,
                 handPos + rightDir * 0.08f, Quaternion.Euler(-12f, 25f, 0f),
@@ -783,8 +790,8 @@ namespace TeksMaster.Gameplay
             _opponentCard.RoleLabel = opponentLabel;
             _spawnedCards.Add(_opponentCard);
             _opponentCard.LaunchFlick(
-                forwardDir * (0.62f + 0.10f * powerFactor) + Vector3.up * (3.95f * powerFactor) + rightDir * 0.19f,
-                new Vector3(-24f * powerFactor * spinBoost, -7f, 15f * spinBoost),
+                forwardDir * (0.52f + 0.12f * powerFactor) + rightDir * (0.18f) + Vector3.up * (5.75f * powerFactor),
+                -rightDir * (14.4f * spinBoost) - Vector3.up * 2.4f - forwardDir * 1.6f,
                 oppChubProb,
                 oppRarity);
 
