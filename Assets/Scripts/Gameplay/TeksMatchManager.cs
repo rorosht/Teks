@@ -563,13 +563,12 @@ namespace TeksMaster.Gameplay
                 _flightCamFocus = Vector3.Lerp(_flightCamFocus, desiredFocus, Mathf.Clamp01(Time.deltaTime * 11f));
             }
 
-            // Follow the cards smoothly high into the sky (pitching upward against sky/rooftops) and back down to the floor
+            // Position camera to the SIDE of the battle line so neither character's body ever blocks the flying cards!
             Vector3 flatFocus = new Vector3(_flightCamFocus.x, 0f, _flightCamFocus.z);
-            float backDist = Mathf.Clamp(1.25f + spread * 0.30f + maxY * 0.14f, 1.25f, 1.65f);
-            float sideOffset = 0f;
-            float camWorldY = Mathf.Clamp(0.92f + _flightCamFocus.y * 0.30f + spread * 0.10f, 0.88f, 1.68f);
+            float sideDist = Mathf.Clamp(1.75f + spread * 0.45f + maxY * 0.16f, 1.75f, 2.55f);
+            float camWorldY = Mathf.Clamp(0.85f + _flightCamFocus.y * 0.48f, 0.85f, 2.45f);
 
-            Vector3 camPos = flatFocus - _matchForward * backDist - _matchRight * sideOffset + Vector3.up * camWorldY;
+            Vector3 camPos = flatFocus + _matchRight * sideDist - _matchForward * 0.15f + Vector3.up * camWorldY;
             Vector3 lookTarget = _flightCamFocus;
 
             camFollow.SetMatchCamera(camPos, lookTarget);
@@ -592,9 +591,10 @@ namespace TeksMaster.Gameplay
             }
             mid.y = 0.05f;
 
-            float backDist = Mathf.Clamp(1.15f + spread * 0.40f, 1.15f, 1.65f);
-            float height = Mathf.Clamp(1.12f + spread * 0.16f, 1.10f, 1.65f);
-            Vector3 camPos = mid - _matchForward * backDist + Vector3.up * height;
+            // Unobstructed side-angled close-up on the landed cards (neither player nor opponent blocks the view)
+            float sideDist = Mathf.Clamp(1.25f + spread * 0.45f, 1.25f, 1.85f);
+            float height = Mathf.Clamp(1.05f + spread * 0.16f, 1.05f, 1.55f);
+            Vector3 camPos = mid + _matchRight * sideDist - _matchForward * 0.20f + Vector3.up * height;
             Vector3 lookTarget = mid + Vector3.up * 0.06f;
             camFollow.SetMatchCamera(camPos, lookTarget);
         }
@@ -733,7 +733,7 @@ namespace TeksMaster.Gameplay
                 var oppActor = ActiveOpponent.GetComponent<CharacterActor>();
                 if (oppActor != null)
                 {
-                    oppActor.TriggerSkyWatchAnimation(2.2f);
+                    oppActor.TriggerSkyWatchAnimation(2.6f);
                 }
             }
 
@@ -777,8 +777,8 @@ namespace TeksMaster.Gameplay
             _playerCard.RoleLabel = playerLabel;
             _spawnedCards.Add(_playerCard);
             _playerCard.LaunchFlick(
-                forwardDir * (0.48f + 0.12f * powerFactor) + rightDir * (-0.17f) + Vector3.up * (5.95f * powerFactor),
-                rightDir * (15.2f * spinBoost) + Vector3.up * 2.2f + forwardDir * 1.8f,
+                forwardDir * (0.42f + 0.10f * powerFactor) + rightDir * (-0.16f) + Vector3.up * (7.95f * powerFactor),
+                rightDir * (16.2f * spinBoost) + Vector3.up * 2.2f + forwardDir * 1.8f,
                 playerChubProb,
                 playerRarity);
 
@@ -790,8 +790,8 @@ namespace TeksMaster.Gameplay
             _opponentCard.RoleLabel = opponentLabel;
             _spawnedCards.Add(_opponentCard);
             _opponentCard.LaunchFlick(
-                forwardDir * (0.52f + 0.12f * powerFactor) + rightDir * (0.18f) + Vector3.up * (5.75f * powerFactor),
-                -rightDir * (14.4f * spinBoost) - Vector3.up * 2.4f - forwardDir * 1.6f,
+                forwardDir * (0.46f + 0.10f * powerFactor) + rightDir * (0.17f) + Vector3.up * (7.70f * powerFactor),
+                -rightDir * (15.4f * spinBoost) - Vector3.up * 2.4f - forwardDir * 1.6f,
                 oppChubProb,
                 oppRarity);
 

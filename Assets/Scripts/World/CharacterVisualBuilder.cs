@@ -415,23 +415,19 @@ namespace TeksMaster.World
             visualRoot.transform.SetParent(host.transform, false);
             actor.VisualRoot = visualRoot.transform;
 
-            int nameHash = Mathf.Abs(host.name.GetHashCode());
-            float hairBlend = (nameHash % 5) / 4f;
-            Color hairColor = Color.Lerp(new Color(0.08f, 0.08f, 0.09f), new Color(0.24f, 0.14f, 0.08f), hairBlend);
-            bool wearJeans = role != CharacterOutfitRole.Tindera && (nameHash % 2 == 0);
-            bool isPolo = role != CharacterOutfitRole.Tindera && ((nameHash / 2) % 2 == 0);
-            bool useSneakers = role != CharacterOutfitRole.Tindera;
+            int jerseyStyle = Mathf.Abs(host.name.GetHashCode()) % 3;
+            Texture2D jerseyTex = CharacterResourceGenerator.GetStreetwearShirtTexture(shirtColor, slipperColor, jerseyStyle);
+            Texture2D faceTex = CharacterResourceGenerator.GetCharacterFaceTexture(skinTone);
 
-            Material skinMat = CardArtGenerator.CreateLitMaterial(skinTone, 0.24f);
-            Material shirtMat = CardArtGenerator.CreateLitMaterial(shirtColor, 0.20f);
-            Material collarMat = CardArtGenerator.CreateLitMaterial(Color.Lerp(shirtColor, Color.white, isPolo ? 0.18f : 0.25f), 0.22f);
-            Material sleeveMat = CardArtGenerator.CreateLitMaterial(shirtColor, 0.20f);
-            Material shortsMat = CardArtGenerator.CreateLitMaterial(shortsColor, 0.16f);
-            Material hairMat = CardArtGenerator.CreateLitMaterial(hairColor, 0.28f);
-            Material slipperMat = CardArtGenerator.CreateLitMaterial(slipperColor, 0.22f);
-            Material whiteMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.30f);
-            Material eyeMat = CardArtGenerator.CreateLitMaterial(new Color(0.07f, 0.07f, 0.08f), 0.72f);
-            Material mouthMat = CardArtGenerator.CreateLitMaterial(new Color(0.46f, 0.20f, 0.18f), 0.20f);
+            Material skinMat = CardArtGenerator.CreateLitMaterial(skinTone, 0.25f);
+            Material headSkinMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.22f, 0f, faceTex);
+            Material shirtMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.22f, 0f, jerseyTex);
+            Material sleeveMat = CardArtGenerator.CreateLitMaterial(shirtColor, 0.2f);
+            Material shortsMat = CardArtGenerator.CreateLitMaterial(shortsColor, 0.15f);
+            Material hairMat = CardArtGenerator.CreateLitMaterial(new Color(0.11f, 0.09f, 0.08f), 0.3f);
+            Material slipperMat = CardArtGenerator.CreateLitMaterial(slipperColor, 0.2f);
+            Material whiteMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.3f);
+            Material eyeMat = CardArtGenerator.CreateLitMaterial(new Color(0.08f, 0.08f, 0.08f), 0.6f);
 
             // Pelvis root
             var pelvis = new GameObject("Pelvis").transform;
@@ -439,8 +435,8 @@ namespace TeksMaster.World
             pelvis.localPosition = new Vector3(0f, 0.62f, 0f);
             actor.Pelvis = pelvis;
 
-            // Smooth rounded hips
-            CreatePart("Hips", PrimitiveType.Sphere, pelvis, new Vector3(0f, 0.01f, 0f), new Vector3(0.28f, 0.16f, 0.20f), shortsMat);
+            // Hip block (shorts waist)
+            CreatePart("Hips", PrimitiveType.Cube, pelvis, new Vector3(0f, 0.02f, 0f), new Vector3(0.30f, 0.14f, 0.20f), shortsMat);
 
             // Torso
             var torsoPivot = new GameObject("Torso").transform;
@@ -448,100 +444,59 @@ namespace TeksMaster.World
             torsoPivot.localPosition = new Vector3(0f, 0.08f, 0f);
             actor.Torso = torsoPivot;
 
-            // Smooth rounded crew-neck T-shirt or collared polo torso
-            CreatePart("ShirtBody", PrimitiveType.Capsule, torsoPivot, new Vector3(0f, 0.21f, 0f), new Vector3(0.29f, 0.22f, 0.21f), shirtMat);
-            CreatePart("CollarRing", PrimitiveType.Cylinder, torsoPivot, new Vector3(0f, 0.405f, 0f), new Vector3(0.145f, 0.018f, 0.135f), collarMat);
-            if (isPolo)
-            {
-                var leftFlap = CreatePart("PoloCollarLeft", PrimitiveType.Cube, torsoPivot, new Vector3(-0.052f, 0.398f, 0.068f), new Vector3(0.068f, 0.030f, 0.045f), collarMat);
-                leftFlap.transform.localRotation = Quaternion.Euler(18f, -24f, 18f);
-                var rightFlap = CreatePart("PoloCollarRight", PrimitiveType.Cube, torsoPivot, new Vector3(0.052f, 0.398f, 0.068f), new Vector3(0.068f, 0.030f, 0.045f), collarMat);
-                rightFlap.transform.localRotation = Quaternion.Euler(18f, 24f, -18f);
-                CreatePart("PoloPlacket", PrimitiveType.Cube, torsoPivot, new Vector3(0f, 0.345f, 0.102f), new Vector3(0.032f, 0.095f, 0.012f), collarMat);
-            }
-
-            // Slim cartoon neck
-            CreatePart("Neck", PrimitiveType.Cylinder, torsoPivot, new Vector3(0f, 0.435f, 0f), new Vector3(0.092f, 0.055f, 0.092f), skinMat);
+            CreatePart("ShirtBody", PrimitiveType.Cube, torsoPivot, new Vector3(0f, 0.22f, 0f), new Vector3(0.32f, 0.42f, 0.21f), shirtMat);
+            CreatePart("Neck", PrimitiveType.Cylinder, torsoPivot, new Vector3(0f, 0.45f, 0f), new Vector3(0.11f, 0.06f, 0.11f), skinMat);
 
             if (role == CharacterOutfitRole.Tindera)
             {
                 Material apronMat = CardArtGenerator.CreateLitMaterial(new Color(0.95f, 0.90f, 0.78f), 0.15f);
-                CreatePart("Apron", PrimitiveType.Cube, torsoPivot, new Vector3(0f, 0.14f, 0.108f), new Vector3(0.24f, 0.36f, 0.025f), apronMat);
+                CreatePart("Apron", PrimitiveType.Cube, torsoPivot, new Vector3(0f, 0.14f, 0.11f), new Vector3(0.28f, 0.42f, 0.03f), apronMat);
             }
 
-            // Stylized Cartoon Kid Head & Face
+            // Head
             var headGroup = new GameObject("HeadGroup").transform;
             headGroup.SetParent(torsoPivot, false);
-            headGroup.localPosition = new Vector3(0f, 0.54f, 0f);
+            headGroup.localPosition = new Vector3(0f, 0.60f, 0f);
             actor.HeadGroup = headGroup;
 
-            CreatePart("Head", PrimitiveType.Sphere, headGroup, Vector3.zero, new Vector3(0.36f, 0.38f, 0.34f), skinMat);
-            CreatePart("LeftEar", PrimitiveType.Sphere, headGroup, new Vector3(-0.175f, 0.0f, -0.01f), new Vector3(0.06f, 0.085f, 0.05f), skinMat);
-            CreatePart("RightEar", PrimitiveType.Sphere, headGroup, new Vector3(0.175f, 0.0f, -0.01f), new Vector3(0.06f, 0.085f, 0.05f), skinMat);
-            CreatePart("Nose", PrimitiveType.Sphere, headGroup, new Vector3(0f, -0.015f, 0.168f), new Vector3(0.042f, 0.038f, 0.036f), skinMat);
+            CreatePart("Head", PrimitiveType.Sphere, headGroup, Vector3.zero, new Vector3(0.27f, 0.29f, 0.27f), headSkinMat);
+            CreatePart("HairCap", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.045f, -0.02f), new Vector3(0.28f, 0.25f, 0.28f), hairMat);
 
-            // Large expressive cartoon eyes with specular catchlights
-            CreatePart("LeftEyeWhite", PrimitiveType.Sphere, headGroup, new Vector3(-0.068f, 0.025f, 0.150f), new Vector3(0.064f, 0.072f, 0.028f), whiteMat);
-            CreatePart("RightEyeWhite", PrimitiveType.Sphere, headGroup, new Vector3(0.068f, 0.025f, 0.150f), new Vector3(0.064f, 0.072f, 0.028f), whiteMat);
-            CreatePart("LeftPupil", PrimitiveType.Sphere, headGroup, new Vector3(-0.068f, 0.022f, 0.160f), new Vector3(0.038f, 0.044f, 0.024f), eyeMat);
-            CreatePart("RightPupil", PrimitiveType.Sphere, headGroup, new Vector3(0.068f, 0.022f, 0.160f), new Vector3(0.038f, 0.044f, 0.024f), eyeMat);
-            CreatePart("LeftCatchlight", PrimitiveType.Sphere, headGroup, new Vector3(-0.058f, 0.036f, 0.170f), new Vector3(0.014f, 0.014f, 0.012f), whiteMat);
-            CreatePart("RightCatchlight", PrimitiveType.Sphere, headGroup, new Vector3(0.058f, 0.036f, 0.170f), new Vector3(0.014f, 0.014f, 0.012f), whiteMat);
-
-            // Sculpted eyebrows & warm smile mouth
-            var leftBrow = CreatePart("LeftBrow", PrimitiveType.Cube, headGroup, new Vector3(-0.068f, 0.082f, 0.158f), new Vector3(0.062f, 0.018f, 0.018f), hairMat);
-            leftBrow.transform.localRotation = Quaternion.Euler(0f, -10f, 8f);
-            var rightBrow = CreatePart("RightBrow", PrimitiveType.Cube, headGroup, new Vector3(0.068f, 0.082f, 0.158f), new Vector3(0.062f, 0.018f, 0.018f), hairMat);
-            rightBrow.transform.localRotation = Quaternion.Euler(0f, 10f, -8f);
-            CreatePart("Mouth", PrimitiveType.Sphere, headGroup, new Vector3(0f, -0.078f, 0.152f), new Vector3(0.065f, 0.018f, 0.018f), mouthMat);
-
-            // Sculpted 3D Hair
-            CreatePart("HairCap", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.075f, -0.025f), new Vector3(0.375f, 0.31f, 0.36f), hairMat);
-            CreatePart("HairBackNape", PrimitiveType.Sphere, headGroup, new Vector3(0f, -0.02f, -0.095f), new Vector3(0.34f, 0.22f, 0.22f), hairMat);
-            CreatePart("LeftSideburn", PrimitiveType.Sphere, headGroup, new Vector3(-0.165f, 0.02f, 0.02f), new Vector3(0.055f, 0.11f, 0.08f), hairMat);
-            CreatePart("RightSideburn", PrimitiveType.Sphere, headGroup, new Vector3(0.165f, 0.02f, 0.02f), new Vector3(0.055f, 0.11f, 0.08f), hairMat);
+            // Eyes
+            CreatePart("LeftEyeWhite", PrimitiveType.Sphere, headGroup, new Vector3(-0.055f, 0.01f, 0.118f), new Vector3(0.042f, 0.042f, 0.02f), whiteMat);
+            CreatePart("RightEyeWhite", PrimitiveType.Sphere, headGroup, new Vector3(0.055f, 0.01f, 0.118f), new Vector3(0.042f, 0.042f, 0.02f), whiteMat);
+            CreatePart("LeftPupil", PrimitiveType.Sphere, headGroup, new Vector3(-0.055f, 0.01f, 0.128f), new Vector3(0.024f, 0.024f, 0.02f), eyeMat);
+            CreatePart("RightPupil", PrimitiveType.Sphere, headGroup, new Vector3(0.055f, 0.01f, 0.128f), new Vector3(0.024f, 0.024f, 0.02f), eyeMat);
 
             if (role == CharacterOutfitRole.FemaleKid)
             {
                 Material bandMat = CardArtGenerator.CreateLitMaterial(new Color(0.95f, 0.38f, 0.72f), 0.3f);
-                var leftBang = CreatePart("LeftBang", PrimitiveType.Capsule, headGroup, new Vector3(-0.115f, 0.11f, 0.125f), new Vector3(0.08f, 0.085f, 0.07f), hairMat);
-                leftBang.transform.localRotation = Quaternion.Euler(15f, -20f, 24f);
-                var rightBang = CreatePart("RightBang", PrimitiveType.Capsule, headGroup, new Vector3(0.115f, 0.11f, 0.125f), new Vector3(0.08f, 0.085f, 0.07f), hairMat);
-                rightBang.transform.localRotation = Quaternion.Euler(15f, 20f, -24f);
-                CreatePart("HairBun", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.08f, -0.19f), new Vector3(0.16f, 0.16f, 0.16f), hairMat);
-                var ponyTip = CreatePart("PonytailTip", PrimitiveType.Capsule, headGroup, new Vector3(0f, -0.02f, -0.22f), new Vector3(0.10f, 0.11f, 0.10f), hairMat);
-                ponyTip.transform.localRotation = Quaternion.Euler(18f, 0f, 0f);
-                CreatePart("Headband", PrimitiveType.Cylinder, headGroup, new Vector3(0f, 0.115f, 0.0f), new Vector3(0.378f, 0.024f, 0.365f), bandMat);
+                CreatePart("HairBun", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.14f, -0.06f), new Vector3(0.14f, 0.14f, 0.14f), hairMat);
+                CreatePart("Headband", PrimitiveType.Cylinder, headGroup, new Vector3(0f, 0.08f, 0f), new Vector3(0.285f, 0.022f, 0.285f), bandMat);
             }
             else if (role == CharacterOutfitRole.Tindera)
             {
                 Material scarfMat = CardArtGenerator.CreateLitMaterial(new Color(0.88f, 0.28f, 0.22f), 0.2f);
-                CreatePart("Headscarf", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.08f, -0.028f), new Vector3(0.385f, 0.28f, 0.37f), scarfMat);
-                CreatePart("HairBun", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.02f, -0.19f), new Vector3(0.14f, 0.14f, 0.14f), hairMat);
+                CreatePart("Headscarf", PrimitiveType.Sphere, headGroup, new Vector3(0f, 0.06f, -0.03f), new Vector3(0.29f, 0.23f, 0.29f), scarfMat);
             }
             else
             {
-                // Stylized swept-up front quiff/spikes
-                var quiffCenter = CreatePart("QuiffCenter", PrimitiveType.Capsule, headGroup, new Vector3(0.01f, 0.195f, 0.085f), new Vector3(0.11f, 0.10f, 0.10f), hairMat);
-                quiffCenter.transform.localRotation = Quaternion.Euler(38f, 8f, -14f);
-                var quiffLeft = CreatePart("QuiffLeft", PrimitiveType.Capsule, headGroup, new Vector3(-0.085f, 0.175f, 0.075f), new Vector3(0.085f, 0.085f, 0.085f), hairMat);
-                quiffLeft.transform.localRotation = Quaternion.Euler(32f, -18f, 16f);
-                var quiffRight = CreatePart("QuiffRight", PrimitiveType.Capsule, headGroup, new Vector3(0.095f, 0.165f, 0.065f), new Vector3(0.085f, 0.085f, 0.085f), hairMat);
-                quiffRight.transform.localRotation = Quaternion.Euler(28f, 22f, -24f);
+                // Spiky/swept boy hair tuft
+                CreatePart("FrontHairTuft", PrimitiveType.Cube, headGroup, new Vector3(0f, 0.13f, 0.05f), new Vector3(0.18f, 0.07f, 0.14f), hairMat);
             }
 
-            // Smooth capsule arms with both forearm pivots wired
-            actor.LeftArmPivot = CreateArm("LeftArmPivot", torsoPivot, new Vector3(-0.185f, 0.36f, 0f), sleeveMat, skinMat, isRight: false, out Transform leftForearmPivot, out _, out _);
+            // Arms (with both forearm pivots wired for animations)
+            actor.LeftArmPivot = CreateArm("LeftArmPivot", torsoPivot, new Vector3(-0.21f, 0.39f, 0f), sleeveMat, skinMat, isRight: false, out Transform leftForearmPivot, out _, out _);
             actor.LeftForearmPivot = leftForearmPivot;
-            actor.RightArmPivot = CreateArm("RightArmPivot", torsoPivot, new Vector3(0.185f, 0.36f, 0f), sleeveMat, skinMat, isRight: true, out Transform rightForearmPivot, out GameObject handCard, out Renderer handCardRenderer);
+            actor.RightArmPivot = CreateArm("RightArmPivot", torsoPivot, new Vector3(0.21f, 0.39f, 0f), sleeveMat, skinMat, isRight: true, out Transform rightForearmPivot, out GameObject handCard, out Renderer handCardRenderer);
             actor.RightForearmPivot = rightForearmPivot;
             actor.HandCardObject = handCard;
             actor.HandCardRenderer = handCardRenderer;
             actor.SetHandCardVisible(false);
 
-            // Legs (Fitted Jeans OR Knee-Length Shorts) + White-Toe-Cap Canvas Sneakers (or Tsinelas for Tindera)
-            actor.LeftLegPivot = CreateLeg("LeftLegPivot", "LeftKneePivot", pelvis, new Vector3(-0.08f, -0.02f, 0f), shortsMat, skinMat, slipperMat, whiteMat, wearJeans, useSneakers, out Transform leftKneePivot);
-            actor.RightLegPivot = CreateLeg("RightLegPivot", "RightKneePivot", pelvis, new Vector3(0.08f, -0.02f, 0f), shortsMat, skinMat, slipperMat, whiteMat, wearJeans, useSneakers, out Transform rightKneePivot);
+            // Legs + Basketball Shorts + Tsinelas Slippers
+            actor.LeftLegPivot = CreateLeg("LeftLegPivot", "LeftKneePivot", pelvis, new Vector3(-0.085f, -0.02f, 0f), shortsMat, skinMat, slipperMat, whiteMat, out Transform leftKneePivot);
+            actor.RightLegPivot = CreateLeg("RightLegPivot", "RightKneePivot", pelvis, new Vector3(0.085f, -0.02f, 0f), shortsMat, skinMat, slipperMat, whiteMat, out Transform rightKneePivot);
             actor.LeftKneePivot = leftKneePivot;
             actor.RightKneePivot = rightKneePivot;
 
@@ -563,15 +518,15 @@ namespace TeksMaster.World
             pivot.SetParent(parent, false);
             pivot.localPosition = localPos;
 
-            CreatePart("ShoulderCap", PrimitiveType.Sphere, pivot, Vector3.zero, new Vector3(0.098f, 0.098f, 0.098f), sleeveMat);
-            CreatePart("Sleeve", PrimitiveType.Capsule, pivot, new Vector3(0f, -0.065f, 0f), new Vector3(0.095f, 0.085f, 0.095f), sleeveMat);
+            CreatePart("Sleeve", PrimitiveType.Cube, pivot, new Vector3(0f, -0.07f, 0f), new Vector3(0.10f, 0.16f, 0.10f), sleeveMat);
 
             forearmPivot = new GameObject(isRight ? "RightForearmPivot" : "LeftForearmPivot").transform;
             forearmPivot.SetParent(pivot, false);
-            forearmPivot.localPosition = new Vector3(0f, -0.14f, 0f);
+            forearmPivot.localPosition = new Vector3(0f, -0.15f, 0f);
 
-            CreatePart("Forearm", PrimitiveType.Capsule, forearmPivot, new Vector3(0f, -0.07f, 0f), new Vector3(0.072f, 0.11f, 0.072f), skinMat);
-            CreatePart("Hand", PrimitiveType.Sphere, forearmPivot, new Vector3(0f, -0.195f, 0f), new Vector3(0.078f, 0.078f, 0.078f), skinMat);
+            // Forearm (-0.15f + -0.07f = -0.22f) and Hand (-0.15f + -0.20f = -0.35f) preserve exact identity offsets
+            CreatePart("Forearm", PrimitiveType.Capsule, forearmPivot, new Vector3(0f, -0.07f, 0f), new Vector3(0.075f, 0.14f, 0.075f), skinMat);
+            CreatePart("Hand", PrimitiveType.Sphere, forearmPivot, new Vector3(0f, -0.20f, 0f), new Vector3(0.08f, 0.08f, 0.08f), skinMat);
 
             handCardObj = null;
             handCardRenderer = null;
@@ -582,7 +537,7 @@ namespace TeksMaster.World
                     "HeldTeksCard",
                     PrimitiveType.Cube,
                     forearmPivot,
-                    new Vector3(0f, -0.215f, 0.08f),
+                    new Vector3(0f, -0.22f, 0.08f),
                     new Vector3(0.09f, 0.008f, 0.13f),
                     CardArtGenerator.CreateLitMaterial(Color.white, 0.3f)
                 );
@@ -601,46 +556,29 @@ namespace TeksMaster.World
             Material shortsMat,
             Material skinMat,
             Material slipperMat,
-            Material whiteMat,
-            bool wearJeans,
-            bool useSneakers,
+            Material stripeMat,
             out Transform kneePivot)
         {
             var pivot = new GameObject(name).transform;
             pivot.SetParent(parent, false);
             pivot.localPosition = localPos;
 
-            // Smooth rounded upper leg (jeans or knee-length shorts)
-            CreatePart("ShortsLeg", PrimitiveType.Capsule, pivot, new Vector3(0f, -0.125f, 0f), new Vector3(0.125f, 0.145f, 0.130f), shortsMat);
+            // Basketball shorts leg + sporty side stripe
+            CreatePart("ShortsLeg", PrimitiveType.Cube, pivot, new Vector3(0f, -0.12f, 0f), new Vector3(0.13f, 0.26f, 0.14f), shortsMat);
+            float stripeX = localPos.x < 0f ? -0.068f : 0.068f;
+            CreatePart("ShortsStripe", PrimitiveType.Cube, pivot, new Vector3(stripeX, -0.12f, 0f), new Vector3(0.01f, 0.24f, 0.04f), stripeMat);
 
-            // Knee pivot placed at bottom of thigh (-0.25f) so standing world offsets remain identical when identity
+            // Knee pivot placed at bottom of shorts (-0.25f) so standing world offsets remain identical when identity
             kneePivot = new GameObject(kneeName).transform;
             kneePivot.SetParent(pivot, false);
             kneePivot.localPosition = new Vector3(0f, -0.25f, 0f);
 
-            // Lower leg: full-length fitted denim for jeans, or bare calf for knee-length shorts
-            if (wearJeans)
-            {
-                CreatePart("LowerLeg", PrimitiveType.Capsule, kneePivot, new Vector3(0f, -0.115f, 0f), new Vector3(0.098f, 0.165f, 0.100f), shortsMat);
-            }
-            else
-            {
-                CreatePart("LowerLeg", PrimitiveType.Capsule, kneePivot, new Vector3(0f, -0.11f, 0f), new Vector3(0.078f, 0.16f, 0.078f), skinMat);
-            }
+            // Calf (-0.25f + -0.11f = -0.36f)
+            CreatePart("LowerLeg", PrimitiveType.Capsule, kneePivot, new Vector3(0f, -0.11f, 0f), new Vector3(0.08f, 0.16f, 0.08f), skinMat);
 
-            // White-toe-cap canvas sneakers for kids, or traditional tsinelas for Tindera
-            if (useSneakers)
-            {
-                CreatePart("SneakerSole", PrimitiveType.Cube, kneePivot, new Vector3(0f, -0.328f, 0.035f), new Vector3(0.106f, 0.032f, 0.205f), whiteMat);
-                CreatePart("SneakerBody", PrimitiveType.Cube, kneePivot, new Vector3(0f, -0.285f, 0.015f), new Vector3(0.098f, 0.068f, 0.155f), slipperMat);
-                CreatePart("SneakerToeCap", PrimitiveType.Sphere, kneePivot, new Vector3(0f, -0.296f, 0.092f), new Vector3(0.100f, 0.064f, 0.095f), whiteMat);
-                CreatePart("SneakerLaceStrip", PrimitiveType.Cube, kneePivot, new Vector3(0f, -0.252f, 0.055f), new Vector3(0.052f, 0.014f, 0.068f), whiteMat);
-            }
-            else
-            {
-                CreatePart("TsinelasSole", PrimitiveType.Cube, kneePivot, new Vector3(0f, -0.32f, 0.03f), new Vector3(0.10f, 0.03f, 0.19f), slipperMat);
-                CreatePart("TsinelasStrap", PrimitiveType.Cube, kneePivot, new Vector3(0f, -0.295f, 0.04f), new Vector3(0.09f, 0.02f, 0.04f), whiteMat);
-            }
+            // Tsinelas (flip-flop slipper) (-0.25f + -0.32f = -0.57f; -0.25f + -0.295f = -0.545f)
+            CreatePart("TsinelasSole", PrimitiveType.Cube, kneePivot, new Vector3(0f, -0.32f, 0.03f), new Vector3(0.10f, 0.03f, 0.19f), slipperMat);
+            CreatePart("TsinelasStrap", PrimitiveType.Cube, kneePivot, new Vector3(0f, -0.295f, 0.04f), new Vector3(0.09f, 0.02f, 0.04f), stripeMat);
 
             return pivot;
         }
