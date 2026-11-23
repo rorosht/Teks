@@ -33,6 +33,7 @@ namespace TeksMaster.World
         public Transform HeadGroup;
         public Transform LeftArmPivot;
         public Transform RightArmPivot;
+        public Transform RightForearmPivot;
         public Transform LeftLegPivot;
         public Transform RightLegPivot;
         public Transform LeftKneePivot;
@@ -129,6 +130,7 @@ namespace TeksMaster.World
             Quaternion targetRightKnee = Quaternion.identity;
             Quaternion targetLeftArm = Quaternion.Euler(0f, 0f, 8f);
             Quaternion targetRightArm = Quaternion.Euler(0f, 0f, -8f);
+            Quaternion targetRightForearm = Quaternion.identity;
 
             if (CurrentPose == CharacterPoseMode.SittingOnCourt)
             {
@@ -156,19 +158,62 @@ namespace TeksMaster.World
             {
                 targetPelvisY = 0.34f;
                 targetTorsoRot = Quaternion.Euler(32f, 0f, 0f);
+                targetHeadRot = Quaternion.Euler(-6f, 0f, 0f);
                 targetLeftLeg = Quaternion.Euler(-64f, -12f, 0f);
                 targetRightLeg = Quaternion.Euler(-54f, 12f, 0f);
                 targetLeftArm = Quaternion.Euler(-28f, 0f, 16f);
+                targetRightForearm = Quaternion.Euler(-18f, 0f, 0f);
 
                 if (_isPlayingFlick)
                 {
                     _flickAnimTimer += dt;
-                    float t = Mathf.Clamp01(_flickAnimTimer / 0.25f);
-                    float snap = Mathf.Sin(t * Mathf.PI);
-                    targetRightArm = Quaternion.Euler(-75f - snap * 35f, -10f, -6f);
-                    if (_flickAnimTimer >= 0.35f)
+
+                    if (_flickAnimTimer < 0.14f)
                     {
-                        _isPlayingFlick = false;
+                        // Stage 1 (0.00-0.14s): Quick wind-up — crouch lower, pull right arm/forearm back with wrist cocked
+                        float s1 = Mathf.Clamp01(_flickAnimTimer / 0.14f);
+                        float w = 1f - (1f - s1) * (1f - s1);
+                        targetPelvisY = Mathf.Lerp(0.34f, 0.28f, w);
+                        targetTorsoRot = Quaternion.Euler(Mathf.Lerp(32f, 38f, w), Mathf.Lerp(0f, 12f, w), Mathf.Lerp(0f, -4f, w));
+                        targetHeadRot = Quaternion.Euler(Mathf.Lerp(-6f, 8f, w), Mathf.Lerp(0f, 8f, w), 0f);
+                        targetLeftLeg = Quaternion.Euler(Mathf.Lerp(-64f, -72f, w), -12f, 0f);
+                        targetRightLeg = Quaternion.Euler(Mathf.Lerp(-54f, -62f, w), 12f, 0f);
+                        targetLeftArm = Quaternion.Euler(Mathf.Lerp(-28f, -18f, w), 0f, Mathf.Lerp(16f, 24f, w));
+                        targetRightArm = Quaternion.Euler(Mathf.Lerp(-68f, 18f, w), Mathf.Lerp(-12f, 8f, w), Mathf.Lerp(-6f, -12f, w));
+                        targetRightForearm = Quaternion.Euler(Mathf.Lerp(-18f, -62f, w), 0f, Mathf.Lerp(0f, -10f, w));
+                    }
+                    else if (_flickAnimTimer < 0.34f)
+                    {
+                        // Stage 2 (0.14-0.34s): Crisp upward toss — sweep right arm sharply forward & upward, lift torso, tilt head up
+                        float s2 = Mathf.Clamp01((_flickAnimTimer - 0.14f) / 0.20f);
+                        float t = 1f - Mathf.Pow(1f - s2, 3f);
+                        targetPelvisY = Mathf.Lerp(0.28f, 0.44f, t);
+                        targetTorsoRot = Quaternion.Euler(Mathf.Lerp(38f, 8f, t), Mathf.Lerp(12f, -12f, t), Mathf.Lerp(-4f, 5f, t));
+                        targetHeadRot = Quaternion.Euler(Mathf.Lerp(8f, -34f, t), Mathf.Lerp(8f, -4f, t), 0f);
+                        targetLeftLeg = Quaternion.Euler(Mathf.Lerp(-72f, -40f, t), -10f, 0f);
+                        targetRightLeg = Quaternion.Euler(Mathf.Lerp(-62f, -34f, t), 10f, 0f);
+                        targetLeftArm = Quaternion.Euler(Mathf.Lerp(-18f, 28f, t), Mathf.Lerp(0f, -14f, t), Mathf.Lerp(24f, 34f, t));
+                        targetRightArm = Quaternion.Euler(Mathf.Lerp(18f, -148f, t), Mathf.Lerp(8f, -10f, t), Mathf.Lerp(-12f, -14f, t));
+                        targetRightForearm = Quaternion.Euler(Mathf.Lerp(-62f, -12f, t), 0f, Mathf.Lerp(-10f, 8f, t));
+                    }
+                    else
+                    {
+                        // Stage 3 (0.34-0.65s): Hold high follow-through watching cards, then smoothly relax to ready stance
+                        float relax = Mathf.Clamp01((_flickAnimTimer - 0.46f) / 0.19f);
+                        float r = relax * relax * (3f - 2f * relax);
+                        targetPelvisY = Mathf.Lerp(0.44f, 0.34f, r);
+                        targetTorsoRot = Quaternion.Euler(Mathf.Lerp(8f, 32f, r), Mathf.Lerp(-12f, 0f, r), Mathf.Lerp(5f, 0f, r));
+                        targetHeadRot = Quaternion.Euler(Mathf.Lerp(-34f, -6f, r), Mathf.Lerp(-4f, 0f, r), 0f);
+                        targetLeftLeg = Quaternion.Euler(Mathf.Lerp(-40f, -64f, r), -12f, 0f);
+                        targetRightLeg = Quaternion.Euler(Mathf.Lerp(-34f, -54f, r), 12f, 0f);
+                        targetLeftArm = Quaternion.Euler(Mathf.Lerp(28f, -28f, r), Mathf.Lerp(-14f, 0f, r), Mathf.Lerp(34f, 16f, r));
+                        targetRightArm = Quaternion.Euler(Mathf.Lerp(-148f, -68f, r), Mathf.Lerp(-10f, -12f, r), Mathf.Lerp(-14f, -6f, r));
+                        targetRightForearm = Quaternion.Euler(Mathf.Lerp(-12f, -18f, r), 0f, Mathf.Lerp(8f, 0f, r));
+
+                        if (_flickAnimTimer >= 0.65f)
+                        {
+                            _isPlayingFlick = false;
+                        }
                     }
                 }
                 else
@@ -275,7 +320,8 @@ namespace TeksMaster.World
                 }
             }
 
-            float lerpSpeed = Mathf.Clamp01(dt * 12f);
+            float lerpRate = (_isPlayingFlick && CurrentPose == CharacterPoseMode.CrouchingFlick) ? 24f : 12f;
+            float lerpSpeed = Mathf.Clamp01(dt * lerpRate);
             Pelvis.localPosition = Vector3.Lerp(Pelvis.localPosition, new Vector3(0f, targetPelvisY, 0f), lerpSpeed);
             if (Torso != null) Torso.localRotation = Quaternion.Slerp(Torso.localRotation, targetTorsoRot, lerpSpeed);
             if (HeadGroup != null) HeadGroup.localRotation = Quaternion.Slerp(HeadGroup.localRotation, targetHeadRot, lerpSpeed);
@@ -285,6 +331,7 @@ namespace TeksMaster.World
             if (RightKneePivot != null) RightKneePivot.localRotation = Quaternion.Slerp(RightKneePivot.localRotation, targetRightKnee, lerpSpeed);
             if (LeftArmPivot != null) LeftArmPivot.localRotation = Quaternion.Slerp(LeftArmPivot.localRotation, targetLeftArm, lerpSpeed);
             if (RightArmPivot != null) RightArmPivot.localRotation = Quaternion.Slerp(RightArmPivot.localRotation, targetRightArm, lerpSpeed);
+            if (RightForearmPivot != null) RightForearmPivot.localRotation = Quaternion.Slerp(RightForearmPivot.localRotation, targetRightForearm, lerpSpeed);
         }
     }
 
@@ -382,8 +429,9 @@ namespace TeksMaster.World
             }
 
             // Arms
-            actor.LeftArmPivot = CreateArm("LeftArmPivot", torsoPivot, new Vector3(-0.21f, 0.39f, 0f), sleeveMat, skinMat, isRight: false, out _, out _);
-            actor.RightArmPivot = CreateArm("RightArmPivot", torsoPivot, new Vector3(0.21f, 0.39f, 0f), sleeveMat, skinMat, isRight: true, out GameObject handCard, out Renderer handCardRenderer);
+            actor.LeftArmPivot = CreateArm("LeftArmPivot", torsoPivot, new Vector3(-0.21f, 0.39f, 0f), sleeveMat, skinMat, isRight: false, out _, out _, out _);
+            actor.RightArmPivot = CreateArm("RightArmPivot", torsoPivot, new Vector3(0.21f, 0.39f, 0f), sleeveMat, skinMat, isRight: true, out Transform rightForearmPivot, out GameObject handCard, out Renderer handCardRenderer);
+            actor.RightForearmPivot = rightForearmPivot;
             actor.HandCardObject = handCard;
             actor.HandCardRenderer = handCardRenderer;
             actor.SetHandCardVisible(false);
@@ -404,6 +452,7 @@ namespace TeksMaster.World
             Material sleeveMat,
             Material skinMat,
             bool isRight,
+            out Transform forearmPivot,
             out GameObject handCardObj,
             out Renderer handCardRenderer)
         {
@@ -412,8 +461,14 @@ namespace TeksMaster.World
             pivot.localPosition = localPos;
 
             CreatePart("Sleeve", PrimitiveType.Cube, pivot, new Vector3(0f, -0.07f, 0f), new Vector3(0.10f, 0.16f, 0.10f), sleeveMat);
-            CreatePart("Forearm", PrimitiveType.Capsule, pivot, new Vector3(0f, -0.22f, 0f), new Vector3(0.075f, 0.14f, 0.075f), skinMat);
-            CreatePart("Hand", PrimitiveType.Sphere, pivot, new Vector3(0f, -0.35f, 0f), new Vector3(0.08f, 0.08f, 0.08f), skinMat);
+
+            forearmPivot = new GameObject(isRight ? "RightForearmPivot" : "LeftForearmPivot").transform;
+            forearmPivot.SetParent(pivot, false);
+            forearmPivot.localPosition = new Vector3(0f, -0.15f, 0f);
+
+            // Forearm (-0.15f + -0.07f = -0.22f) and Hand (-0.15f + -0.20f = -0.35f) preserve exact identity offsets
+            CreatePart("Forearm", PrimitiveType.Capsule, forearmPivot, new Vector3(0f, -0.07f, 0f), new Vector3(0.075f, 0.14f, 0.075f), skinMat);
+            CreatePart("Hand", PrimitiveType.Sphere, forearmPivot, new Vector3(0f, -0.20f, 0f), new Vector3(0.08f, 0.08f, 0.08f), skinMat);
 
             handCardObj = null;
             handCardRenderer = null;
@@ -423,8 +478,8 @@ namespace TeksMaster.World
                 var cardGo = CreatePart(
                     "HeldTeksCard",
                     PrimitiveType.Cube,
-                    pivot,
-                    new Vector3(0f, -0.37f, 0.08f),
+                    forearmPivot,
+                    new Vector3(0f, -0.22f, 0.08f),
                     new Vector3(0.09f, 0.008f, 0.13f),
                     CardArtGenerator.CreateLitMaterial(Color.white, 0.3f)
                 );
