@@ -544,7 +544,7 @@ namespace TeksMaster.World
 
         private void UpdateSignText()
         {
-            string wrappedHint = WrapHintText(UnlockHint, 34);
+            string wrappedHint = WrapHintText(UnlockHint, 26);
             string boardCopy = $"LOCKED: {GateTitle.ToUpperInvariant()}\n{wrappedHint}";
             if (_frontSignText != null && _frontSignText.text != boardCopy)
             {
@@ -706,7 +706,7 @@ namespace TeksMaster.World
             CreateVisualBox("SignBoard", _visualRoot.transform, new Vector3(0f, signY, 0f),
                 new Vector3(signW, 0.84f, 0.14f), signBoardMat);
 
-            string wrappedHint = WrapHintText(UnlockHint, 34);
+            string wrappedHint = WrapHintText(UnlockHint, 26);
             string boardCopy = $"LOCKED: {GateTitle.ToUpperInvariant()}\n{wrappedHint}";
 
             _frontSignText = CreateGateSignText("SignTextFront", _visualRoot.transform,
@@ -736,12 +736,12 @@ namespace TeksMaster.World
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
             go.transform.localRotation = localRot;
-            go.transform.localScale = Vector3.one * 0.085f;
+            go.transform.localScale = Vector3.one * 0.11f;
 
             var tm = go.AddComponent<TextMesh>();
             tm.text = text;
-            tm.fontSize = 20;
-            tm.characterSize = 0.72f;
+            tm.fontSize = 52;
+            tm.characterSize = 0.20f;
             tm.anchor = TextAnchor.MiddleCenter;
             tm.alignment = TextAlignment.Center;
             tm.color = new Color(1.0f, 0.92f, 0.38f);

@@ -132,19 +132,27 @@ namespace TeksMaster.Characters
 
         public static BarangayAreaId InferAreaFromPosition(Vector3 worldPos)
         {
-            if (worldPos.x <= -14.5f)
+            if (worldPos.x <= -14.5f && worldPos.z <= -20.8f)
+            {
+                return BarangayAreaId.TournamentArena;
+            }
+            if (worldPos.x >= 14.5f && worldPos.z <= -20.8f)
+            {
+                return BarangayAreaId.FiestaArena;
+            }
+            if (worldPos.x <= -14.5f && worldPos.z > -8.4f)
             {
                 return BarangayAreaId.OldNeighborhood;
             }
-            if (worldPos.x >= 14.5f)
+            if (worldPos.x >= 14.5f && worldPos.z > -11.5f)
             {
-                return worldPos.z <= -12.2f
-                    ? BarangayAreaId.FiestaArena
-                    : BarangayAreaId.PlayersNeighborhood;
+                return BarangayAreaId.PlayersNeighborhood;
             }
-            return worldPos.z <= -8.4f
-                ? BarangayAreaId.SariSariAndKalye
-                : BarangayAreaId.BasketballCourt;
+            if (worldPos.x > -14.5f && worldPos.x < 14.5f && worldPos.z > -8.4f)
+            {
+                return BarangayAreaId.BasketballCourt;
+            }
+            return BarangayAreaId.SariSariAndKalye;
         }
 
         public static Bounds GetDefaultZoneBounds(BarangayAreaId area)
@@ -156,19 +164,22 @@ namespace TeksMaster.Characters
                     b.SetMinMax(new Vector3(16.0f, -2f, -10.5f), new Vector3(27.5f, 4f, 11.5f));
                     break;
                 case BarangayAreaId.SariSariAndKalye:
-                    b.SetMinMax(new Vector3(-13.0f, -2f, -19.5f), new Vector3(13.0f, 4f, -10.0f));
+                    b.SetMinMax(new Vector3(-13.0f, -2f, -20.2f), new Vector3(13.0f, 4f, -9.2f));
                     break;
                 case BarangayAreaId.BasketballCourt:
-                    b.SetMinMax(new Vector3(-13.0f, -2f, -7.0f), new Vector3(13.0f, 4f, 10.5f));
+                    b.SetMinMax(new Vector3(-13.0f, -2f, -7.0f), new Vector3(13.0f, 4f, 7.8f));
                     break;
                 case BarangayAreaId.OldNeighborhood:
-                    b.SetMinMax(new Vector3(-27.5f, -2f, -10.5f), new Vector3(-16.0f, 4f, 10.5f));
+                    b.SetMinMax(new Vector3(-27.5f, -2f, -7.6f), new Vector3(-16.0f, 4f, 10.5f));
                     break;
                 case BarangayAreaId.FiestaArena:
-                    b.SetMinMax(new Vector3(16.0f, -2f, -21.5f), new Vector3(28.0f, 4f, -13.5f));
+                    b.SetMinMax(new Vector3(16.0f, -2f, -35.5f), new Vector3(30.5f, 4f, -22.0f));
+                    break;
+                case BarangayAreaId.TournamentArena:
+                    b.SetMinMax(new Vector3(-29.5f, -2f, -35.5f), new Vector3(-16.0f, 4f, -22.0f));
                     break;
                 default:
-                    b.SetMinMax(new Vector3(-29.0f, -2f, -22.0f), new Vector3(29.0f, 4f, 16.0f));
+                    b.SetMinMax(new Vector3(-30.0f, -2f, -36.5f), new Vector3(30.0f, 4f, 16.0f));
                     break;
             }
             return b;
@@ -176,9 +187,13 @@ namespace TeksMaster.Characters
 
         public string GetDisplayTag()
         {
+            bool defeated = PlayerInventory.Instance != null
+                && PlayerInventory.Instance.HasDefeatedNpc(GetEffectiveNpcId());
+            string checkSuffix = defeated ? " \u2713" : string.Empty;
+
             if (IsChampion)
             {
-                return $"{NpcName} (Champion)";
+                return $"[CHAMPION] {NpcName}{checkSuffix}";
             }
 
             string diffLabel = Difficulty switch
@@ -190,7 +205,13 @@ namespace TeksMaster.Characters
                 AIDifficulty.Extreme => "Extreme",
                 _ => "Easy"
             };
-            return $"{NpcName} ({diffLabel})";
+
+            if (IsStoryOpponent)
+            {
+                return $"[STORY] {NpcName} ({diffLabel}){checkSuffix}";
+            }
+
+            return $"{NpcName} ({diffLabel}){checkSuffix}";
         }
 
         public Color GetDifficultyColor()
@@ -413,9 +434,9 @@ namespace TeksMaster.Characters
 
         private static Vector3 ClampPointToBoundsXZ(Vector3 point, Bounds bounds)
         {
-            float minX = Mathf.Clamp(bounds.min.x, -29f, 29f);
-            float maxX = Mathf.Clamp(bounds.max.x, minX, 29f);
-            float minZ = Mathf.Clamp(bounds.min.z, -24f, 16f);
+            float minX = Mathf.Clamp(bounds.min.x, -30f, 30f);
+            float maxX = Mathf.Clamp(bounds.max.x, minX, 30f);
+            float minZ = Mathf.Clamp(bounds.min.z, -36.5f, 16f);
             float maxZ = Mathf.Clamp(bounds.max.z, minZ, 16f);
             point.x = Mathf.Clamp(point.x, minX, maxX);
             point.z = Mathf.Clamp(point.z, minZ, maxZ);

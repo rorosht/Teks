@@ -27,8 +27,10 @@ namespace TeksMaster.Gameplay
 
         public MatchState State { get; private set; } = MatchState.Idle;
         public NpcOpponent ActiveOpponent { get; private set; }
+        public string ActiveOpponentCardId { get; private set; } = string.Empty;
         public int CurrentCoinWager { get; private set; } = 25;
         public int LastCoinReward { get; private set; }
+        public int LastCoinLoss { get; private set; }
         public IReadOnlyList<BarangayAreaId> LastNewlyUnlockedAreas => _lastNewlyUnlockedAreas;
 
         // Needle runs -1f .. +1f (drives launch power/spin/juice only; never alters win probability)
@@ -115,6 +117,96 @@ namespace TeksMaster.Gameplay
                 AIDifficulty.Extreme => 135,
                 _ => 25
             };
+        }
+
+        public static float CalculatePlayerChubProbability(CardRarity rarity, int starRank)
+        {
+            float rarityBonus = rarity switch
+            {
+                CardRarity.Common => 0.00f,
+                CardRarity.Uncommon => 0.05f,
+                CardRarity.Rare => 0.10f,
+                CardRarity.Epic => 0.15f,
+                CardRarity.Legendary => 0.20f,
+                _ => 0.00f
+            };
+            float upgradeBonus = (Mathf.Clamp(starRank, 1, 5) - 1) * 0.04f;
+            return Mathf.Clamp(PlayerChubProbability + rarityBonus + upgradeBonus, 0.50f, 0.88f);
+        }
+
+        public string GetResolvedOpponentCardId(NpcOpponent opp, string excludedPlayerCardId)
+        {
+            string favoriteId = opp != null ? opp.FavoriteCardId : null;
+            TeksCardDefinition favoriteDef = !string.IsNullOrEmpty(favoriteId) ? TeksDatabase.GetCard(favoriteId) : null;
+
+            if (favoriteDef != null &&
+                !string.Equals(favoriteId, excludedPlayerCardId, StringComparison.OrdinalIgnoreCase))
+            {
+                return favoriteId;
+            }
+
+            CardRarity preferredRarity = favoriteDef != null
+                ? favoriteDef.Rarity
+                : (opp != null ? opp.Difficulty switch
+                {
+                    AIDifficulty.Easy => CardRarity.Common,
+                    AIDifficulty.Medium => CardRarity.Uncommon,
+                    AIDifficulty.Hard => CardRarity.Rare,
+                    AIDifficulty.Boss => CardRarity.Epic,
+                    AIDifficulty.Extreme => CardRarity.Legendary,
+                    _ => CardRarity.Common
+                } : CardRarity.Common);
+
+            var allCards = TeksDatabase.AllCards;
+            var sameRarity = new List<TeksCardDefinition>();
+            var fallbackAny = new List<TeksCardDefinition>();
+
+            for (int i = 0; i < allCards.Count; i++)
+            {
+                var card = allCards[i];
+                if (card == null) continue;
+                if (string.Equals(card.Id, excludedPlayerCardId, StringComparison.OrdinalIgnoreCase)) continue;
+
+                fallbackAny.Add(card);
+                if (card.Rarity == preferredRarity)
+                {
+                    sameRarity.Add(card);
+                }
+            }
+
+            string seedKey = opp != null ? opp.GetEffectiveNpcId() : "opponent";
+            int hash = ComputeDeterministicHash(seedKey + "|" + (excludedPlayerCardId ?? string.Empty));
+
+            if (sameRarity.Count > 0)
+            {
+                return sameRarity[hash % sameRarity.Count].Id;
+            }
+
+            if (fallbackAny.Count > 0)
+            {
+                return fallbackAny[hash % fallbackAny.Count].Id;
+            }
+
+            return !string.Equals("bakunawa", excludedPlayerCardId, StringComparison.OrdinalIgnoreCase)
+                ? "bakunawa"
+                : "hero";
+        }
+
+        private static int ComputeDeterministicHash(string text)
+        {
+            unchecked
+            {
+                uint hash = 2166136261u;
+                if (!string.IsNullOrEmpty(text))
+                {
+                    for (int i = 0; i < text.Length; i++)
+                    {
+                        hash ^= text[i];
+                        hash *= 16777619u;
+                    }
+                }
+                return (int)(hash & 0x7FFFFFFFu);
+            }
         }
 
         // --- Pre-Battle Pamato Selection & Challenge Card Restriction API ---
@@ -204,6 +296,10 @@ namespace TeksMaster.Gameplay
 
             _selectedPamatoIdOverride = cardId;
             inv.EquipPamato(cardId);
+            if (ActiveOpponent != null)
+            {
+                ActiveOpponentCardId = GetResolvedOpponentCardId(ActiveOpponent, cardId);
+            }
 
             if (State == MatchState.ReadyToFlick)
             {
@@ -285,9 +381,13 @@ namespace TeksMaster.Gameplay
         {
             if (npc == null || State != MatchState.Idle) return;
 
+            var inv = PlayerInventory.Instance;
+            int defaultWager = GetBaseCoinReward(npc);
+
             ActiveOpponent = npc;
-            CurrentCoinWager = GetBaseCoinReward(npc);
+            CurrentCoinWager = inv != null ? Mathf.Clamp(defaultWager, 0, inv.Coins) : Mathf.Max(0, defaultWager);
             LastCoinReward = 0;
+            LastCoinLoss = 0;
             _lastNewlyUnlockedAreas.Clear();
             LastFlickRating = string.Empty;
             RoundResultTitle = string.Empty;
@@ -297,6 +397,8 @@ namespace TeksMaster.Gameplay
             _hasSavedCharacterTransforms = false;
 
             EnsureValidSelectedPamato();
+            var activePamato = GetActivePlayerPamato(out _);
+            ActiveOpponentCardId = GetResolvedOpponentCardId(npc, activePamato != null ? activePamato.CardId : "hero");
 
             if (PlayerController.Instance != null)
             {
@@ -321,6 +423,8 @@ namespace TeksMaster.Gameplay
 
             State = MatchState.Idle;
             ActiveOpponent = null;
+            ActiveOpponentCardId = string.Empty;
+            LastCoinLoss = 0;
             LastFlickRating = string.Empty;
             WasTablaLastRound = false;
             _flightCamInitialized = false;
@@ -346,8 +450,10 @@ namespace TeksMaster.Gameplay
         {
             if (ActiveOpponent == null) return;
 
-            // Difficulty-scaled reward pot (zero coin loss on defeat)
-            CurrentCoinWager = GetBaseCoinReward(ActiveOpponent);
+            var inv = PlayerInventory.Instance;
+            CurrentCoinWager = inv != null ? Mathf.Clamp(coinWager, 0, inv.Coins) : Mathf.Max(0, coinWager);
+            LastCoinReward = 0;
+            LastCoinLoss = 0;
             EnsureValidSelectedPamato();
 
             SaveAndPositionCharacters();
@@ -438,7 +544,7 @@ namespace TeksMaster.Gameplay
             var camFollow = Camera.main.GetComponent<CameraFollowController>();
             if (camFollow == null) return;
 
-            Vector3 fallbackPos = _matchOrigin + _matchForward * 1.15f + Vector3.up * 0.25f;
+            Vector3 fallbackPos = _matchOrigin + _matchForward * 0.85f + Vector3.up * 0.35f;
             Vector3 pPos = _playerCard != null ? _playerCard.transform.position : fallbackPos;
             Vector3 oPos = _opponentCard != null ? _opponentCard.transform.position : pPos;
 
@@ -446,7 +552,7 @@ namespace TeksMaster.Gameplay
             float maxY = Mathf.Max(pPos.y, oPos.y);
             float spread = Vector3.Distance(new Vector3(pPos.x, 0f, pPos.z), new Vector3(oPos.x, 0f, oPos.z));
 
-            Vector3 desiredFocus = new Vector3(mid.x, Mathf.Max(0.08f, mid.y * 0.85f), mid.z);
+            Vector3 desiredFocus = new Vector3(mid.x, Mathf.Max(0.10f, mid.y), mid.z);
             if (!_flightCamInitialized || snapImmediately)
             {
                 _flightCamFocus = desiredFocus;
@@ -454,16 +560,17 @@ namespace TeksMaster.Gameplay
             }
             else
             {
-                _flightCamFocus = Vector3.Lerp(_flightCamFocus, desiredFocus, Mathf.Clamp01(Time.deltaTime * 9f));
+                _flightCamFocus = Vector3.Lerp(_flightCamFocus, desiredFocus, Mathf.Clamp01(Time.deltaTime * 11f));
             }
 
-            float backDist = 1.55f + Mathf.Clamp(spread * 0.45f, 0f, 1.10f) + Mathf.Clamp(maxY * 0.25f, 0f, 0.55f);
-            float sideOffset = 0.72f + Mathf.Clamp(spread * 0.15f, 0f, 0.35f);
-            float camHeight = Mathf.Clamp(1.18f + maxY * 0.58f + spread * 0.14f, 1.10f, 2.85f);
+            // Centered directly behind the midpoint of both cards so they stay dead-center in POV from toss to touchdown
+            float backDist = Mathf.Clamp(1.05f + spread * 0.32f + maxY * 0.14f, 1.05f, 1.35f);
+            float sideOffset = 0f;
+            float camHeight = Mathf.Clamp(0.95f + mid.y * 0.65f + spread * 0.12f, 0.92f, 2.35f);
 
             Vector3 camPos = _flightCamFocus - _matchForward * backDist - _matchRight * sideOffset + Vector3.up * camHeight;
-            if (camPos.y < 0.75f) camPos.y = 0.75f;
-            Vector3 lookTarget = _flightCamFocus + Vector3.up * 0.06f;
+            if (camPos.y < 0.72f) camPos.y = 0.72f;
+            Vector3 lookTarget = _flightCamFocus;
 
             camFollow.SetMatchCamera(camPos, lookTarget);
         }
@@ -474,8 +581,8 @@ namespace TeksMaster.Gameplay
             var camFollow = Camera.main.GetComponent<CameraFollowController>();
             if (camFollow == null) return;
 
-            Vector3 mid = _matchOrigin + _matchForward * 1.15f;
-            float spread = 0.60f;
+            Vector3 mid = _matchOrigin + _matchForward * 0.95f;
+            float spread = 0.45f;
             if (_playerCard != null && _opponentCard != null)
             {
                 Vector3 p = _playerCard.transform.position;
@@ -485,10 +592,10 @@ namespace TeksMaster.Gameplay
             }
             mid.y = 0.05f;
 
-            float backDist = 1.45f + Mathf.Clamp(spread * 0.50f, 0f, 0.90f);
-            float height = 1.32f + Mathf.Clamp(spread * 0.18f, 0f, 0.45f);
-            Vector3 camPos = mid - _matchForward * backDist - _matchRight * 0.42f + Vector3.up * height;
-            Vector3 lookTarget = mid + _matchForward * 0.12f + Vector3.up * 0.10f;
+            float backDist = Mathf.Clamp(1.15f + spread * 0.40f, 1.15f, 1.65f);
+            float height = Mathf.Clamp(1.12f + spread * 0.16f, 1.10f, 1.65f);
+            Vector3 camPos = mid - _matchForward * backDist + Vector3.up * height;
+            Vector3 lookTarget = mid + Vector3.up * 0.06f;
             camFollow.SetMatchCamera(camPos, lookTarget);
         }
 
@@ -533,6 +640,8 @@ namespace TeksMaster.Gameplay
         {
             CleanupMatchCards();
             WasTablaLastRound = false;
+            LastCoinReward = 0;
+            LastCoinLoss = 0;
             LastFlickRating = string.Empty;
             _flightCamInitialized = false;
 
@@ -607,12 +716,12 @@ namespace TeksMaster.Gameplay
             }
 
             var player = PlayerController.Instance;
-            Vector3 handPos = _matchOrigin + _matchRight * 0.22f + Vector3.up * 0.56f + _matchForward * 0.36f;
+            Vector3 handPos = _matchOrigin + _matchRight * 0.10f + Vector3.up * 0.62f + _matchForward * 0.42f;
             Vector3 forwardDir = _matchForward;
 
             if (player != null)
             {
-                handPos = player.transform.position + player.transform.right * 0.22f + Vector3.up * 0.56f + player.transform.forward * 0.36f;
+                handPos = player.transform.position + player.transform.right * 0.10f + Vector3.up * 0.62f + player.transform.forward * 0.42f;
                 forwardDir = player.transform.forward;
                 if (player.Actor != null)
                 {
@@ -621,18 +730,20 @@ namespace TeksMaster.Gameplay
                 }
             }
 
+            var inv = PlayerInventory.Instance;
             var ownedPamato = GetActivePlayerPamato(out var playerDef);
             string playerCardId = ownedPamato != null ? ownedPamato.CardId : "hero";
             int playerRank = ownedPamato != null ? ownedPamato.StarRank : 1;
             CardRarity playerRarity = playerDef != null ? playerDef.Rarity : CardRarity.Common;
 
-            string oppCardId = ActiveOpponent != null ? ActiveOpponent.FavoriteCardId : "bakunawa";
+            string oppCardId = GetResolvedOpponentCardId(ActiveOpponent, playerCardId);
+            ActiveOpponentCardId = oppCardId;
             var oppDef = TeksDatabase.GetCard(oppCardId);
             int oppRank = ActiveOpponent != null ? ActiveOpponent.CardStarRank : 3;
             CardRarity oppRarity = oppDef != null ? oppDef.Rarity : CardRarity.Common;
 
-            // Strict SPEC battle odds: Player is ALWAYS 50% Front / 50% Back; Opponent uses difficulty table (40/50/65/80%)
-            float playerChubProb = PlayerChubProbability;
+            // Player Chub probability scales with equipped Pamato rarity & upgrade level; Opponent uses difficulty table
+            float playerChubProb = CalculatePlayerChubProbability(playerRarity, playerRank);
             float oppChubProb = ActiveOpponent != null ? ActiveOpponent.GetAiChubProbability() : 0.50f;
 
             CleanupMatchCards();
@@ -644,34 +755,40 @@ namespace TeksMaster.Gameplay
             }
 
             Vector3 rightDir = Vector3.Cross(Vector3.up, forwardDir).normalized;
+            string playerLabel = (inv != null && !string.IsNullOrWhiteSpace(inv.PlayerNickname)
+                ? inv.PlayerNickname.Trim()
+                : "Player").ToUpper();
+            string opponentLabel = (ActiveOpponent != null && !string.IsNullOrWhiteSpace(ActiveOpponent.NpcName)
+                ? ActiveOpponent.NpcName.Trim()
+                : "Opponent").ToUpper();
 
-            // 1. Player's Pamato Card (Left trajectory — strictly 2 cards in play)
+            // 1. Player's Pamato Card (Left upward trajectory — strictly 2 cards in play)
             _playerCard = TeksCardPhysics.SpawnPhysicalCard(
                 playerCardId, playerRank,
                 handPos - rightDir * 0.08f, Quaternion.Euler(15f, player != null ? player.transform.eulerAngles.y : 0f, 0f),
                 isPlayerPamato: true, isOpponentPamato: false);
-            _playerCard.RoleLabel = "YOUR PAMATO";
+            _playerCard.RoleLabel = playerLabel;
             _spawnedCards.Add(_playerCard);
             _playerCard.LaunchFlick(
-                forwardDir * (1.80f * powerFactor) + Vector3.up * (3.25f * powerFactor) - rightDir * 0.38f,
-                new Vector3(26f * powerFactor * spinBoost, 7f, 14f * spinBoost),
+                forwardDir * (0.58f + 0.10f * powerFactor) + Vector3.up * (4.15f * powerFactor) - rightDir * 0.18f,
+                new Vector3(26f * powerFactor * spinBoost, 6f, 14f * spinBoost),
                 playerChubProb,
                 playerRarity);
 
-            // 2. Opponent's Pamato Card (Right trajectory)
+            // 2. Opponent's Pamato Card (Right upward trajectory)
             _opponentCard = TeksCardPhysics.SpawnPhysicalCard(
                 oppCardId, oppRank,
                 handPos + rightDir * 0.08f, Quaternion.Euler(-12f, 25f, 0f),
                 isPlayerPamato: false, isOpponentPamato: true);
-            _opponentCard.RoleLabel = "OPPONENT";
+            _opponentCard.RoleLabel = opponentLabel;
             _spawnedCards.Add(_opponentCard);
             _opponentCard.LaunchFlick(
-                forwardDir * (1.90f * powerFactor) + Vector3.up * (3.18f * powerFactor) + rightDir * 0.42f,
-                new Vector3(-24f * powerFactor * spinBoost, -9f, 16f * spinBoost),
+                forwardDir * (0.62f + 0.10f * powerFactor) + Vector3.up * (3.95f * powerFactor) + rightDir * 0.19f,
+                new Vector3(-24f * powerFactor * spinBoost, -7f, 15f * spinBoost),
                 oppChubProb,
                 oppRarity);
 
-            _flightCamFocus = handPos + forwardDir * 0.35f;
+            _flightCamFocus = handPos + forwardDir * 0.25f;
             _flightCamInitialized = true;
             UpdateFlightFollowCamera(snapImmediately: true);
 
@@ -730,6 +847,7 @@ namespace TeksMaster.Gameplay
             var inv = PlayerInventory.Instance;
             _lastNewlyUnlockedAreas.Clear();
             LastCoinReward = 0;
+            LastCoinLoss = 0;
 
             if (PlayerCardFaceUp && !OpponentCardFaceUp)
             {
@@ -737,8 +855,8 @@ namespace TeksMaster.Gameplay
                 PlayerWonLastRound = true;
                 WasTablaLastRound = false;
 
-                int baseReward = GetBaseCoinReward(ActiveOpponent);
-                int payout = baseReward;
+                int basePayout = CurrentCoinWager > 0 ? CurrentCoinWager : GetBaseCoinReward(ActiveOpponent);
+                int totalWin = basePayout;
                 string streakNote = string.Empty;
 
                 if (inv != null)
@@ -746,12 +864,12 @@ namespace TeksMaster.Gameplay
                     // Disjoint reporters: RecordMatchResult handles win count/streak; ReportMatchWin handles NPC defeat, area wins, story missions & area unlocks
                     inv.RecordMatchResult(true);
                     float mult = inv.GetStreakCoinMultiplier();
-                    payout = Mathf.RoundToInt(baseReward * mult);
+                    totalWin = Mathf.RoundToInt(basePayout * mult);
                     if (inv.WinStreak >= 2)
                     {
                         streakNote = $" [HOT HAND x{inv.WinStreak}!]";
                     }
-                    inv.AddCoins(payout);
+                    inv.AddCoins(totalWin);
 
                     if (ActiveOpponent != null)
                     {
@@ -768,11 +886,12 @@ namespace TeksMaster.Gameplay
                     }
                 }
 
-                LastCoinReward = payout;
+                LastCoinReward = totalWin;
+                LastCoinLoss = 0;
                 string unlockNote = _lastNewlyUnlockedAreas.Count > 0 ? "  |  NEW AREA UNLOCKED!" : string.Empty;
 
                 RoundResultTitle = "YOU WIN! (CHUB vs CHA)";
-                RoundResultSubtitle = $"Won +{payout} Coins{streakNote}! Both players keep their Teks cards.{unlockNote}";
+                RoundResultSubtitle = $"Won +{totalWin} Coins{streakNote}! Both players keep their Teks cards.{unlockNote}";
 
                 if (TeksAudioManager.Instance != null)
                 {
@@ -783,18 +902,28 @@ namespace TeksMaster.Gameplay
             else if (!PlayerCardFaceUp && OpponentCardFaceUp)
             {
                 // Player = Back (Cha), Opponent = Front (Chub) -> OPPONENT WINS!
-                // Zero coin deduction and zero card stealing on defeat
                 PlayerWonLastRound = false;
                 WasTablaLastRound = false;
 
+                int loss = 0;
                 if (inv != null)
                 {
                     inv.RecordMatchResult(false);
+                    loss = Mathf.Min(CurrentCoinWager, inv.Coins);
+                    if (loss > 0 && !inv.TrySpendCoins(loss))
+                    {
+                        loss = 0;
+                    }
                 }
+
+                LastCoinLoss = loss;
+                LastCoinReward = 0;
 
                 string oppName = ActiveOpponent != null ? ActiveOpponent.NpcName : "Opponent";
                 RoundResultTitle = $"{oppName.ToUpper()} WINS! (CHA vs CHUB)";
-                RoundResultSubtitle = $"{oppName} takes the round! No coins lost & you keep your Pamato card.";
+                RoundResultSubtitle = loss > 0
+                    ? $"{oppName} takes the round! Lost -{loss} Coins! You keep your Pamato card."
+                    : $"{oppName} takes the round! No coins wagered. You keep your Pamato card.";
 
                 if (TeksAudioManager.Instance != null)
                 {
@@ -850,7 +979,8 @@ namespace TeksMaster.Gameplay
         public void Rematch()
         {
             if (ActiveOpponent == null) return;
-            CurrentCoinWager = GetBaseCoinReward(ActiveOpponent);
+            var inv = PlayerInventory.Instance;
+            CurrentCoinWager = inv != null ? Mathf.Clamp(CurrentCoinWager, 0, inv.Coins) : Mathf.Max(0, CurrentCoinWager);
             ArmFlickMeter();
         }
 

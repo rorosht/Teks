@@ -83,6 +83,7 @@ namespace TeksMaster.Characters
         public CharacterActor Actor { get; private set; }
         public NpcOpponent NearestOpponent { get; private set; }
         public bool IsNearSariSariStore { get; private set; }
+        public bool IsNearTournamentBooth { get; private set; }
         public HiddenCardCollectible NearestHiddenCard { get; private set; }
         public AreaGateBarrier NearestLockedGate { get; private set; }
         public bool MovementLocked { get; set; }
@@ -92,6 +93,7 @@ namespace TeksMaster.Characters
 
         private const float OpponentProximityRadius = 3.1f;
         private const float StoreProximityRadius = 3.6f;
+        private const float TournamentBoothProximityRadius = 3.6f;
         private const float HiddenCardProximityRadius = 2.6f;
         private const float LockedGateProximityRadius = 3.2f;
 
@@ -249,7 +251,7 @@ namespace TeksMaster.Characters
 
             if (!MovementLocked && !ExternalInteractHandlerActive && kb != null && kb.eKey.wasPressedThisFrame)
             {
-                if (NearestOpponent == null && !IsNearSariSariStore)
+                if (NearestOpponent == null && !IsNearSariSariStore && !IsNearTournamentBooth)
                 {
                     if (NearestHiddenCard != null)
                     {
@@ -336,6 +338,7 @@ namespace TeksMaster.Characters
             NearestHiddenCard = null;
             NearestLockedGate = null;
             IsNearSariSariStore = false;
+            IsNearTournamentBooth = false;
 
             float bestOppDist = OpponentProximityRadius;
             Vector3 playerPos = transform.position;
@@ -372,6 +375,8 @@ namespace TeksMaster.Characters
                 {
                     IsNearSariSariStore = Vector3.Distance(playerPos, court.StoreInteractionPoint) < StoreProximityRadius;
                 }
+
+                IsNearTournamentBooth = Vector3.Distance(playerPos, court.TournamentInteractionPoint) < TournamentBoothProximityRadius;
             }
 
             // Detect nearest uncollected hidden card (horizontal XZ distance < 2.6f)
