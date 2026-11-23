@@ -48,8 +48,7 @@ namespace TeksMaster.UI
         private GameObject _questsModal;
         private Transform _questsListContent;
 
-        // Barangay Map / Fast Travel Modal
-        private GameObject _mapModal;
+        // Top Center Zone Pill
         private Text _zonePillText;
         private string _lastDisplayedZone = string.Empty;
 
@@ -217,7 +216,6 @@ namespace TeksMaster.UI
             CreateInventoryModal();
             CreateShopModal();
             CreateQuestsModal();
-            CreateMapModal();
             CreateWagerModal();
             BuildExtendedUI();
             CreateSellConfirmModal();
@@ -426,12 +424,19 @@ namespace TeksMaster.UI
             _gemsText.rectTransform.offsetMin = new Vector2(332f, 8f);
             _gemsText.rectTransform.offsetMax = new Vector2(-10f, 40f);
 
-            // Controls pill beneath TopLeftHUD (Avatar Gender, Fusion Lab, Missions, Modes, Quick Challenge, Pause)
-            var subBar = CreateRoundedPanel("ControlsBar", _canvas.transform, new Color(0.09f, 0.13f, 0.20f, 0.88f), new Vector2(860f, 44f));
+            // Controls pill beneath TopLeftHUD (Profile, Avatar Gender, Fusion Lab, Missions, Modes, Quick Challenge, Pause)
+            var subBar = CreateRoundedPanel("ControlsBar", _canvas.transform, new Color(0.09f, 0.13f, 0.20f, 0.88f), new Vector2(896f, 44f));
             subBar.anchorMin = new Vector2(0f, 1f);
             subBar.anchorMax = new Vector2(0f, 1f);
             subBar.pivot = new Vector2(0f, 1f);
             subBar.anchoredPosition = new Vector2(22f, -152f);
+
+            var profileBtn = CreateButton("ProfileQuickBtn", subBar, "PROFILE [U]", new Color(0.24f, 0.56f, 0.88f), 12, ToggleProfileModal);
+            var prRt = profileBtn.GetComponent<RectTransform>();
+            prRt.anchorMin = new Vector2(0f, 0.5f);
+            prRt.anchorMax = new Vector2(0f, 0.5f);
+            prRt.anchoredPosition = new Vector2(60f, 0f);
+            prRt.sizeDelta = new Vector2(104f, 32f);
 
             var genderBtn = CreateButton("GenderToggleBtn", subBar, "AVATAR: MALE [C]", new Color(0.20f, 0.34f, 0.56f), 12, () =>
             {
@@ -440,31 +445,31 @@ namespace TeksMaster.UI
             var gRt = genderBtn.GetComponent<RectTransform>();
             gRt.anchorMin = new Vector2(0f, 0.5f);
             gRt.anchorMax = new Vector2(0f, 0.5f);
-            gRt.anchoredPosition = new Vector2(80f, 0f);
-            gRt.sizeDelta = new Vector2(144f, 32f);
+            gRt.anchoredPosition = new Vector2(186f, 0f);
+            gRt.sizeDelta = new Vector2(136f, 32f);
             _genderButtonText = genderBtn.GetComponentInChildren<Text>();
 
             var fusionQuickBtn = CreateButton("FusionQuickBtn", subBar, "FUSION LAB [F]", new Color(0.58f, 0.22f, 0.84f), 12, OpenFusionLabDirect);
             var fRt = fusionQuickBtn.GetComponent<RectTransform>();
             fRt.anchorMin = new Vector2(0f, 0.5f);
             fRt.anchorMax = new Vector2(0f, 0.5f);
-            fRt.anchoredPosition = new Vector2(220f, 0f);
-            fRt.sizeDelta = new Vector2(124f, 32f);
+            fRt.anchoredPosition = new Vector2(319f, 0f);
+            fRt.sizeDelta = new Vector2(118f, 32f);
 
             var questsBtn = CreateButton("QuestsBtn", subBar, "MISSIONS [Q]", new Color(0.84f, 0.50f, 0.12f), 12, ToggleQuestsModal);
             var qrRt = questsBtn.GetComponent<RectTransform>();
             qrRt.anchorMin = new Vector2(0f, 0.5f);
             qrRt.anchorMax = new Vector2(0f, 0.5f);
-            qrRt.anchoredPosition = new Vector2(354f, 0f);
-            qrRt.sizeDelta = new Vector2(132f, 32f);
+            qrRt.anchoredPosition = new Vector2(446f, 0f);
+            qrRt.sizeDelta = new Vector2(124f, 32f);
             _questsBtnLabel = questsBtn.GetComponentInChildren<Text>();
 
             var modesBtn = CreateButton("ModesQuickBtn", subBar, "MODES [G]", new Color(0.16f, 0.56f, 0.78f), 12, ToggleModesModal);
             var mRt = modesBtn.GetComponent<RectTransform>();
             mRt.anchorMin = new Vector2(0f, 0.5f);
             mRt.anchorMax = new Vector2(0f, 0.5f);
-            mRt.anchoredPosition = new Vector2(486f, 0f);
-            mRt.sizeDelta = new Vector2(118f, 32f);
+            mRt.anchoredPosition = new Vector2(568f, 0f);
+            mRt.sizeDelta = new Vector2(108f, 32f);
 
             var quickBtn = CreateButton("QuickMatchBtn", subBar, "QUICK CHALLENGE", new Color(0.18f, 0.62f, 0.32f), 12, () =>
             {
@@ -483,15 +488,15 @@ namespace TeksMaster.UI
             var qRt = quickBtn.GetComponent<RectTransform>();
             qRt.anchorMin = new Vector2(0f, 0.5f);
             qRt.anchorMax = new Vector2(0f, 0.5f);
-            qRt.anchoredPosition = new Vector2(624f, 0f);
-            qRt.sizeDelta = new Vector2(144f, 32f);
+            qRt.anchoredPosition = new Vector2(696f, 0f);
+            qRt.sizeDelta = new Vector2(136f, 32f);
 
             var pauseBtn = CreateButton("PauseQuickBtn", subBar, "PAUSE [ESC]", new Color(0.34f, 0.40f, 0.52f), 12, TogglePauseModal);
             var pRt = pauseBtn.GetComponent<RectTransform>();
             pRt.anchorMin = new Vector2(0f, 0.5f);
             pRt.anchorMax = new Vector2(0f, 0.5f);
-            pRt.anchoredPosition = new Vector2(778f, 0f);
-            pRt.sizeDelta = new Vector2(148f, 32f);
+            pRt.anchoredPosition = new Vector2(828f, 0f);
+            pRt.sizeDelta = new Vector2(116f, 32f);
         }
 
         private void CreateTopRightHud()
@@ -1570,7 +1575,7 @@ namespace TeksMaster.UI
                 if (currentZone != _lastDisplayedZone)
                 {
                     _lastDisplayedZone = currentZone;
-                    _zonePillText.text = $"AREA: {currentZone}   |   [M] BARANGAY MAP";
+                    _zonePillText.text = $"AREA: {currentZone}";
                 }
             }
 
@@ -1611,9 +1616,9 @@ namespace TeksMaster.UI
             if (kb.iKey.wasPressedThisFrame) ToggleInventoryModal();
             if (kb.fKey.wasPressedThisFrame) OpenFusionLabDirect();
             if (kb.qKey.wasPressedThisFrame) ToggleQuestsModal();
-            if (kb.mKey.wasPressedThisFrame) ToggleMapModal();
             if (kb.pKey.wasPressedThisFrame) ToggleShopModal();
             if (kb.gKey.wasPressedThisFrame) ToggleModesModal();
+            if (kb.uKey.wasPressedThisFrame) ToggleProfileModal();
 
             if (kb.eKey.wasPressedThisFrame && !IsAnyModalOpen())
             {
@@ -2463,17 +2468,14 @@ namespace TeksMaster.UI
 
         private void CreateTopCenterZoneBar()
         {
-            var pill = CreateRoundedPanel("TopCenterZonePill", _canvas.transform, new Color(0.09f, 0.14f, 0.22f, 0.90f), new Vector2(540f, 40f));
+            var pill = CreateRoundedPanel("TopCenterZonePill", _canvas.transform, new Color(0.09f, 0.14f, 0.22f, 0.90f), new Vector2(360f, 40f));
             pill.anchorMin = new Vector2(0.5f, 1f);
             pill.anchorMax = new Vector2(0.5f, 1f);
             pill.pivot = new Vector2(0.5f, 1f);
             pill.anchoredPosition = new Vector2(0f, -20f);
             AddOutline(pill.gameObject, new Color(0.32f, 0.72f, 0.94f), 1.5f);
 
-            var btn = pill.gameObject.AddComponent<Button>();
-            btn.onClick.AddListener(ToggleMapModal);
-
-            _zonePillText = CreateText("ZonePillTxt", pill, "AREA: PLAYER'S NEIGHBORHOOD   |   [M] BARANGAY MAP", 15, FontStyle.Bold, new Color(0.86f, 0.96f, 1.0f), TextAnchor.MiddleCenter);
+            _zonePillText = CreateText("ZonePillTxt", pill, "AREA: PLAYER'S NEIGHBORHOOD", 15, FontStyle.Bold, new Color(0.86f, 0.96f, 1.0f), TextAnchor.MiddleCenter);
             StretchFull(_zonePillText.rectTransform, 6f);
         }
 
