@@ -2136,6 +2136,53 @@ namespace TeksMaster.Core
             SyncAreaClearMissionProgress();
         }
 
+        public void ResetProgressToZero()
+        {
+            bool prevSuppress = _suppressAutoSave;
+            _suppressAutoSave = true;
+            try
+            {
+                coins = 2450;
+                gems = 25;
+                equippedPamatoId = "hero";
+
+                MatchesWon = 0;
+                MatchesPlayed = 0;
+                WinStreak = 0;
+                BestWinStreak = 0;
+                TournamentsWon = 0;
+                ChallengesCompleted = 0;
+                FreePlayUnlockAll = false;
+                LastDailyMissionDate = string.Empty;
+                LastDailyFreeDrawDate = string.Empty;
+
+                ownedCards.Clear();
+                _unlockedAreas.Clear();
+                _areaWins.Clear();
+                _defeatedNpcIds.Clear();
+                _discoveredHiddenCardIds.Clear();
+                _quests.Clear();
+
+                _initialized = false;
+                EnsureStarterCollection();
+                CheckAndResetDailyMissionsIfNeeded();
+
+                TeksSaveSystem.DeleteSaveFilesForce();
+            }
+            finally
+            {
+                _suppressAutoSave = prevSuppress;
+            }
+
+            if (Application.isPlaying)
+            {
+                SaveToDisk();
+            }
+
+            OnAreasChanged?.Invoke();
+            OnInventoryChanged?.Invoke();
+        }
+
         private static string NormalizeId(string id)
         {
             return string.IsNullOrWhiteSpace(id) ? string.Empty : id.Trim().ToLowerInvariant();

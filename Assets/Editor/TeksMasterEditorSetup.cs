@@ -274,6 +274,30 @@ namespace TeksMaster.Editor
             }
         }
 
+        [MenuItem("Teks Master/Reset Game Progress To Zero")]
+        public static void ResetGameProgressToZero()
+        {
+            TeksSaveSystem.DeleteSaveFilesForce();
+
+            if (Application.isPlaying && PlayerInventory.Instance != null)
+            {
+                PlayerInventory.Instance.ResetProgressToZero();
+                BarangayCourtBuilder.Instance?.RefreshAreaGates();
+                BarangayCourtBuilder.Instance?.RefreshHiddenCardStates();
+                if (TeksMaster.Characters.PlayerController.Instance != null)
+                {
+                    TeksMaster.Characters.PlayerController.Instance.TeleportForMatch(
+                        new Vector3(24.8f, 0f, 5.2f),
+                        Quaternion.Euler(0f, -145f, 0f));
+                }
+                Debug.Log("[Teks Master] Game progress reset to ZERO! Basketball Court, Old Neighborhood & Fiesta Arena are now LOCKED.");
+            }
+            else
+            {
+                Debug.Log("[Teks Master] Deleted saved progress (teks_save.json). Press Play to test from zero with locked areas!");
+            }
+        }
+
         [MenuItem("Teks Master/Force Sari-Sari Store 5-Minute Rotation")]
         public static void ForceShopRefresh()
         {

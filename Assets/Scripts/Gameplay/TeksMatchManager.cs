@@ -565,8 +565,8 @@ namespace TeksMaster.Gameplay
 
             // Position camera to the SIDE of the battle line so neither character's body ever blocks the flying cards!
             Vector3 flatFocus = new Vector3(_flightCamFocus.x, 0f, _flightCamFocus.z);
-            float sideDist = Mathf.Clamp(1.75f + spread * 0.45f + maxY * 0.16f, 1.75f, 2.55f);
-            float camWorldY = Mathf.Clamp(0.85f + _flightCamFocus.y * 0.48f, 0.85f, 2.45f);
+            float sideDist = Mathf.Clamp(1.85f + spread * 0.45f + maxY * 0.26f, 1.85f, 3.85f);
+            float camWorldY = Mathf.Clamp(0.95f + _flightCamFocus.y * 0.56f, 0.95f, 4.45f);
 
             Vector3 camPos = flatFocus + _matchRight * sideDist - _matchForward * 0.15f + Vector3.up * camWorldY;
             Vector3 lookTarget = _flightCamFocus;
@@ -733,7 +733,7 @@ namespace TeksMaster.Gameplay
                 var oppActor = ActiveOpponent.GetComponent<CharacterActor>();
                 if (oppActor != null)
                 {
-                    oppActor.TriggerSkyWatchAnimation(2.6f);
+                    oppActor.TriggerSkyWatchAnimation(3.6f);
                 }
             }
 
@@ -777,12 +777,12 @@ namespace TeksMaster.Gameplay
             _playerCard.RoleLabel = playerLabel;
             _spawnedCards.Add(_playerCard);
             _playerCard.LaunchFlick(
-                forwardDir * (0.42f + 0.10f * powerFactor) + rightDir * (-0.16f) + Vector3.up * (7.95f * powerFactor),
+                forwardDir * (0.42f + 0.10f * powerFactor) + rightDir * (-0.16f) + Vector3.up * (11.80f * powerFactor),
                 rightDir * (16.2f * spinBoost) + Vector3.up * 2.2f + forwardDir * 1.8f,
                 playerChubProb,
                 playerRarity);
 
-            // 2. Opponent's Pamato Card (Right high sky-arc trajectory)
+            // 2. Opponent's Pamato Card (Right high sky-arc trajectory — 2x throw height)
             _opponentCard = TeksCardPhysics.SpawnPhysicalCard(
                 oppCardId, oppRank,
                 handPos + rightDir * 0.08f, Quaternion.Euler(-12f, 25f, 0f),
@@ -790,7 +790,7 @@ namespace TeksMaster.Gameplay
             _opponentCard.RoleLabel = opponentLabel;
             _spawnedCards.Add(_opponentCard);
             _opponentCard.LaunchFlick(
-                forwardDir * (0.46f + 0.10f * powerFactor) + rightDir * (0.17f) + Vector3.up * (7.70f * powerFactor),
+                forwardDir * (0.46f + 0.10f * powerFactor) + rightDir * (0.17f) + Vector3.up * (11.45f * powerFactor),
                 -rightDir * (15.4f * spinBoost) - Vector3.up * 2.4f - forwardDir * 1.6f,
                 oppChubProb,
                 oppRarity);

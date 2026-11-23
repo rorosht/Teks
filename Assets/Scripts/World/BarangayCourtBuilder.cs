@@ -245,7 +245,7 @@ namespace TeksMaster.World
 
         public void BuildWorldIfNeeded()
         {
-            const string versionMarker = "WorldVersion_V6";
+            const string versionMarker = "WorldVersion_V7";
             if (_built && CourtRoot != null && CourtRoot.Find(versionMarker) != null)
             {
                 // Verify materials aren't stale/missing shaders (prevents magenta screen when Reload Domain is disabled)
@@ -557,10 +557,10 @@ namespace TeksMaster.World
             var gateGroup = new GameObject("AreaGates").transform;
             gateGroup.SetParent(CourtRoot, false);
 
-            // Area 2: Basketball Court (East & South gateways)
+            // Area 2: Basketball Court (East & South gateways — front sign faces approaching player!)
             CreateAreaGate(
                 gateGroup, "Gate_Court_East", BarangayAreaId.BasketballCourt,
-                "Basketball Court", new Vector3(14.4f, 0f, 0f), Quaternion.Euler(0f, 90f, 0f), 6.0f, 2.4f);
+                "Basketball Court", new Vector3(14.4f, 0f, 0f), Quaternion.Euler(0f, -90f, 0f), 6.0f, 2.4f);
             CreateAreaGate(
                 gateGroup, "Gate_Court_South", BarangayAreaId.BasketballCourt,
                 "Basketball Court", new Vector3(0f, 0f, -8.4f), Quaternion.identity, 6.4f, 2.4f);
@@ -568,15 +568,15 @@ namespace TeksMaster.World
             // Area 3: Old Neighborhood (Court West & Kalye West North-of-Highway gateways)
             CreateAreaGate(
                 gateGroup, "Gate_OldNeighborhood_CourtWest", BarangayAreaId.OldNeighborhood,
-                "Old Neighborhood", new Vector3(-14.4f, 0f, 0f), Quaternion.Euler(0f, 90f, 0f), 6.0f, 2.4f);
+                "Old Neighborhood", new Vector3(-14.4f, 0f, 0f), Quaternion.Euler(0f, -90f, 0f), 6.0f, 2.4f);
             CreateAreaGate(
                 gateGroup, "Gate_OldNeighborhood_KalyeWest", BarangayAreaId.OldNeighborhood,
                 "Old Neighborhood", new Vector3(-22.0f, 0f, -8.4f), Quaternion.identity, 6.2f, 2.4f);
 
-            // Area 4: Fiesta Teks Arena (Single North entrance South of Highway)
+            // Area 4: Fiesta Teks Arena (Single North entrance South of Highway — faces North toward Kalye Highway!)
             CreateAreaGate(
                 gateGroup, "Gate_Fiesta_North", BarangayAreaId.FiestaArena,
-                "Fiesta Teks Arena", new Vector3(23.5f, 0f, -20.8f), Quaternion.identity, 6.2f, 2.4f);
+                "Fiesta Teks Arena", new Vector3(23.5f, 0f, -20.8f), Quaternion.Euler(0f, 180f, 0f), 6.2f, 2.4f);
         }
 
         private void CreateAreaGate(
@@ -778,20 +778,20 @@ namespace TeksMaster.World
             var jeepSign = CreateWorldText("JeepSign", jeep, new Vector3(0f, 1.95f, 1.92f), "BARANGAY EXPRESS", 48, new Color(1.0f, 0.88f, 0.20f), 0.18f, 0.12f);
             jeepSign.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
-            // Street Food / Fishball Cart on the Kalye North Sidewalk (z in [-11.5, -8.4])
+            // Street Food / Fishball Cart shifted left on the Kalye North Sidewalk so Basketball Court entrance stays wide open
             var cart = new GameObject("FishballCart").transform;
             cart.SetParent(zones, false);
-            cart.position = new Vector3(-9.5f, 0f, -10.0f);
+            cart.position = new Vector3(-12.4f, 0f, -10.0f);
             CreateBox("CartBody", cart, new Vector3(0f, 0.68f, 0f), new Vector3(1.8f, 0.95f, 1.0f), cartYellowMat, true);
             CreateBox("CartTop", cart, new Vector3(0f, 1.18f, 0f), new Vector3(1.9f, 0.08f, 1.1f), chromeMat, false);
             CreateCylinder("CartUmbrellaPole", cart, new Vector3(0f, 1.95f, 0f), new Vector3(0.06f, 1.0f, 0.06f), woodMat, false);
             CreateCylinder("CartUmbrellaTop", cart, new Vector3(0f, 2.85f, 0f), new Vector3(2.5f, 0.12f, 2.5f), jeepRedMat, false);
             CreateWorldText("FishballSign", cart, new Vector3(0f, 0.85f, -0.54f), "FISHBALL & TAHO", 48, new Color(0.35f, 0.12f, 0.05f), 0.18f, 0.11f);
 
-            // Upgraded Kalye Sari-Sari Store Kiosk on North Sidewalk (hosts Aling Nena & 4-card Teks display rack)
+            // Upgraded Kalye Sari-Sari Store Kiosk shifted left so the Basketball Court South Entrance (x in [-3.2, +3.2]) is completely open
             var kalyeKiosk = new GameObject("KalyeSariSariKiosk").transform;
             kalyeKiosk.SetParent(zones, false);
-            kalyeKiosk.position = new Vector3(-4.5f, 0f, -9.8f);
+            kalyeKiosk.position = new Vector3(-7.6f, 0f, -9.8f);
             Material kioskWallMat = CardArtGenerator.CreateLitMaterial(new Color(0.50f, 0.78f, 0.66f), 0.18f);
             Material kioskSignBg = CardArtGenerator.CreateLitMaterial(new Color(0.96f, 0.86f, 0.64f), 0.15f);
             Material kioskLedBg = CardArtGenerator.CreateLitMaterial(new Color(0.10f, 0.14f, 0.16f), 0.20f);
@@ -865,7 +865,7 @@ namespace TeksMaster.World
                 new Color(0.18f, 0.42f, 0.68f)
             );
 
-            StoreInteractionPoint = new Vector3(-4.5f, 0f, -11.2f);
+            StoreInteractionPoint = new Vector3(-7.6f, 0f, -11.2f);
             if (!StoreInteractionPoints.Contains(StoreInteractionPoint))
             {
                 StoreInteractionPoints.Add(StoreInteractionPoint);
@@ -1283,9 +1283,9 @@ namespace TeksMaster.World
             dodong.WinBanter = "Haha! Sabi sa'yo swerte 'tong Bantay Kalye ko eh!";
             dodong.LoseBanter = "Ayos! Galing mo na — puntahan mo naman si Mark sa Kalye!";
 
-            // Story 2: Mark (Easy) — Sari-Sari & Kalye (North Sidewalk by Kalye Kiosk)
+            // Story 2: Mark (Easy) — Sari-Sari & Kalye (North Sidewalk beside Kalye Kiosk, clear of Court Entrance)
             var mark = CreateOpponent("Mark", AIDifficulty.Easy, "tumbang_striker", 2, 60,
-                new Vector3(-1.2f, 0f, -10.8f), Quaternion.Euler(0f, 165f, 0f),
+                new Vector3(-3.8f, 0f, -10.8f), Quaternion.Euler(0f, 165f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.92f, 0.44f, 0.16f), new Color(0.16f, 0.26f, 0.46f), new Color(0.96f, 0.84f, 0.22f),
                 isSeated: false, isWandering: false, isBenchSitter: false,
@@ -1487,7 +1487,7 @@ namespace TeksMaster.World
             // 8. EXTRA NEIGHBORHOOD OPPONENTS (Placed ONLY in Separate External Areas — Keeping Basketball Court Clean!)
             // South Kalye Street (by Fishball Cart on North Sidewalk)
             var tonton = CreateOpponent("AI Tonton", AIDifficulty.Easy, "balut_drone", 2, 65,
-                new Vector3(-11.4f, 0f, -10.8f), Quaternion.Euler(0f, 150f, 0f),
+                new Vector3(-12.2f, 0f, -11.2f), Quaternion.Euler(0f, 150f, 0f),
                 CharacterOutfitRole.MaleKid,
                 new Color(0.96f, 0.82f, 0.22f), new Color(0.18f, 0.36f, 0.64f), new Color(0.88f, 0.24f, 0.24f),
                 isSeated: false, isWandering: true);
@@ -1567,7 +1567,7 @@ namespace TeksMaster.World
             CreateHiddenCard(hiddenGroup, "hidden_behind_jeepney", "scrap_trisikad",
                 BarangayAreaId.SariSariAndKalye, new Vector3(12.4f, 0.30f, -16.7f), "Behind Barangay Jeepney", 50, 5);
             CreateHiddenCard(hiddenGroup, "hidden_fishball_corner", "cyber_taho_bot",
-                BarangayAreaId.SariSariAndKalye, new Vector3(-12.2f, 0.30f, -10.4f), "Fishball Alley Corner", 60, 5);
+                BarangayAreaId.SariSariAndKalye, new Vector3(-13.8f, 0.30f, -9.4f), "Fishball Alley Corner", 60, 5);
 
             // Area 2: Basketball Court (4 Hidden Cards)
             CreateHiddenCard(hiddenGroup, "hidden_behind_sarisari", "agila_kid",
@@ -1711,6 +1711,7 @@ namespace TeksMaster.World
             tm.alignment = TextAlignment.Center;
             tm.color = color;
             tm.fontStyle = FontStyle.Bold;
+            go.AddComponent<FrontOnlySignText>();
             return tm;
         }
 

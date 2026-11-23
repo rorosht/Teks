@@ -262,7 +262,7 @@ namespace TeksMaster.Gameplay
                     _settledTimer = 0f;
                 }
             }
-            else if (_flightElapsed > 3.2f)
+            else if (_flightElapsed > 5.2f)
             {
                 SnapFlatAndSettle();
             }

@@ -739,6 +739,7 @@ namespace TeksMaster.World
             tm.alignment = TextAlignment.Center;
             tm.color = new Color(1.0f, 0.92f, 0.38f);
             tm.fontStyle = FontStyle.Bold;
+            go.AddComponent<FrontOnlySignText>();
             return tm;
         }
 
@@ -821,6 +822,33 @@ namespace TeksMaster.World
             if (obj == null) return;
             if (Application.isPlaying) Destroy(obj);
             else DestroyImmediate(obj);
+        }
+    }
+
+    /// <summary>
+    /// Ensures Unity built-in TextMesh signage is strictly visible from the front (-transform.forward)
+    /// and hidden whenever the camera views it from behind.
+    /// </summary>
+    public class FrontOnlySignText : MonoBehaviour
+    {
+        private Renderer _renderer;
+
+        private void Awake()
+        {
+            _renderer = GetComponent<Renderer>();
+        }
+
+        private void LateUpdate()
+        {
+            if (_renderer == null) _renderer = GetComponent<Renderer>();
+            if (_renderer == null || Camera.main == null) return;
+
+            Vector3 toCam = Camera.main.transform.position - transform.position;
+            bool visibleFromFront = Vector3.Dot(-transform.forward, toCam) > 0.02f;
+            if (_renderer.enabled != visibleFromFront)
+            {
+                _renderer.enabled = visibleFromFront;
+            }
         }
     }
 }

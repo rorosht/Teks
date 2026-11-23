@@ -130,6 +130,11 @@ namespace TeksMaster.Core
         public static void DeleteSave()
         {
             if (!Application.isPlaying) return;
+            DeleteSaveFilesForce();
+        }
+
+        public static void DeleteSaveFilesForce()
+        {
             TryDeleteFile(SaveFilePath);
             TryDeleteFile(BackupFilePath);
             TryDeleteFile(TempFilePath);

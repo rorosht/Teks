@@ -1613,7 +1613,7 @@ namespace TeksMaster.UI
 
         private void CreatePauseModal()
         {
-            _pauseModal = CreateModalBackdrop("PauseMenuModal", new Vector2(540f, 520f), out RectTransform window);
+            _pauseModal = CreateModalBackdrop("PauseMenuModal", new Vector2(540f, 580f), out RectTransform window);
 
             var title = CreateText("PauseTitle", window, "GAME PAUSED", 30, FontStyle.Bold, new Color(1.0f, 0.85f, 0.26f), TextAnchor.MiddleCenter);
             title.rectTransform.anchorMin = new Vector2(0f, 1f);
@@ -1629,8 +1629,8 @@ namespace TeksMaster.UI
 
             var resumeBtn = CreateButton("PauseResumeBtn", window, "RESUME GAME [ESC]", new Color(0.18f, 0.74f, 0.34f), 18, CloseAllModals);
             var rRt = resumeBtn.GetComponent<RectTransform>();
-            rRt.anchoredPosition = new Vector2(0f, 110f);
-            rRt.sizeDelta = new Vector2(360f, 50f);
+            rRt.anchoredPosition = new Vector2(0f, 140f);
+            rRt.sizeDelta = new Vector2(360f, 48f);
 
             var settingsBtn = CreateButton("PauseSettingsBtn", window, "SETTINGS (AUDIO & DISPLAY)", new Color(0.20f, 0.48f, 0.82f), 17, () =>
             {
@@ -1641,8 +1641,8 @@ namespace TeksMaster.UI
                 SyncPlayerMovementLock();
             });
             var sRt = settingsBtn.GetComponent<RectTransform>();
-            sRt.anchoredPosition = new Vector2(0f, 44f);
-            sRt.sizeDelta = new Vector2(360f, 50f);
+            sRt.anchoredPosition = new Vector2(0f, 78f);
+            sRt.sizeDelta = new Vector2(360f, 48f);
 
             var saveBtn = CreateButton("PauseSaveBtn", window, "SAVE GAME", new Color(0.84f, 0.54f, 0.12f), 17, () =>
             {
@@ -1668,8 +1668,28 @@ namespace TeksMaster.UI
                 }
             });
             var svRt = saveBtn.GetComponent<RectTransform>();
-            svRt.anchoredPosition = new Vector2(0f, -22f);
-            svRt.sizeDelta = new Vector2(360f, 50f);
+            svRt.anchoredPosition = new Vector2(0f, 16f);
+            svRt.sizeDelta = new Vector2(360f, 48f);
+
+            var resetBtn = CreateButton("PauseResetProgressBtn", window, "RESET PROGRESS (START AT ZERO)", new Color(0.66f, 0.30f, 0.14f), 16, () =>
+            {
+                TeksGameModeManager.Instance?.ExitActiveMode(true);
+                PlayerInventory.Instance?.ResetProgressToZero();
+                BarangayCourtBuilder.Instance?.RefreshAreaGates();
+                BarangayCourtBuilder.Instance?.RefreshHiddenCardStates();
+                if (PlayerController.Instance != null)
+                {
+                    PlayerController.Instance.TeleportForMatch(
+                        new Vector3(24.8f, 0f, 5.2f),
+                        Quaternion.Euler(0f, -145f, 0f));
+                }
+                CloseAllModals();
+                RefreshAllUI();
+                ShowToast("Progress reset to ZERO! Basketball Court, Old Neighborhood & Fiesta Arena are now LOCKED.");
+            });
+            var rstRt = resetBtn.GetComponent<RectTransform>();
+            rstRt.anchoredPosition = new Vector2(0f, -46f);
+            rstRt.sizeDelta = new Vector2(360f, 48f);
 
             var mainMenuBtn = CreateButton("PauseMainMenuBtn", window, "RETURN TO MAIN MENU", new Color(0.36f, 0.42f, 0.56f), 17, () =>
             {
@@ -1678,13 +1698,13 @@ namespace TeksMaster.UI
                 ShowMainMenu();
             });
             var mRt = mainMenuBtn.GetComponent<RectTransform>();
-            mRt.anchoredPosition = new Vector2(0f, -88f);
-            mRt.sizeDelta = new Vector2(360f, 50f);
+            mRt.anchoredPosition = new Vector2(0f, -108f);
+            mRt.sizeDelta = new Vector2(360f, 48f);
 
             var exitBtn = CreateButton("PauseExitBtn", window, "EXIT GAME", new Color(0.74f, 0.20f, 0.22f), 17, OnExitGameClicked);
             var eRt = exitBtn.GetComponent<RectTransform>();
-            eRt.anchoredPosition = new Vector2(0f, -154f);
-            eRt.sizeDelta = new Vector2(360f, 50f);
+            eRt.anchoredPosition = new Vector2(0f, -170f);
+            eRt.sizeDelta = new Vector2(360f, 48f);
 
             _pauseModal.SetActive(false);
         }
