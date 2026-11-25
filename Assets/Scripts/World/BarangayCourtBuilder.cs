@@ -856,14 +856,7 @@ namespace TeksMaster.World
             tindera.transform.SetParent(kalyeKiosk, false);
             tindera.transform.localPosition = new Vector3(-1.15f, 0.12f, -0.10f);
             tindera.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-            CharacterVisualBuilder.BuildCharacterVisual(
-                tindera,
-                CharacterOutfitRole.Tindera,
-                new Color(0.92f, 0.56f, 0.20f),
-                new Color(0.24f, 0.28f, 0.42f),
-                new Color(0.75f, 0.52f, 0.37f),
-                new Color(0.18f, 0.42f, 0.68f)
-            );
+            CharacterVisualBuilder.BuildPackCharacterVisual(tindera, 58);
 
             StoreInteractionPoint = new Vector3(-7.6f, 0f, -11.2f);
             if (!StoreInteractionPoints.Contains(StoreInteractionPoint))
@@ -1075,14 +1068,7 @@ namespace TeksMaster.World
             kuyaRef.transform.localPosition = new Vector3(0f, 0f, -0.35f);
             kuyaRef.transform.localRotation = Quaternion.identity;
             TournamentHostTransform = kuyaRef.transform;
-            CharacterVisualBuilder.BuildCharacterVisual(
-                kuyaRef,
-                CharacterOutfitRole.MaleKid,
-                new Color(0.96f, 0.96f, 0.98f),
-                new Color(0.12f, 0.12f, 0.16f),
-                new Color(0.74f, 0.50f, 0.36f),
-                new Color(0.95f, 0.76f, 0.18f)
-            );
+            CharacterVisualBuilder.BuildPackCharacterVisual(kuyaRef, 40);
 
             TournamentInteractionPoint = new Vector3(-22.8f, 0f, -22.2f);
             TournamentBattleCenter = new Vector3(-22.8f, 0f, -28.5f);
@@ -1274,8 +1260,7 @@ namespace TeksMaster.World
             // Story 1: Dodong (Easy) — Player's Neighborhood (clear of KuboFloor at 23.5 ± 2.3)
             var dodong = CreateOpponent("Dodong", AIDifficulty.Easy, "bantay_kalye", 1, 40,
                 new Vector3(20.4f, 0f, 2.6f), Quaternion.Euler(0f, 35f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.20f, 0.64f, 0.92f), new Color(0.18f, 0.22f, 0.34f), new Color(0.95f, 0.78f, 0.20f),
+                7,
                 isSeated: false, isWandering: false, isBenchSitter: false,
                 npcId: "dodong", areaOverride: BarangayAreaId.PlayersNeighborhood, isStory: true, storyOrder: 1);
             dodong.ChallengeQuote = "Uy kapitbahay! Warm-up Teks muna tayo bago ka pumunta ng Court!";
@@ -1286,8 +1271,7 @@ namespace TeksMaster.World
             // Story 2: Mark (Easy) — Sari-Sari & Kalye (North Sidewalk beside Kalye Kiosk, clear of Court Entrance)
             var mark = CreateOpponent("Mark", AIDifficulty.Easy, "tumbang_striker", 2, 60,
                 new Vector3(-3.8f, 0f, -10.8f), Quaternion.Euler(0f, 165f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.92f, 0.44f, 0.16f), new Color(0.16f, 0.26f, 0.46f), new Color(0.96f, 0.84f, 0.22f),
+                27,
                 isSeated: false, isWandering: false, isBenchSitter: false,
                 npcId: "mark", areaOverride: BarangayAreaId.SariSariAndKalye, isStory: true, storyOrder: 2);
             mark.ChallengeQuote = "Dito sa Kalye Kiosk ako nagte-Teks! Ready ka na ba sa Tumbang Striker ko?";
@@ -1298,8 +1282,7 @@ namespace TeksMaster.World
             // Story 3: Carlo (Medium) — Basketball Court (replaces old East Plaza AI Carlo)
             var carlo = CreateOpponent("Carlo", AIDifficulty.Medium, "agila_kid", 3, 140,
                 new Vector3(4.8f, 0f, -4.8f), Quaternion.Euler(0f, -35f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.20f, 0.48f, 0.92f), new Color(0.88f, 0.64f, 0.16f), new Color(0.95f, 0.95f, 0.95f),
+                35,
                 isSeated: false, isWandering: true, isBenchSitter: false,
                 npcId: "carlo", areaOverride: BarangayAreaId.BasketballCourt, isStory: true, storyOrder: 3);
             carlo.ChallengeQuote = "Welcome sa Basketball Court! Talunin mo Agila Kid ko para makapasok sa Old Neighborhood!";
@@ -1310,8 +1293,7 @@ namespace TeksMaster.World
             // Story 4: Joshua (Hard) — Old Neighborhood
             var joshua = CreateOpponent("Joshua", AIDifficulty.Hard, "panday_blade", 4, 260,
                 new Vector3(-21.2f, 0f, -3.4f), Quaternion.Euler(0f, 65f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.76f, 0.18f, 0.16f), new Color(0.14f, 0.16f, 0.22f), new Color(1.0f, 0.78f, 0.18f),
+                25,
                 isSeated: false, isWandering: false, isBenchSitter: false,
                 npcId: "joshua", areaOverride: BarangayAreaId.OldNeighborhood, isStory: true, storyOrder: 4);
             joshua.ChallengeQuote = "Bihira ang nakakarating dito sa Old Neighborhood! Harapin mo Panday Blade ko!";
@@ -1322,8 +1304,7 @@ namespace TeksMaster.World
             // Story 5: Teks Master (Extreme Champion) — Fiesta Teks Arena (South of Highway, Δz = -10.0)
             var teksMaster = CreateOpponent("Teks Master", AIDifficulty.Extreme, "adarna_phoenix", 5, 500,
                 new Vector3(26.4f, 0f, -27.4f), Quaternion.Euler(0f, -80f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(1.0f, 0.76f, 0.14f), new Color(0.16f, 0.12f, 0.28f), new Color(1.0f, 0.92f, 0.34f),
+                42,
                 isSeated: false, isWandering: false, isBenchSitter: false,
                 npcId: "teks_master", areaOverride: BarangayAreaId.FiestaArena, isStory: true, isChampion: true, storyOrder: 5);
             teksMaster.ChallengeQuote = "Ako ang Barangay Teks Master! Patunayan mong karapat-dapat ka sa korona ng Fiesta Arena!";
@@ -1334,8 +1315,7 @@ namespace TeksMaster.World
             // 1. Free-throw zone standing opponent (matches AI Gelo (Med) in image_0.png)
             var gelo = CreateOpponent("AI Gelo", AIDifficulty.Medium, "kid_kidlat", 3, 120,
                 new Vector3(-5.8f, 0f, -1.2f), Quaternion.Euler(0f, 105f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.95f, 0.95f, 0.95f), new Color(0.86f, 0.36f, 0.14f), new Color(0.20f, 0.20f, 0.25f),
+                5,
                 isSeated: false, isWandering: false);
             gelo.ChallengeQuote = "Hoy! Teks tayo! Kaya mo ba Kid Kidlat ko?";
             gelo.AmbientCallouts = new[] { "Hoy! Laban tayo Teks!", "Pusta 120 Coins, tara!", "Chub lagi Pamato ko!" };
@@ -1345,47 +1325,40 @@ namespace TeksMaster.World
             // 2. Play Circle seated kids around center (0,0,0)
             var kiko = CreateOpponent("AI Kiko", AIDifficulty.Medium, "tikbalang_striker", 3, 100,
                 new Vector3(-1.35f, 0f, 0.25f), Quaternion.Euler(0f, 95f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.96f, 0.78f, 0.16f), new Color(0.18f, 0.42f, 0.28f), new Color(0.20f, 0.40f, 0.75f),
+                32,
                 isSeated: true, isWandering: false);
             kiko.ChallengeQuote = "Upo ka dito sa bilog! Subukan mo Tikbalang ko!";
             kiko.AmbientCallouts = new[] { "Tara sa play circle!", "Sino may pusta dyan?", "Laban tayo 1v1!" };
 
             var may = CreateOpponent("AI May", AIDifficulty.Medium, "sarimanok", 3, 110,
                 new Vector3(0.75f, 0f, 1.35f), Quaternion.Euler(0f, 200f, 0f),
-                CharacterOutfitRole.FemaleKid,
-                new Color(0.55f, 0.62f, 0.74f), new Color(0.18f, 0.26f, 0.45f), new Color(0.85f, 0.35f, 0.55f),
+                52,
                 isSeated: true, isWandering: false);
             may.ChallengeQuote = "Swerte ang Sarimanok ko — laban ka ba?";
             may.AmbientCallouts = new[] { "Gusto mo mag-Teks?", "Bago kong Sarimanok 'to!", "Pusta na!" };
 
             var sarah = CreateOpponent("AI Sarah", AIDifficulty.Easy, "daragang_mandirigma", 2, 60,
                 new Vector3(1.25f, 0f, -0.95f), Quaternion.Euler(0f, -45f, 0f),
-                CharacterOutfitRole.FemaleKid,
-                new Color(0.95f, 0.55f, 0.72f), new Color(0.25f, 0.25f, 0.32f), new Color(0.92f, 0.40f, 0.65f),
+                54,
                 isSeated: true, isWandering: false);
             sarah.ChallengeQuote = "Practice tayo! Friendly Teks lang, 60 Coins!";
             sarah.AmbientCallouts = new[] { "Laro tayo Teks!", "Friendly match lang!", "Tara, flick na!" };
 
             // Spectator kids seated on circle (aesthetic crowd matching image_0.png)
-            CreateSpectatorKid("Spectator_Boy", new Vector3(-0.35f, 0f, 1.55f), Quaternion.Euler(0f, 170f, 0f),
-                CharacterOutfitRole.MaleKid, new Color(0.90f, 0.90f, 0.92f), new Color(0.22f, 0.24f, 0.30f));
-            CreateSpectatorKid("Spectator_Girl", new Vector3(1.65f, 0f, 0.25f), Quaternion.Euler(0f, -95f, 0f),
-                CharacterOutfitRole.FemaleKid, new Color(0.98f, 0.72f, 0.78f), new Color(0.32f, 0.22f, 0.38f));
+            CreateSpectatorKid("Spectator_Boy", new Vector3(-0.35f, 0f, 1.55f), Quaternion.Euler(0f, 170f, 0f), 10);
+            CreateSpectatorKid("Spectator_Girl", new Vector3(1.65f, 0f, 0.25f), Quaternion.Euler(0f, -95f, 0f), 57);
 
             // 3. Storefront / Right Court kids (AI Galo & AI Mia)
             var galo = CreateOpponent("AI Galo", AIDifficulty.Easy, "bantay_kalye", 1, 50,
                 new Vector3(5.3f, 0f, 3.8f), Quaternion.Euler(0f, 195f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.22f, 0.56f, 0.88f), new Color(0.76f, 0.72f, 0.58f), new Color(0.18f, 0.38f, 0.72f),
+                9,
                 isSeated: false, isWandering: false);
             galo.ChallengeQuote = "Kakabili ko lang kay Aling Nena! Laban tayo!";
             galo.AmbientCallouts = new[] { "Bagong bili 'tong Teks ko!", "Tara 1v1, 50 Coins lang!", "Punta ka rin sa Sari-Sari Store!" };
 
             var mia = CreateOpponent("AI Mia", AIDifficulty.Easy, "sigbin_runner", 2, 75,
                 new Vector3(7.4f, 0f, 1.2f), Quaternion.Euler(0f, -120f, 0f),
-                CharacterOutfitRole.FemaleKid,
-                new Color(0.88f, 0.22f, 0.20f), new Color(0.20f, 0.26f, 0.42f), new Color(0.95f, 0.76f, 0.22f),
+                63,
                 isSeated: false, isWandering: true);
             mia.ChallengeQuote = "Uy! Challenge kita — bilis ng Sigbin Runner ko!";
             mia.AmbientCallouts = new[] { "Uy! Teks tayo!", "Habulan ng swerte!", "Sino palag dyan?" };
@@ -1393,8 +1366,7 @@ namespace TeksMaster.World
             // 4. Sidelines Stronger Opponents & Bosses (Bleachers Bench Sitter + Shady Area)
             var tisoy = CreateOpponent("Boss Tisoy", AIDifficulty.Hard, "mecha_bathala", 4, 250,
                 new Vector3(-3.2f, 0f, 6.92f), Quaternion.Euler(0f, 180f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.45f, 0.20f, 0.72f), new Color(0.14f, 0.14f, 0.18f), new Color(0.88f, 0.32f, 0.96f),
+                22,
                 isSeated: false, isWandering: false, isBenchSitter: true);
             tisoy.ChallengeQuote = "Lakasan mo flick mo, bata — hindi ka uubra sa Mecha Bathala ko!";
             tisoy.AmbientCallouts = new[] { "May lakas ng loob ka ba?", "250 Coins pusta — palag?", "Bleachers Boss ako dito!" };
@@ -1403,8 +1375,7 @@ namespace TeksMaster.World
 
             var kapitan = CreateOpponent("Kapitan Kid", AIDifficulty.Boss, "bakunawa", 5, 450,
                 new Vector3(10.6f, 0f, -4.6f), Quaternion.Euler(0f, -45f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.16f, 0.16f, 0.22f), new Color(0.92f, 0.66f, 0.14f), new Color(0.96f, 0.24f, 0.24f),
+                33,
                 isSeated: false, isWandering: false);
             kapitan.ChallengeQuote = "Ako hari ng court na 'to! Laban kung matapang ka — 450 Coins!";
             kapitan.AmbientCallouts = new[] { "Hari ng Barangay Court!", "Subukan mo Bakunawa ko!", "Boss Fight — 450 Coins!" };
@@ -1414,24 +1385,21 @@ namespace TeksMaster.World
             // 5. SOUTH ZONE (Sari-Sari & Kalye — North Sidewalk & South Shoulder, clear of Highway asphalt)
             var junjun = CreateOpponent("AI Junjun", AIDifficulty.Easy, "tumbang_striker", 2, 70,
                 new Vector3(-7.4f, 0f, -10.8f), Quaternion.Euler(0f, 160f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.24f, 0.72f, 0.42f), new Color(0.20f, 0.24f, 0.34f), new Color(0.95f, 0.78f, 0.20f),
+                3,
                 isSeated: false, isWandering: true);
             junjun.ChallengeQuote = "Fishball muna tapos Teks tayo dito sa kalye!";
             junjun.AmbientCallouts = new[] { "Fishball & Teks!", "70 Coins lang, tara!", "Tumbang Striker ko 'to!" };
 
             var bea = CreateOpponent("AI Bea", AIDifficulty.Medium, "patintero_flash", 3, 140,
                 new Vector3(2.8f, 0f, -10.8f), Quaternion.Euler(0f, -165f, 0f),
-                CharacterOutfitRole.FemaleKid,
-                new Color(0.96f, 0.50f, 0.16f), new Color(0.18f, 0.28f, 0.56f), new Color(1.0f, 0.86f, 0.22f),
+                68,
                 isSeated: false, isWandering: true);
             bea.ChallengeQuote = "Teks showdown dito sa kalye! Mabilis ang Patintero Flash ko!";
             bea.AmbientCallouts = new[] { "Kalye Showdown tayo!", "140 Coins, palag?", "Wala kang laban sa bilis ko!" };
 
             var manong = CreateOpponent("Manong Driver", AIDifficulty.Hard, "jeepney_mech", 4, 300,
                 new Vector3(4.6f, 0f, -19.4f), Quaternion.Euler(0f, -25f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.86f, 0.20f, 0.22f), new Color(0.18f, 0.36f, 0.72f), new Color(0.95f, 0.85f, 0.22f),
+                30,
                 isSeated: false, isWandering: false);
             manong.ChallengeQuote = "Sakay na! Kaya mo ba Jeepney Mech MK-V ko, bata?";
             manong.AmbientCallouts = new[] { "Jeepney Mech pusta!", "300 Coins — tara!", "Barya lang sa umaga!" };
@@ -1441,16 +1409,14 @@ namespace TeksMaster.World
             // 6. EAST ZONE (Player's Neighborhood & Plaza Gazebo) AI Opponents
             var lorna = CreateOpponent("Ate Lorna", AIDifficulty.Hard, "diwata_maria", 4, 320,
                 new Vector3(25.52f, 0f, -2.6f), Quaternion.Euler(0f, -90f, 0f),
-                CharacterOutfitRole.FemaleKid,
-                new Color(0.16f, 0.68f, 0.46f), new Color(0.92f, 0.76f, 0.24f), new Color(0.22f, 0.84f, 0.56f),
+                88,
                 isSeated: false, isWandering: false, isBenchSitter: true);
             lorna.ChallengeQuote = "Swerte ng Diwata Maria ang kalaban mo! Ready ka na ba?";
             lorna.AmbientCallouts = new[] { "Diwata Maria blessing!", "320 Coins challenge!", "Pahinga muna sa Plaza Bench!" };
 
             var panday = CreateOpponent("Master Panday", AIDifficulty.Boss, "panday_blade", 5, 500,
                 new Vector3(23.5f, 0f, -0.8f), Quaternion.Euler(0f, -90f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.76f, 0.18f, 0.12f), new Color(0.16f, 0.14f, 0.16f), new Color(1.0f, 0.76f, 0.18f),
+                45,
                 isSeated: false, isWandering: false);
             panday.ChallengeQuote = "Apoy ng Panday Blade ang haharapin mo — 500 Coins!";
             panday.AmbientCallouts = new[] { "Plaza Boss Challenge!", "500 Coins pusta!", "Panday Blade awaits!" };
@@ -1460,24 +1426,21 @@ namespace TeksMaster.World
             // 7. WEST ZONE (Old Neighborhood & Waiting Shed) AI Opponents
             var toto = CreateOpponent("AI Toto", AIDifficulty.Easy, "sipa_master", 2, 80,
                 new Vector3(-19.5f, 0f, -1.6f), Quaternion.Euler(0f, 80f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.92f, 0.40f, 0.20f), new Color(0.20f, 0.52f, 0.76f), new Color(0.95f, 0.85f, 0.25f),
+                41,
                 isSeated: false, isWandering: true);
             toto.ChallengeQuote = "Tambay Teks tayo dito sa lilim! 80 Coins lang!";
             toto.AmbientCallouts = new[] { "Tambay Teks tayo!", "Presko dito sa West Shed!", "80 Coins pusta!" };
 
             var bert = CreateOpponent("Kuya Bert", AIDifficulty.Hard, "kapre_titan", 4, 280,
                 new Vector3(-22.5f, 0f, 3.72f), Quaternion.Euler(0f, 180f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.24f, 0.42f, 0.22f), new Color(0.42f, 0.24f, 0.14f), new Color(0.96f, 0.56f, 0.18f),
+                48,
                 isSeated: false, isWandering: false, isBenchSitter: true);
             bert.ChallengeQuote = "Lahat ng bata dito talo sa Kapre Titan ko! Palag ka?";
             bert.AmbientCallouts = new[] { "Tambayan Veteran!", "280 Coins — laban?", "Kapre Titan unbeatable!" };
 
             var lolo = CreateOpponent("Lolo Teks", AIDifficulty.Boss, "ibong_adarna", 5, 600,
                 new Vector3(-25.8f, 0f, -4.8f), Quaternion.Euler(0f, 55f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.92f, 0.78f, 0.46f), new Color(0.28f, 0.22f, 0.18f), new Color(0.96f, 0.68f, 0.14f),
+                44,
                 isSeated: false, isWandering: false);
             lolo.ChallengeQuote = "50 taon na akong nagte-Teks! Patunayan mong karapat-dapat ka — 600 Coins!";
             lolo.AmbientCallouts = new[] { "Grandmaster ng Barangay!", "600 Coins Boss Fight!", "Ibong Adarna Pamato!" };
@@ -1488,8 +1451,7 @@ namespace TeksMaster.World
             // South Kalye Street (by Fishball Cart on North Sidewalk)
             var tonton = CreateOpponent("AI Tonton", AIDifficulty.Easy, "balut_drone", 2, 65,
                 new Vector3(-12.2f, 0f, -11.2f), Quaternion.Euler(0f, 150f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.96f, 0.82f, 0.22f), new Color(0.18f, 0.36f, 0.64f), new Color(0.88f, 0.24f, 0.24f),
+                28,
                 isSeated: false, isWandering: true);
             tonton.ChallengeQuote = "Fishball muna dito sa Kalye tapos Teks tayo!";
             tonton.AmbientCallouts = new[] { "Teks sa Kalye!", "65 Coins lang!", "Balut Drone Pamato ko!" };
@@ -1497,8 +1459,7 @@ namespace TeksMaster.World
             // East Player's Neighborhood / Plaza Park
             var nica = CreateOpponent("AI Nica", AIDifficulty.Medium, "halo_halo_core", 3, 130,
                 new Vector3(21.2f, 0f, 5.2f), Quaternion.Euler(0f, -145f, 0f),
-                CharacterOutfitRole.FemaleKid,
-                new Color(0.62f, 0.26f, 0.88f), new Color(0.94f, 0.74f, 0.22f), new Color(0.24f, 0.86f, 0.80f),
+                76,
                 isSeated: false, isWandering: true);
             nica.ChallengeQuote = "Ang presko dito sa Plaza Park — Teks showdown, 130 Coins!";
             nica.AmbientCallouts = new[] { "Halo-Halo Core power!", "130 Coins pusta!", "Laban sa Plaza Park!" };
@@ -1506,16 +1467,14 @@ namespace TeksMaster.World
             // West Old Neighborhood
             var marco = CreateOpponent("AI Marco", AIDifficulty.Medium, "luksong_tinik", 3, 125,
                 new Vector3(-19.2f, 0f, 4.2f), Quaternion.Euler(0f, 125f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.22f, 0.62f, 0.86f), new Color(0.18f, 0.20f, 0.28f), new Color(0.96f, 0.72f, 0.18f),
+                34,
                 isSeated: false, isWandering: true);
             marco.ChallengeQuote = "Dito sa Old Neighborhood — mainit ang laban ng Teks!";
             marco.AmbientCallouts = new[] { "West Alley Teks!", "125 Coins tara!", "Luksong Tinik jump!" };
 
             var ella = CreateOpponent("AI Ella", AIDifficulty.Easy, "sorbetes_bot", 2, 75,
                 new Vector3(-25.4f, 0f, 0.8f), Quaternion.Euler(0f, 75f, 0f),
-                CharacterOutfitRole.FemaleKid,
-                new Color(0.28f, 0.74f, 0.94f), new Color(0.96f, 0.46f, 0.68f), new Color(1.0f, 0.92f, 0.45f),
+                69,
                 isSeated: false, isWandering: true);
             ella.ChallengeQuote = "Tara dito sa Waiting Shed! Friendly Teks, 75 Coins!";
             ella.AmbientCallouts = new[] { "Waiting Shed Teks!", "Sorbetes Bot freeze!", "75 Coins tara!" };
@@ -1523,16 +1482,14 @@ namespace TeksMaster.World
             // 9. SOUTH-EAST FIESTA TEKS ARENA ELITE CHALLENGERS (shifted South of Highway by Δz = -10.0)
             var ronnie = CreateOpponent("Kuya Ronnie", AIDifficulty.Hard, "rizal_vanguard", 4, 270,
                 new Vector3(19.6f, 0f, -28.5f), Quaternion.Euler(0f, 65f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.16f, 0.34f, 0.78f), new Color(0.86f, 0.20f, 0.22f), new Color(1.0f, 0.86f, 0.24f),
+                37,
                 isSeated: false, isWandering: false);
             ronnie.ChallengeQuote = "Welcome sa Fiesta Teks Arena! Subukan mo Manila Vanguard ko — 270 Coins!";
             ronnie.AmbientCallouts = new[] { "Manila Vanguard!", "270 Coins Fiesta Match!", "Fiesta Arena Challenger!" };
 
             var macky = CreateOpponent("Boss Macky", AIDifficulty.Hard, "minokawa", 4, 290,
                 new Vector3(23.2f, 0f, -25.6f), Quaternion.Euler(0f, -165f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(0.36f, 0.14f, 0.58f), new Color(0.88f, 0.30f, 0.14f), new Color(1.0f, 0.80f, 0.20f),
+                14,
                 isSeated: false, isWandering: false);
             macky.ChallengeQuote = "Eclipse ng Minokawa ang haharapin mo sa Fiesta Arena — 290 Coins!";
             macky.AmbientCallouts = new[] { "Minokawa Eclipse!", "290 Coins — palag?", "Fiesta Semi-Finalist!" };
@@ -1541,8 +1498,7 @@ namespace TeksMaster.World
 
             var rico = CreateOpponent("Fiesta Champ Rico", AIDifficulty.Boss, "sun_dragon_hero", 5, 750,
                 new Vector3(21.2f, 0f, -30.8f), Quaternion.Euler(0f, 35f, 0f),
-                CharacterOutfitRole.MaleKid,
-                new Color(1.0f, 0.68f, 0.12f), new Color(0.12f, 0.64f, 0.92f), new Color(1.0f, 0.90f, 0.28f),
+                46,
                 isSeated: false, isWandering: false);
             rico.ChallengeQuote = "Ako ang dating Fiesta Teks Champion! Subukan mo Sun Dragon Hero ko!";
             rico.AmbientCallouts = new[] { "FIESTA BOSS RICO!", "Sun Dragon Hero Pamato!", "Warm-up bago si Teks Master!" };
@@ -1617,10 +1573,7 @@ namespace TeksMaster.World
             int wager,
             Vector3 pos,
             Quaternion rot,
-            CharacterOutfitRole role,
-            Color shirt,
-            Color shorts,
-            Color slippers,
+            int prefabNumber,
             bool isSeated,
             bool isWandering,
             bool isBenchSitter = false,
@@ -1635,8 +1588,7 @@ namespace TeksMaster.World
             go.transform.position = pos;
             go.transform.rotation = rot;
 
-            var actor = CharacterVisualBuilder.BuildCharacterVisual(
-                go, role, shirt, shorts, new Color(0.76f, 0.52f, 0.37f), slippers);
+            var actor = CharacterVisualBuilder.BuildPackCharacterVisual(go, prefabNumber);
 
             if (isBenchSitter)
             {
@@ -1651,6 +1603,7 @@ namespace TeksMaster.World
 
             var npc = go.AddComponent<NpcOpponent>();
             npc.NpcName = npcName;
+            npc.CharacterPrefabNumber = prefabNumber;
             npc.NpcId = !string.IsNullOrWhiteSpace(npcId) ? npcId : npc.GetEffectiveNpcId();
             npc.Difficulty = difficulty;
             npc.AreaId = area;
@@ -1676,15 +1629,14 @@ namespace TeksMaster.World
             return npc;
         }
 
-        private void CreateSpectatorKid(string name, Vector3 pos, Quaternion rot, CharacterOutfitRole role, Color shirt, Color shorts)
+        private void CreateSpectatorKid(string name, Vector3 pos, Quaternion rot, int prefabNumber)
         {
             var go = new GameObject(name);
             go.transform.SetParent(CourtRoot, false);
             go.transform.position = pos;
             go.transform.rotation = rot;
 
-            var actor = CharacterVisualBuilder.BuildCharacterVisual(
-                go, role, shirt, shorts, new Color(0.74f, 0.50f, 0.36f), new Color(0.24f, 0.52f, 0.78f));
+            var actor = CharacterVisualBuilder.BuildPackCharacterVisual(go, prefabNumber);
             actor.SetPose(CharacterPoseMode.SittingOnCourt);
         }
 

@@ -137,13 +137,13 @@ namespace TeksMaster.Characters
             var inv = PlayerInventory.Instance;
             if (inv != null)
             {
-                inv.OnGenderChanged -= HandleGenderChanged;
-                inv.OnGenderChanged += HandleGenderChanged;
-                RebuildAvatarMesh(inv.SelectedGender);
+                inv.OnCharacterTypeChanged -= HandleCharacterTypeChanged;
+                inv.OnCharacterTypeChanged += HandleCharacterTypeChanged;
+                RebuildAvatarMesh(inv.SelectedCharacterType);
             }
             else
             {
-                RebuildAvatarMesh(PlayerGender.Male);
+                RebuildAvatarMesh(PlayerCharacterType.StreetKid);
             }
 
             if (Camera.main != null)
@@ -158,7 +158,7 @@ namespace TeksMaster.Characters
         {
             if (PlayerInventory.Instance != null)
             {
-                PlayerInventory.Instance.OnGenderChanged -= HandleGenderChanged;
+                PlayerInventory.Instance.OnCharacterTypeChanged -= HandleCharacterTypeChanged;
             }
             if (Instance == this)
             {
@@ -166,39 +166,20 @@ namespace TeksMaster.Characters
             }
         }
 
-        private void HandleGenderChanged(PlayerGender gender)
+        private void HandleCharacterTypeChanged(PlayerCharacterType characterType)
         {
-            RebuildAvatarMesh(gender);
+            RebuildAvatarMesh(characterType);
         }
 
-        public void RebuildAvatarMesh(PlayerGender gender)
+        public void RebuildAvatarMesh(PlayerCharacterType characterType)
         {
-            CharacterOutfitRole role = gender == PlayerGender.Male
-                ? CharacterOutfitRole.MaleKid
-                : CharacterOutfitRole.FemaleKid;
-
-            Color shirt = gender == PlayerGender.Male
-                ? new Color(0.95f, 0.95f, 0.96f)   // White Pinoy street tee (like foreground player in image_0)
-                : new Color(0.98f, 0.45f, 0.62f);  // Bright coral/pink tee
-
-            Color shorts = gender == PlayerGender.Male
-                ? new Color(0.14f, 0.16f, 0.24f)   // Dark basketball shorts with white stripe
-                : new Color(0.18f, 0.42f, 0.78f);
-
-            Color slippers = gender == PlayerGender.Male
-                ? new Color(0.18f, 0.56f, 0.86f)
-                : new Color(0.96f, 0.32f, 0.58f);
-
             var currentPose = Actor != null ? Actor.CurrentPose : CharacterPoseMode.StandingOrWalking;
-            Actor = CharacterVisualBuilder.BuildCharacterVisual(
-                gameObject,
-                role,
-                shirt,
-                shorts,
-                new Color(0.75f, 0.51f, 0.37f),
-                slippers
-            );
-            Actor.SetPose(currentPose);
+            int prefabNumber = TeksCharacterPresets.GetPrefabNumber(characterType);
+            Actor = CharacterVisualBuilder.BuildPackCharacterVisual(gameObject, prefabNumber);
+            if (Actor != null)
+            {
+                Actor.SetPose(currentPose);
+            }
         }
 
         public void SetVirtualMoveInput(Vector2 move)
@@ -246,7 +227,7 @@ namespace TeksMaster.Characters
             var kb = Keyboard.current;
             if (!MovementLocked && kb != null && kb.cKey.wasPressedThisFrame)
             {
-                PlayerInventory.Instance?.ToggleGender();
+                PlayerInventory.Instance?.CycleCharacterType(1);
             }
 
             if (!MovementLocked && !ExternalInteractHandlerActive && kb != null && kb.eKey.wasPressedThisFrame)

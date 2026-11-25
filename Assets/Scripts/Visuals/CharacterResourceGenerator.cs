@@ -11,6 +11,15 @@ namespace TeksMaster.Visuals
         private static readonly Dictionary<string, Sprite> _npcPortraitCache = new Dictionary<string, Sprite>();
         private static Texture2D _faceTex;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetCachesOnPlay()
+        {
+            _shirtTexCache.Clear();
+            _avatarPortraitCache.Clear();
+            _npcPortraitCache.Clear();
+            _faceTex = null;
+        }
+
         public static Texture2D GetCharacterFaceTexture(Color skinTone)
         {
             if (_faceTex != null) return _faceTex;
@@ -114,22 +123,31 @@ namespace TeksMaster.Visuals
             return tex;
         }
 
-        public static Sprite GetAvatarPortraitSprite(PlayerGender gender)
+        public static Sprite GetCharacterPortraitSprite(PlayerCharacterType characterType)
         {
-            string key = gender.ToString();
+            var preset = TeksCharacterPresets.GetPreset(characterType);
+            string key = preset.Type.ToString();
             if (_avatarPortraitCache.TryGetValue(key, out var cached) && cached != null)
                 return cached;
+
+            var loadedTex = Resources.Load<Texture2D>($"CharacterPortraits/body_root_{preset.PrefabNumber}");
+            if (loadedTex != null)
+            {
+                var realSprite = Sprite.Create(
+                    loadedTex,
+                    new Rect(0, 0, loadedTex.width, loadedTex.height),
+                    new Vector2(0.5f, 0.5f),
+                    100f);
+                _avatarPortraitCache[key] = realSprite;
+                return realSprite;
+            }
 
             const int size = 128;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Bilinear;
 
-            Color bgTop = gender == PlayerGender.Male
-                ? new Color(0.14f, 0.42f, 0.78f)
-                : new Color(0.76f, 0.24f, 0.54f);
-            Color bgBot = gender == PlayerGender.Male
-                ? new Color(0.08f, 0.16f, 0.34f)
-                : new Color(0.32f, 0.10f, 0.28f);
+            Color bgTop = Color.Lerp(preset.AccentColor, Color.black, 0.20f);
+            Color bgBot = Color.Lerp(preset.AccentColor, Color.black, 0.65f);
 
             for (int y = 0; y < size; y++)
             {
@@ -143,38 +161,18 @@ namespace TeksMaster.Visuals
 
             Color skin = new Color(0.77f, 0.53f, 0.38f);
             Color hair = new Color(0.10f, 0.08f, 0.08f);
-            Color shirt = gender == PlayerGender.Male
-                ? new Color(0.95f, 0.95f, 0.96f)
-                : new Color(0.98f, 0.45f, 0.62f);
-            Color trim = gender == PlayerGender.Male
-                ? new Color(0.18f, 0.56f, 0.92f)
-                : new Color(1.0f, 0.84f, 0.22f);
+            Color shirt = preset.AccentColor;
+            Color trim = Color.Lerp(preset.AccentColor, Color.white, 0.45f);
 
             // Shoulders & jersey
             FillEllipse(tex, 64, 18, 44, 30, shirt);
             FillEllipse(tex, 64, 34, 18, 12, trim);
             FillRect(tex, 54, 32, 20, 18, skin); // Neck
 
-            // Hair back / bun for Female
-            if (gender == PlayerGender.Female)
-            {
-                FillCircle(tex, 64, 108, 16, hair);
-                FillEllipse(tex, 64, 72, 34, 34, hair);
-            }
-
             // Head
             FillEllipse(tex, 64, 72, 28, 32, skin);
-
-            // Hair bangs / tuft
             FillEllipse(tex, 64, 94, 30, 16, hair);
-            if (gender == PlayerGender.Female)
-            {
-                FillRect(tex, 36, 88, 56, 6, new Color(0.96f, 0.36f, 0.72f)); // Headband
-            }
-            else
-            {
-                FillRect(tex, 42, 98, 44, 12, hair);
-            }
+            FillRect(tex, 42, 98, 44, 12, hair);
 
             // Eyes
             FillCircle(tex, 52, 72, 5, Color.white);
@@ -210,12 +208,27 @@ namespace TeksMaster.Visuals
             return sprite;
         }
 
-        public static Sprite GetNpcPortraitSprite(string npcName, AIDifficulty difficulty, bool isChampion)
+        public static Sprite GetNpcPortraitSprite(string npcName, AIDifficulty difficulty, bool isChampion, int prefabNumber = 0)
         {
             string normName = string.IsNullOrWhiteSpace(npcName) ? "npc" : npcName.Trim().ToLowerInvariant();
-            string key = $"{normName}_{(int)difficulty}_{(isChampion ? 1 : 0)}";
+            string key = $"{normName}_{(int)difficulty}_{(isChampion ? 1 : 0)}_{prefabNumber}";
             if (_npcPortraitCache.TryGetValue(key, out var cached) && cached != null)
                 return cached;
+
+            if (prefabNumber > 0)
+            {
+                var loadedTex = Resources.Load<Texture2D>($"CharacterPortraits/body_root_{prefabNumber}");
+                if (loadedTex != null)
+                {
+                    var realSprite = Sprite.Create(
+                        loadedTex,
+                        new Rect(0, 0, loadedTex.width, loadedTex.height),
+                        new Vector2(0.5f, 0.5f),
+                        100f);
+                    _npcPortraitCache[key] = realSprite;
+                    return realSprite;
+                }
+            }
 
             const int size = 128;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);

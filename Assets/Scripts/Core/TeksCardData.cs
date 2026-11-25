@@ -39,10 +39,126 @@ namespace TeksMaster.Core
         Extreme
     }
 
-    public enum PlayerGender
+    public enum PlayerCharacterType
     {
-        Male,
-        Female
+        StreetKid = 0,
+        CourtBaller = 1,
+        HeadphoneDJ = 2,
+        StreetPunk = 3,
+        PopStar = 4,
+        SportyAce = 5,
+        BarangayChef = 6,
+        ShadowBoss = 7
+    }
+
+    public readonly struct PlayerCharacterPreset
+    {
+        public readonly PlayerCharacterType Type;
+        public readonly string DisplayName;
+        public readonly string ShortLabel;
+        public readonly string Subtitle;
+        public readonly int PrefabNumber;
+        public readonly Color AccentColor;
+
+        public PlayerCharacterPreset(
+            PlayerCharacterType type,
+            string displayName,
+            string shortLabel,
+            string subtitle,
+            int prefabNumber,
+            Color accentColor)
+        {
+            Type = type;
+            DisplayName = displayName;
+            ShortLabel = shortLabel;
+            Subtitle = subtitle;
+            PrefabNumber = prefabNumber;
+            AccentColor = accentColor;
+        }
+    }
+
+    public static class TeksCharacterPresets
+    {
+        public static readonly PlayerCharacterPreset[] All =
+        {
+            new PlayerCharacterPreset(
+                PlayerCharacterType.StreetKid,
+                "Street Kid",
+                "STREET KID",
+                "Red Cap • Kalye Classic",
+                26,
+                new Color(0.88f, 0.24f, 0.24f)),
+            new PlayerCharacterPreset(
+                PlayerCharacterType.CourtBaller,
+                "Court Baller",
+                "BALLER",
+                "Striped Jersey • Court Hooper",
+                4,
+                new Color(0.18f, 0.52f, 0.92f)),
+            new PlayerCharacterPreset(
+                PlayerCharacterType.HeadphoneDJ,
+                "Headphone DJ",
+                "BEAT DJ",
+                "Headphones • Rhythm Striker",
+                72,
+                new Color(0.22f, 0.72f, 0.88f)),
+            new PlayerCharacterPreset(
+                PlayerCharacterType.StreetPunk,
+                "Street Punk",
+                "PUNK",
+                "Mohawk & Shades • Kanto Rebel",
+                24,
+                new Color(0.22f, 0.80f, 0.36f)),
+            new PlayerCharacterPreset(
+                PlayerCharacterType.PopStar,
+                "Pop Star",
+                "POP STAR",
+                "Pink Hair • Fiesta Idol",
+                61,
+                new Color(0.90f, 0.32f, 0.64f)),
+            new PlayerCharacterPreset(
+                PlayerCharacterType.SportyAce,
+                "Sporty Ace",
+                "SPORTY",
+                "Red Visor • Quick Runner",
+                92,
+                new Color(0.94f, 0.48f, 0.16f)),
+            new PlayerCharacterPreset(
+                PlayerCharacterType.BarangayChef,
+                "Barangay Chef",
+                "CHEF",
+                "Chef Hat • Kalye Culinary Pro",
+                19,
+                new Color(0.16f, 0.68f, 0.78f)),
+            new PlayerCharacterPreset(
+                PlayerCharacterType.ShadowBoss,
+                "Shadow Boss",
+                "BOSS",
+                "Tall Hat & Shades • Street VIP",
+                18,
+                new Color(0.58f, 0.30f, 0.88f))
+        };
+
+        public static int Count => All.Length;
+
+        public static PlayerCharacterPreset GetPreset(PlayerCharacterType type)
+        {
+            int idx = (int)type;
+            if (idx < 0 || idx >= All.Length) idx = 0;
+            return All[idx];
+        }
+
+        public static int GetPrefabNumber(PlayerCharacterType type)
+        {
+            return GetPreset(type).PrefabNumber;
+        }
+
+        public static PlayerCharacterType FromIndex(int index)
+        {
+            int count = All.Length;
+            int wrapped = ((index % count) + count) % count;
+            return All[wrapped].Type;
+        }
     }
 
     public enum BarangayAreaId

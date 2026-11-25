@@ -49,8 +49,9 @@ namespace TeksMaster.UI
         private Image _profileAvatarImg;
         private Text _profileNicknameText;
         private Text _profileCurrencyText;
-        private Image _profileGenderBtnImg;
-        private Text _profileGenderBtnText;
+        private Image _profileCharBtnImg;
+        private Text _profileCharBtnText;
+        private Text _profileCharSubText;
         private Text _profileRankTitleText;
         private Image _profileRankProgressFill;
         private Text _profileRankProgressText;
@@ -167,34 +168,38 @@ namespace TeksMaster.UI
 
         private void CreateStartScreen()
         {
-            _startScreenRoot = CreateModalBackdrop("StartGameScreen", new Vector2(780f, 620f), out RectTransform window);
+            _startScreenRoot = CreateModalBackdrop("StartGameScreen", new Vector2(820f, 680f), out RectTransform window);
             _startScreenRoot.GetComponent<Image>().color = new Color(0.03f, 0.05f, 0.10f, 0.62f);
 
             var title = CreateText("GameTitle", window, "3D TEKS MASTER", 42, FontStyle.Bold, new Color(1.0f, 0.85f, 0.22f), TextAnchor.MiddleCenter);
             title.rectTransform.anchorMin = new Vector2(0f, 1f);
             title.rectTransform.anchorMax = new Vector2(1f, 1f);
-            title.rectTransform.offsetMin = new Vector2(20f, -66f);
-            title.rectTransform.offsetMax = new Vector2(-20f, -12f);
+            title.rectTransform.offsetMin = new Vector2(20f, -58f);
+            title.rectTransform.offsetMax = new Vector2(-20f, -10f);
 
             var sub = CreateText("GameSub", window, "BARANGAY SHOWDOWN  •  5 Areas • 41 Cards • Flick, Fuse & Rule!", 16, FontStyle.Bold, new Color(0.76f, 0.90f, 1.0f), TextAnchor.MiddleCenter);
             sub.rectTransform.anchorMin = new Vector2(0f, 1f);
             sub.rectTransform.anchorMax = new Vector2(1f, 1f);
-            sub.rectTransform.offsetMin = new Vector2(20f, -94f);
-            sub.rectTransform.offsetMax = new Vector2(-20f, -66f);
+            sub.rectTransform.offsetMin = new Vector2(20f, -84f);
+            sub.rectTransform.offsetMax = new Vector2(-20f, -58f);
 
-            // Avatar Preview Box
-            var previewBox = CreateRoundedPanel("StartAvatarBox", window, new Color(0.14f, 0.20f, 0.30f), new Vector2(132f, 132f));
-            previewBox.anchoredPosition = new Vector2(0f, 128f);
-            _startPreviewPortrait = CreateImage("StartAvatarImg", previewBox, CharacterResourceGenerator.GetAvatarPortraitSprite(PlayerGender.Male));
-            StretchFull(_startPreviewPortrait.rectTransform, 6f);
+            // Avatar Preview Box + Selected Character Type Description
+            var previewBox = CreateRoundedPanel("StartAvatarBox", window, new Color(0.14f, 0.20f, 0.30f), new Vector2(124f, 124f));
+            previewBox.anchoredPosition = new Vector2(0f, 186f);
+            _startPreviewPortrait = CreateImage("StartAvatarImg", previewBox, CharacterResourceGenerator.GetCharacterPortraitSprite(PlayerCharacterType.StreetKid));
+            StretchFull(_startPreviewPortrait.rectTransform, 5f);
+
+            _startCharacterDescText = CreateText("StartCharDesc", window, "STREET KID  •  Red Cap • Kalye Classic", 14, FontStyle.Bold, new Color(1.0f, 0.90f, 0.42f), TextAnchor.MiddleCenter);
+            _startCharacterDescText.rectTransform.anchoredPosition = new Vector2(0f, 108f);
+            _startCharacterDescText.rectTransform.sizeDelta = new Vector2(560f, 24f);
 
             // Nickname Label + InputField
-            var nickLbl = CreateText("NickLbl", window, "SET YOUR NICKNAME:", 15, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            nickLbl.rectTransform.anchoredPosition = new Vector2(0f, 42f);
-            nickLbl.rectTransform.sizeDelta = new Vector2(360f, 24f);
+            var nickLbl = CreateText("NickLbl", window, "SET YOUR NICKNAME:", 14, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            nickLbl.rectTransform.anchoredPosition = new Vector2(0f, 76f);
+            nickLbl.rectTransform.sizeDelta = new Vector2(360f, 22f);
 
-            var inputBg = CreateRoundedPanel("NicknameInputBg", window, new Color(0.06f, 0.09f, 0.16f, 1f), new Vector2(360f, 40f));
-            inputBg.anchoredPosition = new Vector2(0f, 8f);
+            var inputBg = CreateRoundedPanel("NicknameInputBg", window, new Color(0.06f, 0.09f, 0.16f, 1f), new Vector2(360f, 38f));
+            inputBg.anchoredPosition = new Vector2(0f, 44f);
             AddOutline(inputBg.gameObject, new Color(0.42f, 0.62f, 0.92f), 2f);
 
             _nicknameInput = inputBg.gameObject.AddComponent<InputField>();
@@ -207,28 +212,41 @@ namespace TeksMaster.UI
             _nicknameInput.placeholder = placeholderTxt;
             _nicknameInput.text = PlayerInventory.Instance != null ? PlayerInventory.Instance.PlayerNickname : "TeksMaster";
 
-            // Gender Picker Buttons
-            var genLbl = CreateText("GenderLbl", window, "CHOOSE YOUR AVATAR:", 15, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            genLbl.rectTransform.anchoredPosition = new Vector2(0f, -30f);
-            genLbl.rectTransform.sizeDelta = new Vector2(360f, 22f);
+            // 8 Character Type Picker Grid (2 rows x 4 columns)
+            var charLbl = CreateText("CharTypeLbl", window, "CHOOSE YOUR CHARACTER TYPE:", 14, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            charLbl.rectTransform.anchoredPosition = new Vector2(0f, 10f);
+            charLbl.rectTransform.sizeDelta = new Vector2(440f, 22f);
 
-            var maleBtn = CreateButton("StartMaleBtn", window, "MALE (TOTOY)", new Color(0.18f, 0.50f, 0.88f), 15, () => SelectStartGender(PlayerGender.Male));
-            var mRt = maleBtn.GetComponent<RectTransform>();
-            mRt.anchoredPosition = new Vector2(-106f, -64f);
-            mRt.sizeDelta = new Vector2(196f, 38f);
-            _startMaleBtnImg = maleBtn.GetComponent<Image>();
+            for (int i = 0; i < TeksCharacterPresets.Count; i++)
+            {
+                var preset = TeksCharacterPresets.All[i];
+                int col = i % 4;
+                int row = i / 4;
+                float x = -282f + col * 188f;
+                float y = -24f - row * 42f;
 
-            var femaleBtn = CreateButton("StartFemaleBtn", window, "FEMALE (NENE)", new Color(0.32f, 0.22f, 0.36f), 15, () => SelectStartGender(PlayerGender.Female));
-            var fRt = femaleBtn.GetComponent<RectTransform>();
-            fRt.anchoredPosition = new Vector2(106f, -64f);
-            fRt.sizeDelta = new Vector2(196f, 38f);
-            _startFemaleBtnImg = femaleBtn.GetComponent<Image>();
+                var capturedType = preset.Type;
+                var cBtn = CreateButton("StartCharBtn_" + i, window, preset.DisplayName.ToUpper(), new Color(0.18f, 0.22f, 0.30f), 13, () => SelectStartCharacterType(capturedType));
+                var cRt = cBtn.GetComponent<RectTransform>();
+                cRt.anchoredPosition = new Vector2(x, y);
+                cRt.sizeDelta = new Vector2(178f, 36f);
+                AddOutline(cBtn.gameObject, new Color(0.28f, 0.36f, 0.48f), 1.2f);
+                _startCharacterBtnImgs[i] = cBtn.GetComponent<Image>();
+                _startCharacterBtnOutlines[i] = cBtn.GetComponent<Outline>();
+                var cTxt = cBtn.GetComponentInChildren<Text>();
+                if (cTxt != null)
+                {
+                    cTxt.resizeTextForBestFit = true;
+                    cTxt.resizeTextMinSize = 10;
+                    cTxt.resizeTextMaxSize = 13;
+                }
+            }
 
             // Primary Play Button
             var playBtn = CreateButton("StartPlayBtn", window, "PLAY BARANGAY SHOWDOWN!", new Color(0.18f, 0.76f, 0.34f), 22, OnStartPlayClicked);
             var pRt = playBtn.GetComponent<RectTransform>();
-            pRt.anchoredPosition = new Vector2(0f, -124f);
-            pRt.sizeDelta = new Vector2(460f, 52f);
+            pRt.anchoredPosition = new Vector2(0f, -130f);
+            pRt.sizeDelta = new Vector2(460f, 50f);
             AddOutline(playBtn.gameObject, new Color(0.75f, 1.0f, 0.65f), 2f);
 
             // Secondary Main Menu Navigation Grid (Collection, Shop, Missions, Modes, Settings, Exit)
@@ -241,7 +259,7 @@ namespace TeksMaster.UI
                 });
             });
             var colRt = colBtn.GetComponent<RectTransform>();
-            colRt.anchoredPosition = new Vector2(-232f, -190f);
+            colRt.anchoredPosition = new Vector2(-232f, -200f);
             colRt.sizeDelta = new Vector2(216f, 40f);
 
             var shopMenuBtn = CreateButton("MenuShopBtn", window, "SARI-SARI SHOP", new Color(0.76f, 0.46f, 0.12f), 14, () =>
@@ -253,7 +271,7 @@ namespace TeksMaster.UI
                 });
             });
             var shRt = shopMenuBtn.GetComponent<RectTransform>();
-            shRt.anchoredPosition = new Vector2(0f, -190f);
+            shRt.anchoredPosition = new Vector2(0f, -200f);
             shRt.sizeDelta = new Vector2(216f, 40f);
 
             var missionsMenuBtn = CreateButton("MenuMissionsBtn", window, "MISSIONS & BADGES", new Color(0.58f, 0.26f, 0.82f), 14, () =>
@@ -265,7 +283,7 @@ namespace TeksMaster.UI
                 });
             });
             var miRt = missionsMenuBtn.GetComponent<RectTransform>();
-            miRt.anchoredPosition = new Vector2(232f, -190f);
+            miRt.anchoredPosition = new Vector2(232f, -200f);
             miRt.sizeDelta = new Vector2(216f, 40f);
 
             var modesMenuBtn = CreateButton("MenuModesBtn", window, "GAME MODES", new Color(0.16f, 0.58f, 0.72f), 14, () =>
@@ -277,7 +295,7 @@ namespace TeksMaster.UI
                 });
             });
             var moRt = modesMenuBtn.GetComponent<RectTransform>();
-            moRt.anchoredPosition = new Vector2(-232f, -242f);
+            moRt.anchoredPosition = new Vector2(-232f, -252f);
             moRt.sizeDelta = new Vector2(216f, 40f);
 
             var settingsMenuBtn = CreateButton("MenuSettingsBtn", window, "SETTINGS", new Color(0.28f, 0.36f, 0.50f), 14, () =>
@@ -290,16 +308,16 @@ namespace TeksMaster.UI
                 });
             });
             var seRt = settingsMenuBtn.GetComponent<RectTransform>();
-            seRt.anchoredPosition = new Vector2(0f, -242f);
+            seRt.anchoredPosition = new Vector2(0f, -252f);
             seRt.sizeDelta = new Vector2(216f, 40f);
 
             var exitMenuBtn = CreateButton("MenuExitBtn", window, "EXIT GAME", new Color(0.72f, 0.20f, 0.22f), 14, OnExitGameClicked);
             var exRt = exitMenuBtn.GetComponent<RectTransform>();
-            exRt.anchoredPosition = new Vector2(232f, -242f);
+            exRt.anchoredPosition = new Vector2(232f, -252f);
             exRt.sizeDelta = new Vector2(216f, 40f);
 
-            var initialGender = PlayerInventory.Instance != null ? PlayerInventory.Instance.SelectedGender : PlayerGender.Male;
-            SelectStartGender(initialGender);
+            var initialChar = PlayerInventory.Instance != null ? PlayerInventory.Instance.SelectedCharacterType : PlayerCharacterType.StreetKid;
+            SelectStartCharacterType(initialChar);
 
             ShowMainMenu();
         }
@@ -323,7 +341,7 @@ namespace TeksMaster.UI
             if (PlayerInventory.Instance != null)
             {
                 if (_nicknameInput != null) _nicknameInput.text = PlayerInventory.Instance.PlayerNickname;
-                SelectStartGender(PlayerInventory.Instance.SelectedGender);
+                SelectStartCharacterType(PlayerInventory.Instance.SelectedCharacterType);
             }
 
             if (_startScreenRoot != null) _startScreenRoot.SetActive(true);
@@ -338,7 +356,7 @@ namespace TeksMaster.UI
         private void OpenSubModalFromMainMenu(Action openAction)
         {
             string nick = _nicknameInput != null ? _nicknameInput.text : "TeksMaster";
-            PlayerInventory.Instance?.StartGameWithProfile(nick, _pendingStartGender);
+            PlayerInventory.Instance?.StartGameWithProfile(nick, _pendingStartCharacterType);
 
             _openedSubModalFromStartScreen = true;
             if (_startScreenRoot != null) _startScreenRoot.SetActive(false);
@@ -351,7 +369,7 @@ namespace TeksMaster.UI
             if (_openedSubModalFromStartScreen || (_startScreenRoot != null && _startScreenRoot.activeSelf))
             {
                 string nick = _nicknameInput != null ? _nicknameInput.text : "TeksMaster";
-                PlayerInventory.Instance?.StartGameWithProfile(nick, _pendingStartGender);
+                PlayerInventory.Instance?.StartGameWithProfile(nick, _pendingStartCharacterType);
                 _openedSubModalFromStartScreen = false;
                 if (_startScreenRoot != null) _startScreenRoot.SetActive(false);
                 if (Camera.main != null)
@@ -362,19 +380,43 @@ namespace TeksMaster.UI
             }
         }
 
-        private void SelectStartGender(PlayerGender gender)
+        private void SelectStartCharacterType(PlayerCharacterType characterType)
         {
-            _pendingStartGender = gender;
-            if (_startPreviewPortrait != null) _startPreviewPortrait.sprite = CharacterResourceGenerator.GetAvatarPortraitSprite(gender);
-            if (_startMaleBtnImg != null) _startMaleBtnImg.color = gender == PlayerGender.Male ? new Color(0.18f, 0.56f, 0.94f) : new Color(0.20f, 0.24f, 0.32f);
-            if (_startFemaleBtnImg != null) _startFemaleBtnImg.color = gender == PlayerGender.Female ? new Color(0.88f, 0.30f, 0.58f) : new Color(0.20f, 0.24f, 0.32f);
-            PlayerInventory.Instance?.SetGender(gender);
+            _pendingStartCharacterType = TeksCharacterPresets.FromIndex((int)characterType);
+            var preset = TeksCharacterPresets.GetPreset(_pendingStartCharacterType);
+
+            if (_startPreviewPortrait != null)
+            {
+                _startPreviewPortrait.sprite = CharacterResourceGenerator.GetCharacterPortraitSprite(_pendingStartCharacterType);
+            }
+            if (_startCharacterDescText != null)
+            {
+                _startCharacterDescText.text = $"{preset.DisplayName.ToUpper()}  •  {preset.Subtitle}";
+            }
+
+            for (int i = 0; i < TeksCharacterPresets.Count; i++)
+            {
+                var p = TeksCharacterPresets.All[i];
+                bool selected = p.Type == _pendingStartCharacterType;
+                if (_startCharacterBtnImgs[i] != null)
+                {
+                    _startCharacterBtnImgs[i].color = selected ? p.AccentColor : new Color(0.18f, 0.22f, 0.30f);
+                }
+                if (_startCharacterBtnOutlines[i] != null)
+                {
+                    _startCharacterBtnOutlines[i].effectColor = selected ? new Color(1.0f, 0.88f, 0.30f) : new Color(0.28f, 0.36f, 0.48f);
+                    float d = selected ? 2f : 1f;
+                    _startCharacterBtnOutlines[i].effectDistance = new Vector2(d, d);
+                }
+            }
+
+            PlayerInventory.Instance?.SetCharacterType(_pendingStartCharacterType);
         }
 
         private void OnStartPlayClicked()
         {
             string nick = _nicknameInput != null ? _nicknameInput.text : "TeksMaster";
-            PlayerInventory.Instance?.StartGameWithProfile(nick, _pendingStartGender);
+            PlayerInventory.Instance?.StartGameWithProfile(nick, _pendingStartCharacterType);
 
             _openedSubModalFromStartScreen = false;
             if (_startScreenRoot != null) _startScreenRoot.SetActive(false);
@@ -1221,7 +1263,7 @@ namespace TeksMaster.UI
             portraitBox.anchoredPosition = new Vector2(0f, -102f);
             AddOutline(portraitBox.gameObject, new Color(1.0f, 0.84f, 0.24f), 2.5f);
 
-            _profileAvatarImg = CreateImage("ProfileAvatarImg", portraitBox, CharacterResourceGenerator.GetAvatarPortraitSprite(PlayerGender.Male));
+            _profileAvatarImg = CreateImage("ProfileAvatarImg", portraitBox, CharacterResourceGenerator.GetCharacterPortraitSprite(PlayerCharacterType.StreetKid));
             StretchFull(_profileAvatarImg.rectTransform, 6f);
 
             _profileNicknameText = CreateText("ProfileNick", leftCol, "TEKSMASTER", 22, FontStyle.Bold, new Color(1.0f, 0.90f, 0.36f), TextAnchor.MiddleCenter);
@@ -1236,18 +1278,52 @@ namespace TeksMaster.UI
             _profileCurrencyText.rectTransform.offsetMin = new Vector2(12f, -254f);
             _profileCurrencyText.rectTransform.offsetMax = new Vector2(-12f, -228f);
 
-            var genderBtn = CreateButton("ProfileGenderToggleBtn", leftCol, "AVATAR: MALE (SWITCH)", new Color(0.20f, 0.50f, 0.86f), 14, () =>
+            var prevCharBtn = CreateButton("ProfileCharPrevBtn", leftCol, "<", new Color(0.18f, 0.28f, 0.44f), 16, () =>
             {
-                PlayerInventory.Instance?.ToggleGender();
+                PlayerInventory.Instance?.CycleCharacterType(-1);
                 PopulateProfileModal();
             });
-            var gbRt = genderBtn.GetComponent<RectTransform>();
-            gbRt.anchorMin = new Vector2(0.5f, 1f);
-            gbRt.anchorMax = new Vector2(0.5f, 1f);
-            gbRt.anchoredPosition = new Vector2(0f, -288f);
-            gbRt.sizeDelta = new Vector2(236f, 40f);
-            _profileGenderBtnImg = genderBtn.GetComponent<Image>();
-            _profileGenderBtnText = genderBtn.GetComponentInChildren<Text>();
+            var prevRt = prevCharBtn.GetComponent<RectTransform>();
+            prevRt.anchorMin = new Vector2(0.5f, 1f);
+            prevRt.anchorMax = new Vector2(0.5f, 1f);
+            prevRt.anchoredPosition = new Vector2(-105f, -280f);
+            prevRt.sizeDelta = new Vector2(36f, 38f);
+
+            var cycleCharBtn = CreateButton("ProfileCharCycleBtn", leftCol, "STREET KID (1/8)", new Color(0.88f, 0.24f, 0.24f), 13, () =>
+            {
+                PlayerInventory.Instance?.CycleCharacterType(1);
+                PopulateProfileModal();
+            });
+            var ccRt = cycleCharBtn.GetComponent<RectTransform>();
+            ccRt.anchorMin = new Vector2(0.5f, 1f);
+            ccRt.anchorMax = new Vector2(0.5f, 1f);
+            ccRt.anchoredPosition = new Vector2(0f, -280f);
+            ccRt.sizeDelta = new Vector2(162f, 38f);
+            _profileCharBtnImg = cycleCharBtn.GetComponent<Image>();
+            _profileCharBtnText = cycleCharBtn.GetComponentInChildren<Text>();
+            if (_profileCharBtnText != null)
+            {
+                _profileCharBtnText.resizeTextForBestFit = true;
+                _profileCharBtnText.resizeTextMinSize = 10;
+                _profileCharBtnText.resizeTextMaxSize = 13;
+            }
+
+            var nextCharBtn = CreateButton("ProfileCharNextBtn", leftCol, ">", new Color(0.18f, 0.28f, 0.44f), 16, () =>
+            {
+                PlayerInventory.Instance?.CycleCharacterType(1);
+                PopulateProfileModal();
+            });
+            var nextRt = nextCharBtn.GetComponent<RectTransform>();
+            nextRt.anchorMin = new Vector2(0.5f, 1f);
+            nextRt.anchorMax = new Vector2(0.5f, 1f);
+            nextRt.anchoredPosition = new Vector2(105f, -280f);
+            nextRt.sizeDelta = new Vector2(36f, 38f);
+
+            _profileCharSubText = CreateText("ProfileCharSub", leftCol, "Red Cap • Kalye Classic", 12, FontStyle.Italic, new Color(0.84f, 0.92f, 1.0f), TextAnchor.MiddleCenter);
+            _profileCharSubText.rectTransform.anchorMin = new Vector2(0f, 1f);
+            _profileCharSubText.rectTransform.anchorMax = new Vector2(1f, 1f);
+            _profileCharSubText.rectTransform.offsetMin = new Vector2(12f, -328f);
+            _profileCharSubText.rectTransform.offsetMax = new Vector2(-12f, -304f);
 
             // Rank Card inside Left Column
             var rankCard = CreateRoundedPanel("ProfileRankCard", leftCol, new Color(0.07f, 0.11f, 0.18f, 1f), Vector2.zero);
@@ -1426,9 +1502,13 @@ namespace TeksMaster.UI
             var inv = PlayerInventory.Instance;
             if (inv == null) return;
 
+            var charType = inv.SelectedCharacterType;
+            var charPreset = TeksCharacterPresets.GetPreset(charType);
+            int charIdx = Mathf.Clamp((int)charType, 0, TeksCharacterPresets.Count - 1);
+
             if (_profileAvatarImg != null)
             {
-                _profileAvatarImg.sprite = CharacterResourceGenerator.GetAvatarPortraitSprite(inv.SelectedGender);
+                _profileAvatarImg.sprite = CharacterResourceGenerator.GetCharacterPortraitSprite(charType);
             }
             if (_profileNicknameText != null)
             {
@@ -1438,17 +1518,17 @@ namespace TeksMaster.UI
             {
                 _profileCurrencyText.text = $"{inv.Coins:N0} Coins   |   {inv.Gems:N0} Gems";
             }
-            if (_profileGenderBtnText != null)
+            if (_profileCharBtnText != null)
             {
-                _profileGenderBtnText.text = inv.SelectedGender == PlayerGender.Male
-                    ? "GENDER: MALE (SWITCH)"
-                    : "GENDER: FEMALE (SWITCH)";
+                _profileCharBtnText.text = $"{charPreset.DisplayName.ToUpper()} ({charIdx + 1}/{TeksCharacterPresets.Count})";
             }
-            if (_profileGenderBtnImg != null)
+            if (_profileCharBtnImg != null)
             {
-                _profileGenderBtnImg.color = inv.SelectedGender == PlayerGender.Male
-                    ? new Color(0.18f, 0.52f, 0.88f)
-                    : new Color(0.82f, 0.30f, 0.56f);
+                _profileCharBtnImg.color = charPreset.AccentColor;
+            }
+            if (_profileCharSubText != null)
+            {
+                _profileCharSubText.text = charPreset.Subtitle;
             }
 
             if (_profileRankTitleText != null)

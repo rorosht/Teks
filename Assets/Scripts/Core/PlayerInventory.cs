@@ -11,7 +11,7 @@ namespace TeksMaster.Core
         [SerializeField] private string playerNickname = "TeksMaster";
         [SerializeField] private int coins = 2450;
         [SerializeField] private int gems = 25;
-        [SerializeField] private PlayerGender selectedGender = PlayerGender.Male;
+        [SerializeField] private PlayerCharacterType selectedCharacterType = PlayerCharacterType.StreetKid;
         [SerializeField] private string equippedPamatoId = "hero";
         [SerializeField] private List<OwnedTeksCard> ownedCards = new List<OwnedTeksCard>();
 
@@ -19,7 +19,7 @@ namespace TeksMaster.Core
         public bool HasStartedGame { get; private set; }
         public int Coins => coins;
         public int Gems => gems;
-        public PlayerGender SelectedGender => selectedGender;
+        public PlayerCharacterType SelectedCharacterType => selectedCharacterType;
         public string EquippedPamatoId => equippedPamatoId;
         public IReadOnlyList<OwnedTeksCard> OwnedCards => ownedCards;
         public IReadOnlyList<BarangayQuest> Quests => _quests;
@@ -40,7 +40,7 @@ namespace TeksMaster.Core
         public string LastDailyFreeDrawDate { get; private set; } = string.Empty;
 
         public event Action OnInventoryChanged;
-        public event Action<PlayerGender> OnGenderChanged;
+        public event Action<PlayerCharacterType> OnCharacterTypeChanged;
         public event Action<BarangayAreaId> OnAreaUnlocked;
         public event Action OnAreasChanged;
         public event Action<AudioSettingsData> OnAudioSettingsChanged;
@@ -107,9 +107,19 @@ namespace TeksMaster.Core
                 string saved = PlayerPrefs.GetString(TeksSaveSystem.PrefKeyNickname, "TeksMaster");
                 if (!string.IsNullOrWhiteSpace(saved)) playerNickname = saved;
             }
-            if (PlayerPrefs.HasKey(TeksSaveSystem.PrefKeyGender))
+            if (PlayerPrefs.HasKey(TeksSaveSystem.PrefKeyCharacterType))
             {
-                selectedGender = (PlayerGender)Mathf.Clamp(PlayerPrefs.GetInt(TeksSaveSystem.PrefKeyGender, 0), 0, 1);
+                selectedCharacterType = (PlayerCharacterType)Mathf.Clamp(
+                    PlayerPrefs.GetInt(TeksSaveSystem.PrefKeyCharacterType, 0),
+                    0,
+                    TeksCharacterPresets.Count - 1);
+            }
+            else if (PlayerPrefs.HasKey(TeksSaveSystem.PrefKeyGender))
+            {
+                int legacyGender = PlayerPrefs.GetInt(TeksSaveSystem.PrefKeyGender, 0);
+                selectedCharacterType = legacyGender == 1
+                    ? PlayerCharacterType.SportyAce
+                    : PlayerCharacterType.StreetKid;
             }
             _audioSettings = TeksSaveSystem.LoadAudioSettingsFromPrefs();
         }
@@ -1363,14 +1373,14 @@ namespace TeksMaster.Core
             NotifyAndAutoSave();
         }
 
-        public void StartGameWithProfile(string nickname, PlayerGender gender)
+        public void StartGameWithProfile(string nickname, PlayerCharacterType characterType)
         {
             bool prevSuppress = _suppressAutoSave;
             _suppressAutoSave = true;
             try
             {
                 SetNickname(nickname);
-                SetGender(gender);
+                SetCharacterType(characterType);
                 HasStartedGame = true;
             }
             finally
@@ -1767,23 +1777,26 @@ namespace TeksMaster.Core
             return WinStreak >= 2 ? 0.03f : 0f;
         }
 
-        public void ToggleGender()
+        public void CycleCharacterType(int delta = 1)
         {
-            SetGender(selectedGender == PlayerGender.Male ? PlayerGender.Female : PlayerGender.Male);
+            SetCharacterType(TeksCharacterPresets.FromIndex((int)selectedCharacterType + delta));
         }
 
-        public void SetGender(PlayerGender gender)
+        public void SetCharacterType(PlayerCharacterType characterType)
         {
-            bool changed = selectedGender != gender;
-            selectedGender = gender;
+            PlayerCharacterType normalized = TeksCharacterPresets.FromIndex((int)characterType);
+            bool changed = selectedCharacterType != normalized;
+            selectedCharacterType = normalized;
             if (Application.isPlaying)
             {
-                PlayerPrefs.SetInt(TeksSaveSystem.PrefKeyGender, (int)selectedGender);
+                int idx = (int)selectedCharacterType;
+                PlayerPrefs.SetInt(TeksSaveSystem.PrefKeyCharacterType, idx);
+                PlayerPrefs.SetInt(TeksSaveSystem.PrefKeyGender, idx);
                 PlayerPrefs.Save();
             }
             if (changed)
             {
-                OnGenderChanged?.Invoke(selectedGender);
+                OnCharacterTypeChanged?.Invoke(selectedCharacterType);
                 NotifyAndAutoSave();
             }
         }
@@ -1825,7 +1838,7 @@ namespace TeksMaster.Core
                 _suppressAutoSave = prevSuppress;
             }
 
-            OnGenderChanged?.Invoke(selectedGender);
+            OnCharacterTypeChanged?.Invoke(selectedCharacterType);
             OnAreasChanged?.Invoke();
             OnAudioSettingsChanged?.Invoke(_audioSettings);
             OnInventoryChanged?.Invoke();
@@ -1838,7 +1851,8 @@ namespace TeksMaster.Core
             {
                 SaveVersion = 1,
                 PlayerNickname = PlayerNickname,
-                SelectedGender = (int)selectedGender,
+                SelectedGender = (int)selectedCharacterType,
+                SelectedCharacterType = (int)selectedCharacterType,
                 HasStartedGame = HasStartedGame,
                 Coins = coins,
                 Gems = gems,
@@ -1908,7 +1922,10 @@ namespace TeksMaster.Core
         private void ApplySaveData(TeksSaveData data)
         {
             playerNickname = data.PlayerNickname;
-            selectedGender = (PlayerGender)Mathf.Clamp(data.SelectedGender, 0, 1);
+            int resolvedChar = data.SelectedCharacterType >= 0
+                ? data.SelectedCharacterType
+                : (data.SelectedGender == 1 ? (int)PlayerCharacterType.SportyAce : (int)PlayerCharacterType.StreetKid);
+            selectedCharacterType = (PlayerCharacterType)Mathf.Clamp(resolvedChar, 0, TeksCharacterPresets.Count - 1);
             HasStartedGame = data.HasStartedGame;
             coins = Mathf.Max(0, data.Coins);
             gems = Mathf.Max(0, data.Gems);

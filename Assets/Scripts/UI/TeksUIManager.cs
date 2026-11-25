@@ -25,7 +25,7 @@ namespace TeksMaster.UI
         // Top Left HUD
         private Text _coinsText;
         private Text _gemsText;
-        private Text _genderButtonText;
+        private Text _characterTypeButtonText;
         private Button _avatarProfileBtn;
         private Image _hudAvatarPortrait;
         private Text _hudProfileNameRank;
@@ -36,13 +36,14 @@ namespace TeksMaster.UI
         private GameObject _proximityPromptPanel;
         private Action _avatarProfileClickHandler;
 
-        // Start Screen (Title / Nickname / Gender)
+        // Start Screen (Title / Nickname / Character Type)
         private GameObject _startScreenRoot;
         private InputField _nicknameInput;
         private Image _startPreviewPortrait;
-        private Image _startMaleBtnImg;
-        private Image _startFemaleBtnImg;
-        private PlayerGender _pendingStartGender = PlayerGender.Male;
+        private Text _startCharacterDescText;
+        private readonly Image[] _startCharacterBtnImgs = new Image[8];
+        private readonly Outline[] _startCharacterBtnOutlines = new Outline[8];
+        private PlayerCharacterType _pendingStartCharacterType = PlayerCharacterType.StreetKid;
 
         // Quests Modal
         private GameObject _questsModal;
@@ -414,7 +415,7 @@ namespace TeksMaster.UI
             _avatarProfileBtn = avatarBox.gameObject.AddComponent<Button>();
             _avatarProfileBtn.onClick.AddListener(OnAvatarPortraitClicked);
 
-            _hudAvatarPortrait = CreateImage("AvatarPortrait", avatarBox, CharacterResourceGenerator.GetAvatarPortraitSprite(PlayerGender.Male));
+            _hudAvatarPortrait = CreateImage("AvatarPortrait", avatarBox, CharacterResourceGenerator.GetCharacterPortraitSprite(PlayerCharacterType.StreetKid));
             StretchFull(_hudAvatarPortrait.rectTransform, 3f);
 
             var profilePill = CreateRoundedPanel("AvatarProfileTag", avatarBox, new Color(0.06f, 0.10f, 0.18f, 0.86f), new Vector2(84f, 18f));
@@ -473,8 +474,8 @@ namespace TeksMaster.UI
             _gemsText.rectTransform.offsetMin = new Vector2(332f, 8f);
             _gemsText.rectTransform.offsetMax = new Vector2(-10f, 40f);
 
-            // Controls pill beneath TopLeftHUD (Profile, Avatar Gender, Fusion Lab, Missions, Modes, Quick Challenge, Pause)
-            var subBar = CreateRoundedPanel("ControlsBar", _canvas.transform, new Color(0.09f, 0.13f, 0.20f, 0.88f), new Vector2(896f, 44f));
+            // Controls pill beneath TopLeftHUD (Profile, Character Cycle, Fusion Lab, Missions, Modes, Quick Challenge, Pause)
+            var subBar = CreateRoundedPanel("ControlsBar", _canvas.transform, new Color(0.09f, 0.13f, 0.20f, 0.88f), new Vector2(912f, 44f));
             subBar.anchorMin = new Vector2(0f, 1f);
             subBar.anchorMax = new Vector2(0f, 1f);
             subBar.pivot = new Vector2(0f, 1f);
@@ -487,29 +488,35 @@ namespace TeksMaster.UI
             prRt.anchoredPosition = new Vector2(60f, 0f);
             prRt.sizeDelta = new Vector2(104f, 32f);
 
-            var genderBtn = CreateButton("GenderToggleBtn", subBar, "AVATAR: MALE [C]", new Color(0.20f, 0.34f, 0.56f), 12, () =>
+            var charBtn = CreateButton("CharacterCycleBtn", subBar, "CHAR: STREET KID [C]", new Color(0.20f, 0.34f, 0.56f), 12, () =>
             {
-                PlayerInventory.Instance?.ToggleGender();
+                PlayerInventory.Instance?.CycleCharacterType(1);
             });
-            var gRt = genderBtn.GetComponent<RectTransform>();
+            var gRt = charBtn.GetComponent<RectTransform>();
             gRt.anchorMin = new Vector2(0f, 0.5f);
             gRt.anchorMax = new Vector2(0f, 0.5f);
-            gRt.anchoredPosition = new Vector2(186f, 0f);
-            gRt.sizeDelta = new Vector2(136f, 32f);
-            _genderButtonText = genderBtn.GetComponentInChildren<Text>();
+            gRt.anchoredPosition = new Vector2(194f, 0f);
+            gRt.sizeDelta = new Vector2(152f, 32f);
+            _characterTypeButtonText = charBtn.GetComponentInChildren<Text>();
+            if (_characterTypeButtonText != null)
+            {
+                _characterTypeButtonText.resizeTextForBestFit = true;
+                _characterTypeButtonText.resizeTextMinSize = 10;
+                _characterTypeButtonText.resizeTextMaxSize = 12;
+            }
 
             var fusionQuickBtn = CreateButton("FusionQuickBtn", subBar, "FUSION LAB [F]", new Color(0.58f, 0.22f, 0.84f), 12, OpenFusionLabDirect);
             var fRt = fusionQuickBtn.GetComponent<RectTransform>();
             fRt.anchorMin = new Vector2(0f, 0.5f);
             fRt.anchorMax = new Vector2(0f, 0.5f);
-            fRt.anchoredPosition = new Vector2(319f, 0f);
+            fRt.anchoredPosition = new Vector2(335f, 0f);
             fRt.sizeDelta = new Vector2(118f, 32f);
 
             var questsBtn = CreateButton("QuestsBtn", subBar, "MISSIONS [Q]", new Color(0.84f, 0.50f, 0.12f), 12, ToggleQuestsModal);
             var qrRt = questsBtn.GetComponent<RectTransform>();
             qrRt.anchorMin = new Vector2(0f, 0.5f);
             qrRt.anchorMax = new Vector2(0f, 0.5f);
-            qrRt.anchoredPosition = new Vector2(446f, 0f);
+            qrRt.anchoredPosition = new Vector2(462f, 0f);
             qrRt.sizeDelta = new Vector2(124f, 32f);
             _questsBtnLabel = questsBtn.GetComponentInChildren<Text>();
 
@@ -517,7 +524,7 @@ namespace TeksMaster.UI
             var mRt = modesBtn.GetComponent<RectTransform>();
             mRt.anchorMin = new Vector2(0f, 0.5f);
             mRt.anchorMax = new Vector2(0f, 0.5f);
-            mRt.anchoredPosition = new Vector2(568f, 0f);
+            mRt.anchoredPosition = new Vector2(584f, 0f);
             mRt.sizeDelta = new Vector2(108f, 32f);
 
             var quickBtn = CreateButton("QuickMatchBtn", subBar, "QUICK CHALLENGE", new Color(0.18f, 0.62f, 0.32f), 12, () =>
@@ -537,14 +544,14 @@ namespace TeksMaster.UI
             var qRt = quickBtn.GetComponent<RectTransform>();
             qRt.anchorMin = new Vector2(0f, 0.5f);
             qRt.anchorMax = new Vector2(0f, 0.5f);
-            qRt.anchoredPosition = new Vector2(696f, 0f);
+            qRt.anchoredPosition = new Vector2(712f, 0f);
             qRt.sizeDelta = new Vector2(136f, 32f);
 
             var pauseBtn = CreateButton("PauseQuickBtn", subBar, "PAUSE [ESC]", new Color(0.34f, 0.40f, 0.52f), 12, TogglePauseModal);
             var pRt = pauseBtn.GetComponent<RectTransform>();
             pRt.anchorMin = new Vector2(0f, 0.5f);
             pRt.anchorMax = new Vector2(0f, 0.5f);
-            pRt.anchoredPosition = new Vector2(828f, 0f);
+            pRt.anchoredPosition = new Vector2(844f, 0f);
             pRt.sizeDelta = new Vector2(116f, 32f);
         }
 
@@ -1255,7 +1262,7 @@ namespace TeksMaster.UI
             var playerAvatarFrame = CreateRoundedPanel("WagerPlayerAvatarFrame", playerBox, new Color(0.10f, 0.16f, 0.26f), new Vector2(84f, 84f));
             playerAvatarFrame.anchoredPosition = new Vector2(-106f, 44f);
             AddOutline(playerAvatarFrame.gameObject, new Color(1.0f, 0.84f, 0.28f), 1.5f);
-            _wagerPlayerAvatarImg = CreateImage("WagerPlayerAvatarImg", playerAvatarFrame, CharacterResourceGenerator.GetAvatarPortraitSprite(PlayerGender.Male));
+            _wagerPlayerAvatarImg = CreateImage("WagerPlayerAvatarImg", playerAvatarFrame, CharacterResourceGenerator.GetCharacterPortraitSprite(PlayerCharacterType.StreetKid));
             StretchFull(_wagerPlayerAvatarImg.rectTransform, 3f);
 
             _wagerPlayerBadgeText = CreateText("WagerPlayerBadgeTxt", playerBox, "Baguhan\nStreak: 0", 12, FontStyle.Bold, new Color(0.84f, 0.94f, 1.0f), TextAnchor.UpperCenter);
@@ -1729,6 +1736,8 @@ namespace TeksMaster.UI
             {
                 PlayerInventory.Instance.OnInventoryChanged -= RefreshAllUI;
                 PlayerInventory.Instance.OnInventoryChanged += RefreshAllUI;
+                PlayerInventory.Instance.OnCharacterTypeChanged -= HandleCharacterTypeChanged;
+                PlayerInventory.Instance.OnCharacterTypeChanged += HandleCharacterTypeChanged;
             }
             if (ShopManager.Instance != null)
             {
@@ -1743,10 +1752,19 @@ namespace TeksMaster.UI
             HookExtendedEvents();
         }
 
+        private void HandleCharacterTypeChanged(PlayerCharacterType _)
+        {
+            RefreshAllUI();
+        }
+
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (PlayerInventory.Instance != null) PlayerInventory.Instance.OnInventoryChanged -= RefreshAllUI;
+            if (PlayerInventory.Instance != null)
+            {
+                PlayerInventory.Instance.OnInventoryChanged -= RefreshAllUI;
+                PlayerInventory.Instance.OnCharacterTypeChanged -= HandleCharacterTypeChanged;
+            }
             if (ShopManager.Instance != null) ShopManager.Instance.OnShopUpdated -= RefreshShopDisplay;
             if (TeksMatchManager.Instance != null) TeksMatchManager.Instance.OnMatchStateChanged -= HandleMatchStateChanged;
             UnhookExtendedEvents();
@@ -2272,7 +2290,7 @@ namespace TeksMaster.UI
 
             if (_coinsText != null) _coinsText.text = $"{inv.Coins:N0} COINS";
             if (_gemsText != null) _gemsText.text = $"{inv.Gems:N0} GEMS";
-            if (_hudAvatarPortrait != null) _hudAvatarPortrait.sprite = CharacterResourceGenerator.GetAvatarPortraitSprite(inv.SelectedGender);
+            if (_hudAvatarPortrait != null) _hudAvatarPortrait.sprite = CharacterResourceGenerator.GetCharacterPortraitSprite(inv.SelectedCharacterType);
             if (_hudProfileNameRank != null) _hudProfileNameRank.text = $"{GetDisplayPlayerName().ToUpper()}  •  {inv.GetBarangayRankTitle()}";
             if (_hudStreakBadge != null)
             {
@@ -2291,9 +2309,10 @@ namespace TeksMaster.UI
                 int claimable = inv.GetUnclaimedCompletedQuestCount();
                 _questsBtnLabel.text = claimable > 0 ? $"MISSIONS [Q] ({claimable}!)" : "MISSIONS [Q]";
             }
-            if (_genderButtonText != null)
+            if (_characterTypeButtonText != null)
             {
-                _genderButtonText.text = inv.SelectedGender == PlayerGender.Male ? "AVATAR: MALE [C]" : "AVATAR: FEMALE [C]";
+                var preset = TeksCharacterPresets.GetPreset(inv.SelectedCharacterType);
+                _characterTypeButtonText.text = $"CHAR: {preset.ShortLabel} [C]";
             }
 
             RefreshPamatoPanel();
@@ -3040,7 +3059,7 @@ namespace TeksMaster.UI
             }
             if (_wagerPlayerAvatarImg != null)
             {
-                _wagerPlayerAvatarImg.sprite = CharacterResourceGenerator.GetAvatarPortraitSprite(inv.SelectedGender);
+                _wagerPlayerAvatarImg.sprite = CharacterResourceGenerator.GetCharacterPortraitSprite(inv.SelectedCharacterType);
             }
             if (_wagerPlayerBadgeText != null)
             {
@@ -3063,7 +3082,7 @@ namespace TeksMaster.UI
             _wagerOppName.text = $"{opp.NpcName.ToUpper()} ({npcFrontPct}% CHUB)";
             if (_wagerOppAvatarImg != null)
             {
-                _wagerOppAvatarImg.sprite = CharacterResourceGenerator.GetNpcPortraitSprite(opp.NpcName, opp.Difficulty, opp.IsChampion);
+                _wagerOppAvatarImg.sprite = CharacterResourceGenerator.GetNpcPortraitSprite(opp.NpcName, opp.Difficulty, opp.IsChampion, opp.CharacterPrefabNumber);
             }
             if (_wagerOppBadgeText != null)
             {

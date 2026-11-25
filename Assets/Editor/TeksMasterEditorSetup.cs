@@ -17,6 +17,16 @@ namespace TeksMaster.Editor
     /// unserializable runtime Texture2D/Material blobs. TeksGameBootstrapper builds the full
     /// 3D world cleanly at runtime on startup.
     /// </summary>
+    public class TeksCharacterBuildPreprocessor : IPreprocessBuildWithReport
+    {
+        public int callbackOrder => -10;
+
+        public void OnPreprocessBuild(BuildReport report)
+        {
+            TeksMasterEditorSetup.EnsureCharacterCatalogAsset();
+        }
+    }
+
     public class TeksBuildSceneCleaner : IProcessSceneWithReport
     {
         public int callbackOrder => 0;
@@ -81,6 +91,8 @@ namespace TeksMaster.Editor
             var activeScene = EditorSceneManager.GetActiveScene();
             if (!activeScene.IsValid() || !activeScene.isLoaded) return;
 
+            EnsureCharacterCatalogAsset();
+
             var bootstrapper = Object.FindAnyObjectByType<TeksGameBootstrapper>();
             if (bootstrapper == null)
             {
@@ -93,10 +105,12 @@ namespace TeksMaster.Editor
             bool needsPreview = GameObject.Find("BarangayCourtWorld") == null;
             if (!needsPreview)
             {
-                // If materials went stale/purple after a build reload, rebuild the preview cleanly
+                // If materials went stale/purple or PlayerAvatar is missing the pack Animator, rebuild the preview cleanly
                 var existingWorld = GameObject.Find("BarangayCourtWorld");
+                var existingPlayer = GameObject.Find("PlayerAvatar");
                 var rend = existingWorld != null ? existingWorld.GetComponentInChildren<Renderer>() : null;
-                if (rend == null || rend.sharedMaterial == null || rend.sharedMaterial.shader == null ||
+                bool missingAnimator = existingPlayer == null || existingPlayer.GetComponentInChildren<Animator>() == null;
+                if (missingAnimator || rend == null || rend.sharedMaterial == null || rend.sharedMaterial.shader == null ||
                     rend.sharedMaterial.shader.name == "Hidden/InternalErrorShader")
                 {
                     RemoveProceduralPreviewObjects(activeScene);
@@ -111,6 +125,70 @@ namespace TeksMaster.Editor
                 MarkPreviewDontSave(GameObject.Find("PlayerAvatar"));
                 SceneView.RepaintAll();
             }
+        }
+
+        public static TeksCharacterCatalog EnsureCharacterCatalogAsset()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<TeksCharacterCatalog>(TeksCharacterCatalog.AssetPath);
+            bool dirty = false;
+
+            if (catalog == null)
+            {
+                string resDir = Path.GetDirectoryName(TeksCharacterCatalog.AssetPath);
+                if (!string.IsNullOrEmpty(resDir) && !Directory.Exists(resDir))
+                {
+                    Directory.CreateDirectory(resDir);
+                    AssetDatabase.Refresh();
+                }
+
+                catalog = ScriptableObject.CreateInstance<TeksCharacterCatalog>();
+                AssetDatabase.CreateAsset(catalog, TeksCharacterCatalog.AssetPath);
+                dirty = true;
+            }
+
+            bool needsPopulate = catalog.Prefabs == null || catalog.Prefabs.Length != 100 ||
+                                 catalog.CharacterAtlasTexture == null || catalog.AnimatorController == null ||
+                                 catalog.Prefabs[25] == null;
+            if (needsPopulate)
+            {
+                if (catalog.Prefabs == null || catalog.Prefabs.Length != 100)
+                {
+                    catalog.Prefabs = new GameObject[100];
+                }
+
+                for (int i = 0; i < 100; i++)
+                {
+                    string prefabPath = $"{TeksCharacterCatalog.PackRootPath}/1.Prefabs/body_root_{i + 1}.prefab";
+                    var loaded = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+                    if (catalog.Prefabs[i] != loaded)
+                    {
+                        catalog.Prefabs[i] = loaded;
+                        dirty = true;
+                    }
+                }
+
+                if (catalog.CharacterAtlasTexture == null)
+                {
+                    catalog.CharacterAtlasTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                        $"{TeksCharacterCatalog.PackRootPath}/4.Materials/Texture.png");
+                    if (catalog.CharacterAtlasTexture != null) dirty = true;
+                }
+
+                if (catalog.AnimatorController == null)
+                {
+                    catalog.AnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                        $"{TeksCharacterCatalog.PackRootPath}/3.Animations/0.character.controller");
+                    if (catalog.AnimatorController != null) dirty = true;
+                }
+            }
+
+            if (dirty)
+            {
+                EditorUtility.SetDirty(catalog);
+                AssetDatabase.SaveAssets();
+            }
+
+            return catalog;
         }
 
         private static void MarkPreviewDontSave(GameObject root)
@@ -170,6 +248,25 @@ namespace TeksMaster.Editor
             return removed;
         }
 
+        [MenuItem("Teks Master/Rebuild 100 People Character Catalog")]
+        public static void RebuildCharacterCatalogMenu()
+        {
+            var catalog = EnsureCharacterCatalogAsset();
+            int count = 0;
+            if (catalog != null && catalog.Prefabs != null)
+            {
+                for (int i = 0; i < catalog.Prefabs.Length; i++)
+                {
+                    if (catalog.Prefabs[i] != null) count++;
+                }
+            }
+            Debug.Log($"[Teks Master] Character catalog ready ({count}/100 prefabs) at {TeksCharacterCatalog.AssetPath}.");
+            if (!Application.isPlaying)
+            {
+                RefreshSceneViewPreview();
+            }
+        }
+
         [MenuItem("Teks Master/Refresh Scene View Preview")]
         public static void RefreshSceneViewPreview()
         {
@@ -178,6 +275,8 @@ namespace TeksMaster.Editor
                 Debug.LogWarning("[Teks Master] Exit Play Mode before refreshing Edit-Mode Scene View preview.");
                 return;
             }
+
+            EnsureCharacterCatalogAsset();
 
             var scene = EditorSceneManager.GetActiveScene();
             if (!scene.IsValid()) return;
@@ -203,6 +302,8 @@ namespace TeksMaster.Editor
                 Debug.LogWarning("[Teks Master] Stop Play Mode before building.");
                 return;
             }
+
+            EnsureCharacterCatalogAsset();
 
             var scene = EditorSceneManager.GetActiveScene();
             if (scene.IsValid())

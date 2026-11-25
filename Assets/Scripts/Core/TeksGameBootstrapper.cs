@@ -126,13 +126,9 @@ namespace TeksMaster.Core
                 playerGo = new GameObject("PlayerAvatar");
                 playerGo.transform.position = new Vector3(0f, 0f, -14.2f);
                 playerGo.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-                CharacterVisualBuilder.BuildCharacterVisual(
+                CharacterVisualBuilder.BuildPackCharacterVisual(
                     playerGo,
-                    CharacterOutfitRole.MaleKid,
-                    new Color(0.95f, 0.95f, 0.96f),
-                    new Color(0.14f, 0.16f, 0.24f),
-                    new Color(0.75f, 0.51f, 0.37f),
-                    new Color(0.18f, 0.56f, 0.86f)
+                    TeksCharacterPresets.GetPrefabNumber(inv.SelectedCharacterType)
                 );
             }
             if (playerGo != null && !Application.isPlaying)

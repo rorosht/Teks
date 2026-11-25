@@ -53,6 +53,18 @@ namespace TeksMaster.World
         public bool IsPlayingReaction => _reactionType != ReactionNone && _reactionTimer > 0f;
         public int CurrentReactionType => IsPlayingReaction ? _reactionType : ReactionNone;
 
+        private enum PackAnimState
+        {
+            None,
+            Idle,
+            Walk,
+            Run,
+            Sitting,
+            ReactionWin,
+            ReactionLose,
+            ReactionTabla
+        }
+
         private float _normalizedSpeed;
         private float _walkCycle;
         private float _flickAnimTimer;
@@ -62,6 +74,87 @@ namespace TeksMaster.World
         private float _reactionTimer;
         private float _reactionDuration;
 
+        // Installed "100 People - Animated Characters Pack" rig state
+        private bool _isPackRig;
+        private Animator _packAnimator;
+        private Transform _packModelRoot;
+        private float _packModelScale = 1.10f;
+        private Transform _packBody;
+        private Transform _packHead;
+        private Transform _packLeftHand;
+        private Transform _packRightHand;
+        private Renderer _rtLegFront;
+        private Renderer _rtLegBack;
+        private Renderer _ltLegFront;
+        private Renderer _ltLegBack;
+        private PackAnimState _packAnimState = PackAnimState.None;
+        private float _procBlendWeight;
+        private float _procModelY;
+        private Quaternion _procBodyRot = Quaternion.Euler(0f, 180f, 0f);
+        private Quaternion _procHeadRot = Quaternion.identity;
+        private Quaternion _procLeftHandRot = Quaternion.identity;
+        private Quaternion _procRightHandRot = Quaternion.identity;
+
+        public void ConfigurePackRig(
+            Transform visualRoot,
+            Transform modelRoot,
+            float modelScale,
+            Animator animator,
+            Transform body,
+            Transform head,
+            Transform leftHand,
+            Transform rightHand,
+            Renderer rtLegFront,
+            Renderer rtLegBack,
+            Renderer ltLegFront,
+            Renderer ltLegBack,
+            GameObject handCardObj,
+            Renderer handCardRenderer)
+        {
+            VisualRoot = visualRoot;
+            Pelvis = null;
+            Torso = null;
+            HeadGroup = null;
+            LeftArmPivot = null;
+            LeftForearmPivot = null;
+            RightArmPivot = null;
+            RightForearmPivot = null;
+            LeftLegPivot = null;
+            RightLegPivot = null;
+            LeftKneePivot = null;
+            RightKneePivot = null;
+            LeftEyebrow = null;
+            RightEyebrow = null;
+            SmileMouth = null;
+            HappyOpenMouth = null;
+            SadMouth = null;
+
+            _isPackRig = true;
+            _packModelRoot = modelRoot;
+            _packModelScale = Mathf.Max(0.25f, modelScale);
+            _packAnimator = animator;
+            _packBody = body;
+            _packHead = head;
+            _packLeftHand = leftHand;
+            _packRightHand = rightHand;
+            _rtLegFront = rtLegFront;
+            _rtLegBack = rtLegBack;
+            _ltLegFront = ltLegFront;
+            _ltLegBack = ltLegBack;
+            _packAnimState = PackAnimState.None;
+            _procBlendWeight = 0f;
+            _procModelY = 0f;
+            _procBodyRot = body != null ? body.localRotation : Quaternion.Euler(0f, 180f, 0f);
+            _procHeadRot = head != null ? head.localRotation : Quaternion.identity;
+            _procLeftHandRot = leftHand != null ? leftHand.localRotation : Quaternion.identity;
+            _procRightHandRot = rightHand != null ? rightHand.localRotation : Quaternion.identity;
+
+            HandCardObject = handCardObj;
+            HandCardRenderer = handCardRenderer;
+            SetCleanStandingLegs();
+            ApplyEditModePackPose();
+        }
+
         public void SetPose(CharacterPoseMode pose)
         {
             CurrentPose = pose;
@@ -69,6 +162,11 @@ namespace TeksMaster.World
             {
                 _isPlayingFlick = false;
                 _skyWatchTimer = 0f;
+            }
+
+            if (_isPackRig && !Application.isPlaying)
+            {
+                ApplyEditModePackPose();
             }
         }
 
@@ -128,6 +226,19 @@ namespace TeksMaster.World
 
         public Vector3 GetHeadTagWorldPosition()
         {
+            if (_isPackRig)
+            {
+                float packHeight = CurrentPose switch
+                {
+                    CharacterPoseMode.SittingOnCourt => 1.22f,
+                    CharacterPoseMode.CrouchingFlick => 1.42f,
+                    CharacterPoseMode.SittingOnBench => 1.56f,
+                    CharacterPoseMode.Talking => 1.82f,
+                    _ => 1.82f
+                };
+                return transform.position + Vector3.up * packHeight;
+            }
+
             float height = CurrentPose switch
             {
                 CharacterPoseMode.SittingOnCourt => 1.14f,
@@ -141,6 +252,12 @@ namespace TeksMaster.World
 
         private void Update()
         {
+            if (_isPackRig)
+            {
+                UpdatePackRigUpdate(Time.deltaTime);
+                return;
+            }
+
             if (Pelvis == null) return;
 
             float dt = Time.deltaTime;
@@ -450,10 +567,311 @@ namespace TeksMaster.World
                 RightEyebrow.localPosition = rp;
             }
         }
+
+        private void LateUpdate()
+        {
+            if (!_isPackRig || _packModelRoot == null) return;
+            UpdatePackRigLateUpdate(Time.deltaTime);
+        }
+
+        private void SetCleanStandingLegs()
+        {
+            if (_rtLegFront != null) _rtLegFront.enabled = true;
+            if (_ltLegBack != null) _ltLegBack.enabled = true;
+            if (_rtLegBack != null) _rtLegBack.enabled = false;
+            if (_ltLegFront != null) _ltLegFront.enabled = false;
+        }
+
+        private void ApplyEditModePackPose()
+        {
+            if (!_isPackRig || _packModelRoot == null) return;
+
+            float editY = CurrentPose == CharacterPoseMode.SittingOnBench ? 0.34f : 0f;
+            _packModelRoot.localPosition = new Vector3(0f, editY, -0.098f * _packModelScale);
+            _packModelRoot.localRotation = Quaternion.identity;
+
+            if (_packAnimator != null && _packAnimator.runtimeAnimatorController != null && _packAnimator.gameObject.activeInHierarchy)
+            {
+                bool isSeated = CurrentPose == CharacterPoseMode.SittingOnCourt || CurrentPose == CharacterPoseMode.SittingOnBench;
+                string stateName = isSeated ? "sitting+idle" : "idle";
+                _packAnimator.SetFloat("speed", 1f);
+                _packAnimator.SetInteger("move", 0);
+                _packAnimator.SetInteger("head_turn", 0);
+                if (!_packAnimator.isInitialized)
+                {
+                    _packAnimator.Rebind();
+                }
+                _packAnimator.Play(stateName, 0, 0f);
+                _packAnimator.Update(0f);
+            }
+
+            SetCleanStandingLegs();
+        }
+
+        private void UpdatePackRigUpdate(float dt)
+        {
+            if (_skyWatchTimer > 0f && !_isPlayingFlick)
+            {
+                _skyWatchTimer = Mathf.Max(0f, _skyWatchTimer - dt);
+            }
+
+            if (_reactionType != ReactionNone && _reactionTimer > 0f)
+            {
+                _reactionTimer -= dt;
+                if (_reactionTimer <= 0f)
+                {
+                    ClearReactionPose();
+                }
+            }
+
+            if (_isPlayingFlick && CurrentPose == CharacterPoseMode.CrouchingFlick)
+            {
+                _flickAnimTimer += dt;
+                if (_flickAnimTimer >= 1.10f)
+                {
+                    _isPlayingFlick = false;
+                    _skyWatchTimer = Mathf.Max(_skyWatchTimer, 1.1f);
+                }
+            }
+
+            if (_packAnimator == null || _packAnimator.runtimeAnimatorController == null) return;
+
+            PackAnimState desiredState;
+            if (_reactionType == ReactionWin && _reactionTimer > 0f)
+            {
+                desiredState = PackAnimState.ReactionWin;
+            }
+            else if (_reactionType == ReactionLose && _reactionTimer > 0f)
+            {
+                desiredState = PackAnimState.ReactionLose;
+            }
+            else if (_reactionType == ReactionTabla && _reactionTimer > 0f)
+            {
+                desiredState = PackAnimState.ReactionTabla;
+            }
+            else if (CurrentPose == CharacterPoseMode.SittingOnCourt || CurrentPose == CharacterPoseMode.SittingOnBench)
+            {
+                desiredState = PackAnimState.Sitting;
+            }
+            else if (CurrentPose == CharacterPoseMode.CrouchingFlick || CurrentPose == CharacterPoseMode.Talking || _skyWatchTimer > 0f)
+            {
+                desiredState = PackAnimState.Idle;
+            }
+            else if (_normalizedSpeed > 0.80f)
+            {
+                desiredState = PackAnimState.Run;
+            }
+            else if (_normalizedSpeed > 0.05f)
+            {
+                desiredState = PackAnimState.Walk;
+            }
+            else
+            {
+                desiredState = PackAnimState.Idle;
+            }
+
+            float positiveSpeed = desiredState == PackAnimState.Run
+                ? 1.15f
+                : Mathf.Clamp(0.85f + _normalizedSpeed * 0.55f, 0.85f, 1.45f);
+            _packAnimator.SetFloat("speed", positiveSpeed);
+            _packAnimator.SetInteger("head_turn", 0);
+            _packAnimator.SetInteger("move", desiredState == PackAnimState.Run ? 2 : (desiredState == PackAnimState.Walk ? 1 : 0));
+
+            if (desiredState != _packAnimState)
+            {
+                _packAnimState = desiredState;
+                string stateName = desiredState switch
+                {
+                    PackAnimState.Walk => "walk",
+                    PackAnimState.Run => "run",
+                    PackAnimState.Sitting => "sitting+idle",
+                    PackAnimState.ReactionWin => "happy_dance",
+                    PackAnimState.ReactionLose => "hands_on_head",
+                    PackAnimState.ReactionTabla => "jump",
+                    _ => "idle"
+                };
+                _packAnimator.CrossFade(stateName, 0.12f, 0);
+            }
+        }
+
+        private void UpdatePackRigLateUpdate(float dt)
+        {
+            if (_packModelRoot == null) return;
+
+            bool hasReaction = _reactionType != ReactionNone && _reactionTimer > 0f;
+            bool wantProc = !hasReaction && (CurrentPose == CharacterPoseMode.CrouchingFlick || CurrentPose == CharacterPoseMode.Talking || _skyWatchTimer > 0f);
+
+            float targetModelY = 0f;
+            Quaternion targetBodyRot = Quaternion.Euler(0f, 180f, 0f);
+            Quaternion targetHeadRot = Quaternion.identity;
+            Quaternion targetLeftHandRot = Quaternion.identity;
+            Quaternion targetRightHandRot = Quaternion.identity;
+
+            if (CurrentPose == CharacterPoseMode.SittingOnBench && !hasReaction)
+            {
+                targetModelY = 0.34f;
+            }
+            else if (wantProc)
+            {
+                if (CurrentPose == CharacterPoseMode.CrouchingFlick)
+                {
+                    float readyBob = Mathf.Sin(Time.time * 3.5f) * 2.5f;
+                    targetModelY = -0.10f;
+                    targetBodyRot = Quaternion.Euler(-16f, 180f, 0f);
+                    targetHeadRot = Quaternion.Euler(-6f, 0f, 0f);
+                    targetLeftHandRot = Quaternion.Euler(54f + readyBob, -22f, -12f);
+                    targetRightHandRot = Quaternion.Euler(56f + readyBob, 22f, 12f);
+
+                    if (_isPlayingFlick)
+                    {
+                        if (_flickAnimTimer < 0.12f)
+                        {
+                            float s1 = Mathf.Clamp01(_flickAnimTimer / 0.12f);
+                            float w = 1f - (1f - s1) * (1f - s1);
+                            targetModelY = Mathf.Lerp(-0.10f, -0.16f, w);
+                            targetBodyRot = Quaternion.Euler(Mathf.Lerp(-16f, -26f, w), Mathf.Lerp(180f, 174f, w), 0f);
+                            targetHeadRot = Quaternion.Euler(Mathf.Lerp(-6f, -12f, w), 0f, 0f);
+                            targetLeftHandRot = Quaternion.Euler(Mathf.Lerp(54f, 34f, w), -14f, -16f);
+                            targetRightHandRot = Quaternion.Euler(Mathf.Lerp(56f, 26f, w), 12f, 10f);
+                        }
+                        else if (_flickAnimTimer < 0.36f)
+                        {
+                            float s2 = Mathf.Clamp01((_flickAnimTimer - 0.12f) / 0.24f);
+                            float t = 1f - Mathf.Pow(1f - s2, 3f);
+                            targetModelY = Mathf.Lerp(-0.16f, 0.02f, t);
+                            targetBodyRot = Quaternion.Euler(Mathf.Lerp(-26f, 6f, t), Mathf.Lerp(174f, 188f, t), 0f);
+                            targetHeadRot = Quaternion.Euler(Mathf.Lerp(-12f, 38f, t), 0f, 0f);
+                            targetLeftHandRot = Quaternion.Euler(Mathf.Lerp(34f, -14f, t), 10f, -20f);
+                            targetRightHandRot = Quaternion.Euler(Mathf.Lerp(26f, 155f, t), 6f, 8f);
+                        }
+                        else
+                        {
+                            float s3 = Mathf.Clamp01((_flickAnimTimer - 0.36f) / 0.74f);
+                            float r = s3 * s3 * (3f - 2f * s3);
+                            targetModelY = Mathf.Lerp(0.02f, 0f, r);
+                            targetBodyRot = Quaternion.Euler(Mathf.Lerp(6f, 2f, r), Mathf.Lerp(188f, 180f, r), 0f);
+                            targetHeadRot = Quaternion.Euler(Mathf.Lerp(38f, 36f, r), 0f, 0f);
+                            targetLeftHandRot = Quaternion.Euler(Mathf.Lerp(-14f, 24f, r), -8f, -14f);
+                            targetRightHandRot = Quaternion.Euler(Mathf.Lerp(155f, 68f, r), 8f, 12f);
+                        }
+                    }
+                }
+                else if (CurrentPose == CharacterPoseMode.Talking)
+                {
+                    float t = Time.time;
+                    float sway = Mathf.Sin(t * 2.2f);
+                    float nod = Mathf.Sin(t * 5.2f) * 5.0f;
+                    float headYaw = Mathf.Sin(t * 1.9f) * 7.5f;
+                    float gestureL = Mathf.Sin(t * 4.2f);
+                    float gestureR = Mathf.Sin(t * 4.2f + 1.4f);
+
+                    targetModelY = 0f;
+                    targetBodyRot = Quaternion.Euler(-3f + sway * 2.0f, 180f + sway * 4.0f, sway * 1.5f);
+                    targetHeadRot = Quaternion.Euler(-nod, headYaw, Mathf.Sin(t * 2.6f) * 3.0f);
+                    targetLeftHandRot = Quaternion.Euler(34f + gestureL * 18f, -14f, -10f);
+                    targetRightHandRot = Quaternion.Euler(38f + gestureR * 20f, 14f, 10f);
+                }
+
+                if (_skyWatchTimer > 0f && !_isPlayingFlick)
+                {
+                    targetModelY = 0f;
+                    targetBodyRot = Quaternion.Euler(6f, 180f, 0f);
+                    targetHeadRot = Quaternion.Euler(38f, Mathf.Sin(Time.time * 2.5f) * 4f, 0f);
+                    targetLeftHandRot = Quaternion.Euler(26f, -10f, -10f);
+                    targetRightHandRot = Quaternion.Euler(30f, 10f, 10f);
+                }
+            }
+
+            // 1. Lock horizontal position (prevents walk/run snap-back) and smooth height for bench/crouch
+            _procModelY = Mathf.Lerp(_procModelY, targetModelY, Mathf.Clamp01(dt * 14f));
+            _packModelRoot.localPosition = new Vector3(0f, _procModelY, -0.098f * _packModelScale);
+
+            // 2. Keep facing aligned with root unless happy_dance win spin is active
+            if (_packAnimState != PackAnimState.ReactionWin)
+            {
+                if (Quaternion.Angle(_packModelRoot.localRotation, Quaternion.identity) > 0.5f)
+                {
+                    _packModelRoot.localRotation = Quaternion.Slerp(_packModelRoot.localRotation, Quaternion.identity, Mathf.Clamp01(dt * 18f));
+                }
+                else
+                {
+                    _packModelRoot.localRotation = Quaternion.identity;
+                }
+            }
+
+            // 3. Enforce single non-overlapping leg mesh per side outside Walk/Run
+            if (_packAnimState != PackAnimState.Walk && _packAnimState != PackAnimState.Run)
+            {
+                SetCleanStandingLegs();
+            }
+
+            // 4. Smoothly blend procedural overlays on top of Animator pose
+            if (wantProc)
+            {
+                if (_procBlendWeight <= 0.001f)
+                {
+                    if (_packBody != null) _procBodyRot = _packBody.localRotation;
+                    if (_packHead != null) _procHeadRot = _packHead.localRotation;
+                    if (_packLeftHand != null) _procLeftHandRot = _packLeftHand.localRotation;
+                    if (_packRightHand != null) _procRightHandRot = _packRightHand.localRotation;
+                }
+
+                _procBlendWeight = Mathf.MoveTowards(_procBlendWeight, 1f, dt * 10f);
+                float lerpRate = _isPlayingFlick ? 26f : 14f;
+                float tStep = Mathf.Clamp01(dt * lerpRate);
+                _procBodyRot = Quaternion.Slerp(_procBodyRot, targetBodyRot, tStep);
+                _procHeadRot = Quaternion.Slerp(_procHeadRot, targetHeadRot, tStep);
+                _procLeftHandRot = Quaternion.Slerp(_procLeftHandRot, targetLeftHandRot, tStep);
+                _procRightHandRot = Quaternion.Slerp(_procRightHandRot, targetRightHandRot, tStep);
+
+                ApplyPackProceduralBlend(_procBlendWeight);
+            }
+            else if (_procBlendWeight > 0.001f)
+            {
+                _procBlendWeight = Mathf.MoveTowards(_procBlendWeight, 0f, dt * 8f);
+                ApplyPackProceduralBlend(_procBlendWeight);
+            }
+        }
+
+        private void ApplyPackProceduralBlend(float weight)
+        {
+            if (weight <= 0.001f) return;
+
+            if (_packBody != null) _packBody.localRotation = Quaternion.Slerp(_packBody.localRotation, _procBodyRot, weight);
+            if (_packHead != null) _packHead.localRotation = Quaternion.Slerp(_packHead.localRotation, _procHeadRot, weight);
+            if (_packLeftHand != null) _packLeftHand.localRotation = Quaternion.Slerp(_packLeftHand.localRotation, _procLeftHandRot, weight);
+            if (_packRightHand != null) _packRightHand.localRotation = Quaternion.Slerp(_packRightHand.localRotation, _procRightHandRot, weight);
+        }
     }
 
     public static class CharacterVisualBuilder
     {
+        public const float DefaultPackModelScale = 1.10f;
+
+        private static Material _peoplePackLitMat;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticMaterials()
+        {
+            _peoplePackLitMat = null;
+        }
+
+        private static Material GetOrCreatePeoplePackMaterial(Texture2D atlasTex)
+        {
+            if (_peoplePackLitMat != null)
+            {
+                if (atlasTex != null)
+                {
+                    if (_peoplePackLitMat.HasProperty("_BaseMap")) _peoplePackLitMat.SetTexture("_BaseMap", atlasTex);
+                    if (_peoplePackLitMat.HasProperty("_MainTex")) _peoplePackLitMat.SetTexture("_MainTex", atlasTex);
+                }
+                return _peoplePackLitMat;
+            }
+
+            _peoplePackLitMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.16f, 0f, atlasTex);
+            return _peoplePackLitMat;
+        }
+
         private static readonly Color[] HairColorPalette =
         {
             new Color(0.24f, 0.15f, 0.09f), // Warm Option-1 brown
@@ -462,7 +880,179 @@ namespace TeksMaster.World
             new Color(0.30f, 0.19f, 0.11f), // Warm chestnut brown
         };
 
+        public static CharacterActor BuildPackCharacterVisual(
+            GameObject host,
+            int prefabNumber,
+            float modelScale = DefaultPackModelScale)
+        {
+            if (host == null) return null;
+
+            var existingVisual = host.transform.Find("VisualRoot");
+            if (existingVisual != null)
+            {
+                SafeDestroy(existingVisual.gameObject);
+            }
+
+            var actor = host.GetComponent<CharacterActor>();
+            if (actor == null) actor = host.AddComponent<CharacterActor>();
+
+            GameObject prefab = TeksCharacterCatalog.LoadPrefab(prefabNumber, out Texture2D atlasTex, out RuntimeAnimatorController controller);
+            if (prefab == null)
+            {
+                CharacterOutfitRole fallbackRole = (prefabNumber >= 51 && prefabNumber <= 100)
+                    ? CharacterOutfitRole.FemaleKid
+                    : CharacterOutfitRole.MaleKid;
+                return BuildLegacyProceduralVisual(
+                    host,
+                    fallbackRole,
+                    new Color(0.88f, 0.24f, 0.24f),
+                    new Color(0.16f, 0.18f, 0.26f),
+                    new Color(0.76f, 0.52f, 0.37f),
+                    new Color(0.20f, 0.50f, 0.85f));
+            }
+
+            var visualRoot = new GameObject("VisualRoot");
+            visualRoot.transform.SetParent(host.transform, false);
+
+            var modelGo = Object.Instantiate(prefab, visualRoot.transform);
+            modelGo.name = $"PackModel_{prefabNumber}";
+            modelGo.transform.localScale = Vector3.one * modelScale;
+            modelGo.transform.localPosition = new Vector3(0f, 0f, -0.098f * modelScale);
+            modelGo.transform.localRotation = Quaternion.identity;
+
+            // Remove pack demo input script (uses legacy UnityEngine.Input)
+            var scripts = modelGo.GetComponentsInChildren<MonoBehaviour>(true);
+            for (int i = 0; i < scripts.Length; i++)
+            {
+                var mb = scripts[i];
+                if (mb != null && mb.GetType().Name == "character_Ctrl")
+                {
+                    mb.enabled = false;
+                    SafeDestroy(mb);
+                }
+            }
+
+            // Override Built-in Material.mat with URP-safe Lit material using pack Texture.png
+            Material litMat = GetOrCreatePeoplePackMaterial(atlasTex);
+            var renderers = modelGo.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] != null)
+                {
+                    renderers[i].sharedMaterial = litMat;
+                }
+            }
+
+            // Configure Animator
+            var animator = modelGo.GetComponent<Animator>();
+            if (animator == null) animator = modelGo.AddComponent<Animator>();
+            if (controller != null) animator.runtimeAnimatorController = controller;
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            if (animator.runtimeAnimatorController != null && animator.gameObject.activeInHierarchy)
+            {
+                animator.SetFloat("speed", 1f);
+                animator.SetInteger("move", 0);
+                animator.SetInteger("head_turn", 0);
+            }
+
+            Transform body = FindChildByNameOrPrefix(modelGo.transform, "body");
+            Transform head = body != null ? FindChildByNameOrPrefix(body, "head") : FindChildByNameOrPrefix(modelGo.transform, "head");
+            Transform leftHand = body != null ? FindChildByNameOrPrefix(body, "lt_hand") : FindChildByNameOrPrefix(modelGo.transform, "lt_hand");
+            Transform rightHand = body != null ? FindChildByNameOrPrefix(body, "rt_hand") : FindChildByNameOrPrefix(modelGo.transform, "rt_hand");
+
+            Renderer rtLegFront = FindChildRendererByPrefix(modelGo.transform, "rt_leg_front");
+            Renderer rtLegBack = FindChildRendererByPrefix(modelGo.transform, "rt_leg_back");
+            Renderer ltLegFront = FindChildRendererByPrefix(modelGo.transform, "lt_leg_front");
+            Renderer ltLegBack = FindChildRendererByPrefix(modelGo.transform, "lt_leg_back");
+
+            if (rtLegFront != null) rtLegFront.enabled = true;
+            if (ltLegBack != null) ltLegBack.enabled = true;
+            if (rtLegBack != null) rtLegBack.enabled = false;
+            if (ltLegFront != null) ltLegFront.enabled = false;
+
+            GameObject handCardObj = null;
+            Renderer handCardRenderer = null;
+            if (rightHand != null)
+            {
+                handCardObj = CreatePrimitivePart(
+                    "HeldTeksCard",
+                    PrimitiveType.Cube,
+                    rightHand,
+                    new Vector3(-0.10f, -0.52f, -0.10f),
+                    new Vector3(0.085f, 0.008f, 0.125f),
+                    CardArtGenerator.CreateLitMaterial(Color.white, 0.25f)
+                );
+                handCardObj.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                handCardRenderer = handCardObj.GetComponent<Renderer>();
+            }
+
+            actor.ConfigurePackRig(
+                visualRoot.transform,
+                modelGo.transform,
+                modelScale,
+                animator,
+                body,
+                head,
+                leftHand,
+                rightHand,
+                rtLegFront,
+                rtLegBack,
+                ltLegFront,
+                ltLegBack,
+                handCardObj,
+                handCardRenderer);
+            actor.SetHandCardVisible(false);
+
+            return actor;
+        }
+
+        private static Transform FindChildByNameOrPrefix(Transform parent, string namePrefix)
+        {
+            if (parent == null || string.IsNullOrEmpty(namePrefix)) return null;
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                var child = parent.GetChild(i);
+                if (child.name == namePrefix || child.name.StartsWith(namePrefix + "_", System.StringComparison.Ordinal))
+                {
+                    return child;
+                }
+            }
+            foreach (Transform tr in parent.GetComponentsInChildren<Transform>(true))
+            {
+                if (tr == parent) continue;
+                if (tr.name == namePrefix || tr.name.StartsWith(namePrefix + "_", System.StringComparison.Ordinal))
+                {
+                    return tr;
+                }
+            }
+            return null;
+        }
+
+        private static Renderer FindChildRendererByPrefix(Transform parent, string namePrefix)
+        {
+            var tr = FindChildByNameOrPrefix(parent, namePrefix);
+            return tr != null ? tr.GetComponent<Renderer>() : null;
+        }
+
         public static CharacterActor BuildCharacterVisual(
+            GameObject host,
+            CharacterOutfitRole role,
+            Color shirtColor,
+            Color shortsColor,
+            Color skinTone,
+            Color slipperColor)
+        {
+            int prefabNumber = role switch
+            {
+                CharacterOutfitRole.Tindera => 58,
+                CharacterOutfitRole.FemaleKid => 52,
+                _ => 26
+            };
+            return BuildPackCharacterVisual(host, prefabNumber);
+        }
+
+        private static CharacterActor BuildLegacyProceduralVisual(
             GameObject host,
             CharacterOutfitRole role,
             Color shirtColor,

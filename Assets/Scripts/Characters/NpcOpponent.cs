@@ -9,6 +9,7 @@ namespace TeksMaster.Characters
     {
         public string NpcId = "";
         public string NpcName = "AI Gelo";
+        public int CharacterPrefabNumber = 7;
         public AIDifficulty Difficulty = AIDifficulty.Medium;
         public BarangayAreaId AreaId = BarangayAreaId.BasketballCourt;
         public bool IsStoryOpponent = false;

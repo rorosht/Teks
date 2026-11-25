@@ -28,6 +28,7 @@ namespace TeksMaster.Core
         public int SaveVersion = 1;
         public string PlayerNickname = "TeksMaster";
         public int SelectedGender = 0;
+        public int SelectedCharacterType = -1;
         public bool HasStartedGame = false;
 
         public int Coins = 2450;
@@ -59,6 +60,7 @@ namespace TeksMaster.Core
         public const string SaveFileName = "teks_save.json";
         public const string PrefKeyNickname = "Teks_Nickname";
         public const string PrefKeyGender = "Teks_Gender";
+        public const string PrefKeyCharacterType = "Teks_CharacterType";
         public const string PrefKeyMasterVolume = "Teks_MasterVolume";
         public const string PrefKeyBgmVolume = "Teks_BgmVolume";
         public const string PrefKeySfxVolume = "Teks_SfxVolume";
@@ -145,7 +147,9 @@ namespace TeksMaster.Core
             if (!Application.isPlaying || data == null) return;
 
             PlayerPrefs.SetString(PrefKeyNickname, data.PlayerNickname);
-            PlayerPrefs.SetInt(PrefKeyGender, Mathf.Clamp(data.SelectedGender, 0, 1));
+            int charIdx = Mathf.Clamp(data.SelectedCharacterType, 0, TeksCharacterPresets.Count - 1);
+            PlayerPrefs.SetInt(PrefKeyCharacterType, charIdx);
+            PlayerPrefs.SetInt(PrefKeyGender, charIdx);
             if (data.AudioSettings != null)
             {
                 PlayerPrefs.SetFloat(PrefKeyMasterVolume, Mathf.Clamp01(data.AudioSettings.MasterVolume));
@@ -194,7 +198,14 @@ namespace TeksMaster.Core
             string cleanedName = string.IsNullOrWhiteSpace(data.PlayerNickname) ? "TeksMaster" : data.PlayerNickname.Trim();
             if (cleanedName.Length > 18) cleanedName = cleanedName.Substring(0, 18);
             data.PlayerNickname = cleanedName;
-            data.SelectedGender = Mathf.Clamp(data.SelectedGender, 0, 1);
+            if (data.SelectedCharacterType < 0)
+            {
+                data.SelectedCharacterType = data.SelectedGender == 1
+                    ? (int)PlayerCharacterType.SportyAce
+                    : (int)PlayerCharacterType.StreetKid;
+            }
+            data.SelectedCharacterType = Mathf.Clamp(data.SelectedCharacterType, 0, TeksCharacterPresets.Count - 1);
+            data.SelectedGender = data.SelectedCharacterType;
 
             data.Coins = Mathf.Max(0, data.Coins);
             data.Gems = Mathf.Max(0, data.Gems);
