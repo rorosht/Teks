@@ -171,6 +171,14 @@ namespace TeksMaster.Core
 
         private void EnsureAllMissionTemplates()
         {
+            for (int i = _quests.Count - 1; i >= 0; i--)
+            {
+                if (_quests[i] == null || _quests[i].Id == "ach_challenge_1")
+                {
+                    _quests.RemoveAt(i);
+                }
+            }
+
             var templates = BuildMissionTemplates();
             for (int i = 0; i < templates.Count; i++)
             {
@@ -226,9 +234,9 @@ namespace TeksMaster.Core
                 {
                     Id = "story_unlock_court",
                     Title = "Unlock the Basketball Court",
-                    Description = "Defeat Dodong & Mark (or win 2 starter matches) to open the Basketball Court.",
+                    Description = "Defeat all opponents in Player's Neighborhood & Sari-Sari Kalye to unlock the Basketball Court.",
                     Category = MissionCategory.MainStory,
-                    TargetCount = 1,
+                    TargetCount = 9,
                     CoinReward = 180,
                     GemReward = 10,
                     HasPackReward = true,
@@ -246,6 +254,16 @@ namespace TeksMaster.Core
                 },
                 new BarangayQuest
                 {
+                    Id = "story_unlock_old_neighborhood",
+                    Title = "Unlock Old Neighborhood",
+                    Description = "Defeat all opponents on the Basketball Court to unlock Old Neighborhood.",
+                    Category = MissionCategory.MainStory,
+                    TargetCount = 9,
+                    CoinReward = 260,
+                    GemReward = 12
+                },
+                new BarangayQuest
+                {
                     Id = "story_defeat_joshua",
                     Title = "Beat Joshua in Old Neighborhood",
                     Description = "Unlock Old Neighborhood and defeat Joshua.",
@@ -255,6 +273,16 @@ namespace TeksMaster.Core
                     GemReward = 15,
                     HasPackReward = true,
                     PackRewardType = ShopPackType.Rare
+                },
+                new BarangayQuest
+                {
+                    Id = "story_unlock_fiesta",
+                    Title = "Unlock Fiesta Teks Arena",
+                    Description = "Defeat all opponents in Old Neighborhood to unlock Fiesta Teks Arena.",
+                    Category = MissionCategory.MainStory,
+                    TargetCount = 6,
+                    CoinReward = 360,
+                    GemReward = 18
                 },
                 new BarangayQuest
                 {
@@ -472,16 +500,6 @@ namespace TeksMaster.Core
                     GemReward = 30,
                     HasPackReward = true,
                     PackRewardType = ShopPackType.Premium
-                },
-                new BarangayQuest
-                {
-                    Id = "ach_challenge_1",
-                    Title = "Challenge Mode Conqueror",
-                    Description = "Complete any special-rule Challenge Mode trial.",
-                    Category = MissionCategory.Achievement,
-                    TargetCount = 1,
-                    CoinReward = 400,
-                    GemReward = 25
                 }
             };
         }
@@ -1191,10 +1209,9 @@ namespace TeksMaster.Core
 
             if (!IsAreaStoryUnlocked(BarangayAreaId.BasketballCourt))
             {
-                bool beatStarters = HasDefeatedNpc("dodong") && HasDefeatedNpc("mark");
-                bool clearedStarterArea = AreAllNpcsDefeatedInArea(BarangayAreaId.PlayersNeighborhood)
-                    || AreAllNpcsDefeatedInArea(BarangayAreaId.SariSariAndKalye);
-                if (beatStarters || clearedStarterArea || GetStarterAreaWins() >= 2)
+                bool clearedAllStarters = AreAllNpcsDefeatedInArea(BarangayAreaId.PlayersNeighborhood)
+                    && AreAllNpcsDefeatedInArea(BarangayAreaId.SariSariAndKalye);
+                if (clearedAllStarters)
                 {
                     if (UnlockArea(BarangayAreaId.BasketballCourt))
                     {
@@ -1205,9 +1222,7 @@ namespace TeksMaster.Core
 
             if (!IsAreaStoryUnlocked(BarangayAreaId.OldNeighborhood))
             {
-                if (HasDefeatedNpc("carlo")
-                    || AreAllNpcsDefeatedInArea(BarangayAreaId.BasketballCourt)
-                    || GetAreaWins(BarangayAreaId.BasketballCourt) >= 2)
+                if (AreAllNpcsDefeatedInArea(BarangayAreaId.BasketballCourt))
                 {
                     if (UnlockArea(BarangayAreaId.OldNeighborhood))
                     {
@@ -1218,9 +1233,7 @@ namespace TeksMaster.Core
 
             if (!IsAreaStoryUnlocked(BarangayAreaId.FiestaArena))
             {
-                if (HasDefeatedNpc("joshua")
-                    || AreAllNpcsDefeatedInArea(BarangayAreaId.OldNeighborhood)
-                    || GetAreaWins(BarangayAreaId.OldNeighborhood) >= 2)
+                if (AreAllNpcsDefeatedInArea(BarangayAreaId.OldNeighborhood))
                 {
                     if (UnlockArea(BarangayAreaId.FiestaArena))
                     {
@@ -1234,16 +1247,33 @@ namespace TeksMaster.Core
 
         public string GetAreaUnlockRequirementText(BarangayAreaId area)
         {
-            return area switch
+            switch (area)
             {
-                BarangayAreaId.PlayersNeighborhood => "Starting Area (Unlocked)",
-                BarangayAreaId.SariSariAndKalye => "Starting Area (Unlocked)",
-                BarangayAreaId.BasketballCourt => "Defeat Dodong & Mark (or win 2 Starter Area matches)",
-                BarangayAreaId.OldNeighborhood => "Defeat Carlo (or win 2 Basketball Court matches)",
-                BarangayAreaId.FiestaArena => "Defeat Joshua (or win 2 Old Neighborhood matches)",
-                BarangayAreaId.TournamentArena => "Open Arena (Unlocked — Pay Entry Fee to Compete)",
-                _ => "Explore the Barangay"
-            };
+                case BarangayAreaId.PlayersNeighborhood:
+                    return "Starting Area (Unlocked)";
+                case BarangayAreaId.SariSariAndKalye:
+                    return "Starting Area (Unlocked)";
+                case BarangayAreaId.BasketballCourt:
+                {
+                    int defN = GetDefeatedNpcCountInArea(BarangayAreaId.PlayersNeighborhood, out int totN);
+                    int defK = GetDefeatedNpcCountInArea(BarangayAreaId.SariSariAndKalye, out int totK);
+                    return $"Defeat all Starter Area rivals ({defN + defK}/{totN + totK})";
+                }
+                case BarangayAreaId.OldNeighborhood:
+                {
+                    int defC = GetDefeatedNpcCountInArea(BarangayAreaId.BasketballCourt, out int totC);
+                    return $"Defeat all Basketball Court rivals ({defC}/{totC})";
+                }
+                case BarangayAreaId.FiestaArena:
+                {
+                    int defO = GetDefeatedNpcCountInArea(BarangayAreaId.OldNeighborhood, out int totO);
+                    return $"Defeat all Old Neighborhood rivals ({defO}/{totO})";
+                }
+                case BarangayAreaId.TournamentArena:
+                    return "Open Arena (Unlocked — Pay Entry Fee to Compete)";
+                default:
+                    return "Explore the Barangay";
+            }
         }
 
         // --- Defeated NPCs & Hidden Collectibles ---
@@ -1290,6 +1320,10 @@ namespace TeksMaster.Core
                 _suppressAutoSave = prevSuppress;
             }
 
+            if (isNew)
+            {
+                OnAreasChanged?.Invoke();
+            }
             NotifyAndAutoSave();
             return isNew;
         }
@@ -1484,6 +1518,7 @@ namespace TeksMaster.Core
             IncrementAreaWin(areaId);
 
             List<BarangayAreaId> newlyUnlocked;
+            bool defeatedNewNpc = false;
             bool prevSuppress = _suppressAutoSave;
             _suppressAutoSave = true;
             try
@@ -1494,6 +1529,7 @@ namespace TeksMaster.Core
                     if (!HasDefeatedNpc(key))
                     {
                         _defeatedNpcIds.Add(key);
+                        defeatedNewNpc = true;
                     }
                     AdvanceStoryNpcMission(key);
                 }
@@ -1511,6 +1547,10 @@ namespace TeksMaster.Core
                 _suppressAutoSave = prevSuppress;
             }
 
+            if (defeatedNewNpc)
+            {
+                OnAreasChanged?.Invoke();
+            }
             NotifyAndAutoSave();
             return newlyUnlocked;
         }
@@ -1528,10 +1568,7 @@ namespace TeksMaster.Core
         public void ReportAreaUnlocked(BarangayAreaId areaId)
         {
             EnsureStarterCollection();
-            if (areaId == BarangayAreaId.BasketballCourt)
-            {
-                SetQuestProgressMaxInternal("story_unlock_court", 1);
-            }
+            SyncAreaUnlockMissions();
             NotifyAndAutoSave();
         }
 
@@ -1577,7 +1614,6 @@ namespace TeksMaster.Core
         {
             EnsureStarterCollection();
             ChallengesCompleted++;
-            SetQuestProgressMaxInternal("ach_challenge_1", ChallengesCompleted);
             NotifyAndAutoSave();
         }
 
@@ -2013,7 +2049,7 @@ namespace TeksMaster.Core
                 for (int i = 0; i < data.Quests.Count; i++)
                 {
                     var q = data.Quests[i];
-                    if (q == null || string.IsNullOrEmpty(q.Id)) continue;
+                    if (q == null || string.IsNullOrEmpty(q.Id) || q.Id == "ach_challenge_1") continue;
                     _quests.Add(q);
                 }
             }
@@ -2116,6 +2152,32 @@ namespace TeksMaster.Core
             SyncSingleAreaClearMission("area_clear_court", BarangayAreaId.BasketballCourt);
             SyncSingleAreaClearMission("area_clear_old_neighborhood", BarangayAreaId.OldNeighborhood);
             SyncSingleAreaClearMission("area_clear_fiesta", BarangayAreaId.FiestaArena);
+            SyncAreaUnlockMissions();
+        }
+
+        private void SyncAreaUnlockMissions()
+        {
+            int defN = GetDefeatedNpcCountInArea(BarangayAreaId.PlayersNeighborhood, out int totN);
+            int defK = GetDefeatedNpcCountInArea(BarangayAreaId.SariSariAndKalye, out int totK);
+            SyncAreaUnlockMission("story_unlock_court", BarangayAreaId.BasketballCourt, defN + defK, totN + totK);
+
+            int defC = GetDefeatedNpcCountInArea(BarangayAreaId.BasketballCourt, out int totC);
+            SyncAreaUnlockMission("story_unlock_old_neighborhood", BarangayAreaId.OldNeighborhood, defC, totC);
+
+            int defO = GetDefeatedNpcCountInArea(BarangayAreaId.OldNeighborhood, out int totO);
+            SyncAreaUnlockMission("story_unlock_fiesta", BarangayAreaId.FiestaArena, defO, totO);
+        }
+
+        private void SyncAreaUnlockMission(string questId, BarangayAreaId areaToUnlock, int defeatedCount, int totalCount)
+        {
+            var q = FindQuestById(questId);
+            if (q == null) return;
+            if (totalCount > 0)
+            {
+                q.TargetCount = totalCount;
+            }
+            int progress = IsAreaStoryUnlocked(areaToUnlock) ? q.TargetCount : Mathf.Clamp(defeatedCount, 0, q.TargetCount);
+            SetQuestProgressMaxInternal(questId, progress);
         }
 
         private void SyncSingleAreaClearMission(string questId, BarangayAreaId area)
@@ -2141,11 +2203,6 @@ namespace TeksMaster.Core
             SetQuestProgressMaxInternal("ach_wins_10", MatchesWon);
             SetQuestProgressMaxInternal("ach_streak_3", BestWinStreak);
             SetQuestProgressMaxInternal("ach_tournament_1", TournamentsWon);
-            SetQuestProgressMaxInternal("ach_challenge_1", ChallengesCompleted);
-            if (IsAreaStoryUnlocked(BarangayAreaId.BasketballCourt))
-            {
-                SetQuestProgressMaxInternal("story_unlock_court", 1);
-            }
             for (int i = 0; i < _defeatedNpcIds.Count; i++)
             {
                 AdvanceStoryNpcMission(_defeatedNpcIds[i]);

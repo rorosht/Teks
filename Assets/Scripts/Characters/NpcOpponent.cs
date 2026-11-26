@@ -168,7 +168,7 @@ namespace TeksMaster.Characters
                     b.SetMinMax(new Vector3(-13.0f, -2f, -20.2f), new Vector3(13.0f, 4f, -9.2f));
                     break;
                 case BarangayAreaId.BasketballCourt:
-                    b.SetMinMax(new Vector3(-13.0f, -2f, -7.0f), new Vector3(13.0f, 4f, 7.8f));
+                    b.SetMinMax(new Vector3(-12.6f, -2f, -6.6f), new Vector3(12.6f, 4f, 6.6f));
                     break;
                 case BarangayAreaId.OldNeighborhood:
                     b.SetMinMax(new Vector3(-27.5f, -2f, -7.6f), new Vector3(-16.0f, 4f, 10.5f));

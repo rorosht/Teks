@@ -156,7 +156,7 @@ namespace TeksMaster.World
                 AreaId = BarangayAreaId.BasketballCourt,
                 Name = "BASKETBALL COURT",
                 Subtitle = "Main Court, Sideline Bleachers & Carlo",
-                UnlockHint = "Defeat Dodong & Mark (or win 2 Starter Area matches)",
+                UnlockHint = "Defeat all Starter Area rivals",
                 SpawnPosition = new Vector3(-3.8f, 0f, -4.6f),
                 SpawnYaw = 34f
             },
@@ -165,7 +165,7 @@ namespace TeksMaster.World
                 AreaId = BarangayAreaId.OldNeighborhood,
                 Name = "OLD NEIGHBORHOOD",
                 Subtitle = "West Tambayan Alley, Waiting Shed & Joshua",
-                UnlockHint = "Defeat Carlo (or win 2 Basketball Court matches)",
+                UnlockHint = "Defeat all Basketball Court rivals",
                 SpawnPosition = new Vector3(-17.8f, 0f, -0.5f),
                 SpawnYaw = -90f
             },
@@ -174,7 +174,7 @@ namespace TeksMaster.World
                 AreaId = BarangayAreaId.FiestaArena,
                 Name = "FIESTA TEKS ARENA",
                 Subtitle = "Covered Stage, Banderitas & Teks Master",
-                UnlockHint = "Defeat Joshua (or win 2 Old Neighborhood matches)",
+                UnlockHint = "Defeat all Old Neighborhood rivals",
                 SpawnPosition = new Vector3(18.5f, 0f, -25.5f),
                 SpawnYaw = 115f
             },
@@ -247,7 +247,7 @@ namespace TeksMaster.World
 
         public void BuildWorldIfNeeded()
         {
-            const string versionMarker = "WorldVersion_V9";
+            const string versionMarker = "WorldVersion_V10";
             if (_built && CourtRoot != null && CourtRoot.Find(versionMarker) != null)
             {
                 // Verify materials aren't stale/missing shaders (prevents magenta screen when Reload Domain is disabled)
@@ -419,9 +419,9 @@ namespace TeksMaster.World
 
         private void BuildGroundAndCourt()
         {
-            // Dusty barangay road & ground apron covering the extended neighborhood & South arenas
+            // Dusty barangay road & ground apron (with outer flat belt reserved for user's mountain assets)
             var groundMat = CardArtGenerator.CreateLitMaterial(new Color(0.47f, 0.44f, 0.40f), 0.1f);
-            CreateBox("StreetGround", CourtRoot, new Vector3(0f, -0.06f, -12f), new Vector3(115f, 0.1f, 105f), groundMat, keepCollider: true);
+            CreateBox("StreetGround", CourtRoot, new Vector3(0f, -0.06f, -12f), new Vector3(140f, 0.1f, 130f), groundMat, keepCollider: true);
 
             // Main weathered concrete basketball court
             var courtMat = CardArtGenerator.CreateLitMaterial(Color.white, 0.14f, 0f, CardArtGenerator.GetCourtFloorTexture());
@@ -440,7 +440,7 @@ namespace TeksMaster.World
             floorColliderGo.transform.SetParent(CourtRoot, false);
             floorColliderGo.transform.position = new Vector3(0f, -0.05f, -12f);
             var box = floorColliderGo.AddComponent<BoxCollider>();
-            box.size = new Vector3(115f, 0.1f, 105f);
+            box.size = new Vector3(140f, 0.1f, 130f);
 
             // Extended Barangay perimeter barriers (spanning z in [-38.5, +12.2])
             CreateInvisibleWall("BoundaryNorth", new Vector3(0f, 2f, 12.2f), new Vector3(72f, 5f, 0.4f));
@@ -468,20 +468,20 @@ namespace TeksMaster.World
             if (wireMat.HasProperty("_BaseMap")) wireMat.SetTextureScale("_BaseMap", new Vector2(8f, 3f));
             if (wireMat.HasProperty("_MainTex")) wireMat.SetTextureScale("_MainTex", new Vector2(8f, 3f));
 
-            // Continuous North basketball court fence from (-14.4, 0, 8.4) to (14.4, 0, 8.4)
-            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 8.4f), new Vector3(14.4f, 0f, 8.4f), 3.1f, postMat, wireMat);
+            // Continuous North basketball court fence pushed back to z = 9.6 so sideline bleachers sit outside court lines
+            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 9.6f), new Vector3(14.4f, 0f, 9.6f), 3.1f, postMat, wireMat);
 
-            // Seal NW & NE perimeter gaps north of z = 8.4 up to BoundaryNorth (z = 12.2) so players cannot bypass locked gates
-            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 8.4f), new Vector3(-14.4f, 0f, 12.2f), 3.1f, postMat, wireMat);
-            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, 8.4f), new Vector3(14.4f, 0f, 12.2f), 3.1f, postMat, wireMat);
+            // Seal NW & NE perimeter gaps north of z = 9.6 up to BoundaryNorth (z = 12.2) so players cannot bypass locked gates
+            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 9.6f), new Vector3(-14.4f, 0f, 12.2f), 3.1f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, 9.6f), new Vector3(14.4f, 0f, 12.2f), 3.1f, postMat, wireMat);
 
             // Left court fence with wide walkthrough gate (z in [-3.0, +3.0]) to Old Neighborhood (West Tambayan Alley)
             BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -8.4f), new Vector3(-14.4f, 0f, -3.0f), 3.1f, postMat, wireMat);
-            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 3.0f), new Vector3(-14.4f, 0f, 8.4f), 3.1f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, 3.0f), new Vector3(-14.4f, 0f, 9.6f), 3.1f, postMat, wireMat);
 
             // Right court fence with wide walkthrough gate (z in [-3.0, +3.0]) to Player's Neighborhood (East Plaza)
             BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, -8.4f), new Vector3(14.4f, 0f, -3.0f), 3.1f, postMat, wireMat);
-            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, 3.0f), new Vector3(14.4f, 0f, 8.4f), 3.1f, postMat, wireMat);
+            BuildFenceSpan(fenceGroup, new Vector3(14.4f, 0f, 3.0f), new Vector3(14.4f, 0f, 9.6f), 3.1f, postMat, wireMat);
 
             // South court fence along z = -8.4 with centered walkthrough gateway (x in [-3.2, +3.2]) to Sari-Sari & Kalye
             BuildFenceSpan(fenceGroup, new Vector3(-14.4f, 0f, -8.4f), new Vector3(-3.2f, 0f, -8.4f), 2.5f, postMat, wireMat);
@@ -693,29 +693,25 @@ namespace TeksMaster.World
         {
             Material concreteMat = CardArtGenerator.CreateLitMaterial(new Color(0.58f, 0.56f, 0.52f), 0.15f);
             Material woodBenchMat = CardArtGenerator.CreateLitMaterial(new Color(0.54f, 0.36f, 0.20f), 0.2f);
-            Material umbrellaMat = CardArtGenerator.CreateLitMaterial(new Color(0.16f, 0.48f, 0.72f), 0.2f);
-            Material trunkMat = CardArtGenerator.CreateLitMaterial(new Color(0.42f, 0.29f, 0.19f), 0.15f);
 
-            // Bleachers along North-West sidelines
+            // Bleachers along North-West sidelines (cleanly outside court white line z = +7.12 and inside fence z = +9.60)
             var bleachers = new GameObject("SidelineBleachers").transform;
             bleachers.SetParent(CourtRoot, false);
-            bleachers.position = new Vector3(-5.2f, 0f, 7.2f);
+            bleachers.position = new Vector3(-5.2f, 0f, 7.82f);
 
-            CreateBox("BleacherTier1", bleachers, new Vector3(0f, 0.22f, 0f), new Vector3(7.5f, 0.44f, 1.0f), concreteMat, keepCollider: true);
-            CreateBox("BleacherTier2", bleachers, new Vector3(0f, 0.55f, 0.85f), new Vector3(7.5f, 1.1f, 0.9f), concreteMat, keepCollider: true);
-            CreateBox("BleacherPlank1", bleachers, new Vector3(0f, 0.46f, -0.05f), new Vector3(7.4f, 0.06f, 0.55f), woodBenchMat, false);
-            CreateBox("BleacherPlank2", bleachers, new Vector3(0f, 1.12f, 0.85f), new Vector3(7.4f, 0.06f, 0.55f), woodBenchMat, false);
+            CreateBox("BleacherTier1", bleachers, new Vector3(0f, 0.22f, 0f), new Vector3(7.5f, 0.44f, 0.86f), concreteMat, keepCollider: true);
+            CreateBox("BleacherTier2", bleachers, new Vector3(0f, 0.55f, 0.86f), new Vector3(7.5f, 1.1f, 0.86f), concreteMat, keepCollider: true);
+            CreateBox("BleacherPlank1", bleachers, new Vector3(0f, 0.46f, -0.05f), new Vector3(7.4f, 0.06f, 0.52f), woodBenchMat, false);
+            CreateBox("BleacherPlank2", bleachers, new Vector3(0f, 1.12f, 0.86f), new Vector3(7.4f, 0.06f, 0.52f), woodBenchMat, false);
 
-            // Shady Boss Sideline Corner (South-East)
+            // South-East Sideline Bench (umbrella removed, moved cleanly outside South court white line z = -7.12)
             var shady = new GameObject("ShadyBossCorner").transform;
             shady.SetParent(CourtRoot, false);
-            shady.position = new Vector3(11.4f, 0f, -6.2f);
+            shady.position = new Vector3(9.4f, 0f, -7.78f);
 
-            CreateBox("ShadyBench", shady, new Vector3(0f, 0.42f, 0f), new Vector3(2.8f, 0.12f, 0.7f), woodBenchMat, keepCollider: true);
-            CreateBox("BenchLegL", shady, new Vector3(-1.1f, 0.20f, 0f), new Vector3(0.18f, 0.40f, 0.6f), concreteMat, false);
-            CreateBox("BenchLegR", shady, new Vector3(1.1f, 0.20f, 0f), new Vector3(0.18f, 0.40f, 0.6f), concreteMat, false);
-            CreateCylinder("UmbrellaPole", shady, new Vector3(0.8f, 1.4f, 0.2f), new Vector3(0.06f, 1.4f, 0.06f), trunkMat, false);
-            CreateCylinder("UmbrellaCanopy", shady, new Vector3(0.8f, 2.7f, 0.2f), new Vector3(2.8f, 0.14f, 2.8f), umbrellaMat, false);
+            CreateBox("ShadyBench", shady, new Vector3(0f, 0.42f, 0f), new Vector3(2.8f, 0.12f, 0.62f), woodBenchMat, keepCollider: true);
+            CreateBox("BenchLegL", shady, new Vector3(-1.1f, 0.20f, 0f), new Vector3(0.18f, 0.40f, 0.54f), concreteMat, false);
+            CreateBox("BenchLegR", shady, new Vector3(1.1f, 0.20f, 0f), new Vector3(0.18f, 0.40f, 0.54f), concreteMat, false);
         }
 
         public void RefreshStoreDisplayCards()
@@ -756,9 +752,9 @@ namespace TeksMaster.World
             Material tireMat = CardArtGenerator.CreateLitMaterial(new Color(0.10f, 0.10f, 0.12f), 0.15f);
             Material cartYellowMat = CardArtGenerator.CreateLitMaterial(new Color(0.96f, 0.78f, 0.18f), 0.30f);
 
-            // 1. SOUTH ZONE: Clear Kalye Highway (z in [-18.5, -11.5], center z = -15.0, width 7.0, length 68)
-            CreateBox("KalyeAsphaltRoad", zones, new Vector3(0f, -0.008f, -15.0f), new Vector3(68f, 0.02f, 7.0f), asphaltMat, false);
-            for (int i = -5; i <= 5; i++)
+            // 1. SOUTH ZONE: Clear Kalye Highway extending all the way to the East & West ground box edges (x in [-70, +70], z in [-18.5, -11.5])
+            CreateBox("KalyeAsphaltRoad", zones, new Vector3(0f, -0.008f, -15.0f), new Vector3(140f, 0.02f, 7.0f), asphaltMat, false);
+            for (int i = -11; i <= 11; i++)
             {
                 CreateBox("RoadDash_" + i, zones, new Vector3(i * 6.0f, 0.004f, -15.0f), new Vector3(3.0f, 0.01f, 0.22f), lanePaintMat, false);
             }
@@ -1106,7 +1102,9 @@ namespace TeksMaster.World
 
             int houseIndex = 0;
 
-            // North Perimeter Houses (yaw = 0 -> front faces South toward court, positioned cleanly north of BoundaryNorth z = 12.2)
+            // North Perimeter Row 1 (yaw = 0 -> front faces South toward court, positioned cleanly north of BoundaryNorth z = 12.2)
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-42.6f, 0f, 15.2f), 0f, false, variantOverride: 2, targetWidth: 4.6f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-36.0f, 0f, 15.0f), 0f, false, variantOverride: 0, targetWidth: 5.0f, targetDepth: 4.3f);
             BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-29.2f, 0f, 15.0f), 0f, false, variantOverride: 1, targetWidth: 5.8f, targetDepth: 3.8f);
             BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-23.0f, 0f, 15.0f), 0f, false, variantOverride: 0, targetWidth: 4.8f, targetDepth: 4.4f);
             BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-16.0f, 0f, 15.0f), 0f, false, variantOverride: 2, targetWidth: 4.4f, targetDepth: 4.4f);
@@ -1117,12 +1115,32 @@ namespace TeksMaster.World
             BuildBarangayHouse(backdrop, houseIndex++, new Vector3(16.8f, 0f, 15.0f), 0f, false, variantOverride: 0, targetWidth: 4.8f, targetDepth: 4.4f);
             BuildBarangayHouse(backdrop, houseIndex++, new Vector3(23.4f, 0f, 15.0f), 0f, false, variantOverride: 2, targetWidth: 4.4f, targetDepth: 4.4f);
             BuildBarangayHouse(backdrop, houseIndex++, new Vector3(29.8f, 0f, 15.0f), 0f, false, variantOverride: 1, targetWidth: 5.8f, targetDepth: 3.8f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(36.4f, 0f, 15.0f), 0f, false, variantOverride: 0, targetWidth: 5.0f, targetDepth: 4.3f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(43.0f, 0f, 15.2f), 0f, false, variantOverride: 2, targetWidth: 4.6f, targetDepth: 4.2f);
 
-            // West & East Side Perimeter Houses (cleanly outside BoundaryWest = -31.5 and BoundaryEast = 32.5)
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, 4.5f), -90f, false, variantOverride: 1, targetWidth: 6.8f, targetDepth: 4.0f);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -5.5f), -90f, false, variantOverride: 0, targetWidth: 5.2f, targetDepth: 4.2f);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.0f, 0f, 3.0f), 90f, false, variantOverride: 0, targetWidth: 5.2f, targetDepth: 4.2f);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.0f, 0f, -7.0f), 90f, false, variantOverride: 1, targetWidth: 6.8f, targetDepth: 4.0f);
+            // North Outer Neighborhood Row 2 (z ~ 22.8, leaving Z in [27, 53] clear for outer mountains)
+            for (int i = 0; i < 13; i++)
+            {
+                float x = -42.5f + i * 7.15f;
+                int v = (i + 1) % 3;
+                float w = (v == 1) ? 5.6f : 4.6f;
+                BuildBarangayHouse(backdrop, houseIndex++, new Vector3(x, 0f, 22.8f + (i % 2) * 0.4f), 0f, false, variantOverride: v, targetWidth: w, targetDepth: 4.2f);
+            }
+
+            // West & East North-of-Road Perimeter Rows (leaving X < -46 and X > +46 clear for outer mountains)
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, 9.6f), -90f, false, variantOverride: 2, targetWidth: 4.8f, targetDepth: 4.1f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, 2.8f), -90f, false, variantOverride: 1, targetWidth: 6.4f, targetDepth: 4.0f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -4.8f), -90f, false, variantOverride: 0, targetWidth: 5.2f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-42.2f, 0f, 8.6f), -90f, false, variantOverride: 0, targetWidth: 5.0f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-42.2f, 0f, 1.4f), -90f, false, variantOverride: 2, targetWidth: 4.8f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-42.2f, 0f, -5.8f), -90f, false, variantOverride: 1, targetWidth: 6.0f, targetDepth: 4.0f);
+
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.0f, 0f, 9.6f), 90f, false, variantOverride: 2, targetWidth: 4.8f, targetDepth: 4.1f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.0f, 0f, 2.8f), 90f, false, variantOverride: 0, targetWidth: 5.2f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.0f, 0f, -5.4f), 90f, false, variantOverride: 1, targetWidth: 6.4f, targetDepth: 4.0f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(43.0f, 0f, 8.6f), 90f, false, variantOverride: 1, targetWidth: 6.0f, targetDepth: 4.0f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(43.0f, 0f, 1.4f), 90f, false, variantOverride: 2, targetWidth: 4.8f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(43.0f, 0f, -5.8f), 90f, false, variantOverride: 0, targetWidth: 5.0f, targetDepth: 4.2f);
 
             // South Highway Residential Row (yaw = 180 -> front doors face North toward Kalye Highway, solid BoxColliders)
             Vector3[] southHighwayRow = {
@@ -1154,11 +1172,33 @@ namespace TeksMaster.World
                 BuildBarangayHouse(backdrop, houseIndex++, southBackdropRow[i], 180f, false, variantOverride: v, targetWidth: w, targetDepth: 4.2f);
             }
 
-            // West & East South Perimeter Extensions
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -23.5f), -90f, false, variantOverride: 2, targetWidth: 4.6f, targetDepth: 4.2f);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -31.5f), -90f, false, variantOverride: 0, targetWidth: 5.2f, targetDepth: 4.2f);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -23.5f), 90f, false, variantOverride: 2, targetWidth: 4.6f, targetDepth: 4.2f);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -31.5f), 90f, false, variantOverride: 1, targetWidth: 6.4f, targetDepth: 4.0f);
+            // West & East South-of-Road Perimeter Rows
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -23.2f), -90f, false, variantOverride: 2, targetWidth: 4.6f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -30.2f), -90f, false, variantOverride: 0, targetWidth: 5.2f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -36.6f), -90f, false, variantOverride: 1, targetWidth: 5.8f, targetDepth: 4.0f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-42.2f, 0f, -23.2f), -90f, false, variantOverride: 0, targetWidth: 5.0f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-42.2f, 0f, -30.2f), -90f, false, variantOverride: 1, targetWidth: 6.0f, targetDepth: 4.0f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-42.2f, 0f, -36.6f), -90f, false, variantOverride: 2, targetWidth: 4.8f, targetDepth: 4.2f);
+
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -23.2f), 90f, false, variantOverride: 2, targetWidth: 4.6f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -30.2f), 90f, false, variantOverride: 1, targetWidth: 6.0f, targetDepth: 4.0f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -36.6f), 90f, false, variantOverride: 0, targetWidth: 5.0f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(43.0f, 0f, -23.2f), 90f, false, variantOverride: 0, targetWidth: 5.0f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(43.0f, 0f, -30.2f), 90f, false, variantOverride: 2, targetWidth: 4.8f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(43.0f, 0f, -36.6f), 90f, false, variantOverride: 1, targetWidth: 6.0f, targetDepth: 4.0f);
+
+            // South Outer Neighborhood Rows 1 & 2 (z ~ -41.6 & -49.0, leaving Z in [-77, -53] clear for outer mountains)
+            for (int i = 0; i < 13; i++)
+            {
+                float x = -42.5f + i * 7.15f;
+                int v1 = i % 3;
+                float w1 = (v1 == 1) ? 5.6f : 4.6f;
+                BuildBarangayHouse(backdrop, houseIndex++, new Vector3(x, 0f, -41.6f - (i % 2) * 0.4f), 180f, false, variantOverride: v1, targetWidth: w1, targetDepth: 4.2f);
+
+                int v2 = (i + 2) % 3;
+                float w2 = (v2 == 1) ? 5.6f : 4.6f;
+                BuildBarangayHouse(backdrop, houseIndex++, new Vector3(x, 0f, -49.0f - (i % 2) * 0.4f), 180f, false, variantOverride: v2, targetWidth: w2, targetDepth: 4.2f);
+            }
 
             // Wooden Meralco Utility Poles & Overhead Power Lines
             Material poleMat = CardArtGenerator.CreateLitMaterial(new Color(0.36f, 0.25f, 0.16f), 0.15f);
@@ -1417,9 +1457,9 @@ namespace TeksMaster.World
                 isSeated: false, isWandering: false, isBenchSitter: false,
                 npcId: "dodong", areaOverride: BarangayAreaId.PlayersNeighborhood, isStory: true, storyOrder: 1);
             dodong.ChallengeQuote = "Uy kapitbahay! Warm-up Teks muna tayo bago ka pumunta ng Court!";
-            dodong.AmbientCallouts = new[] { "Tara kapitbahay, 1v1 Teks!", "Easy match muna tayo!", "Talunin mo kami ni Mark para buksan ang Court!" };
+            dodong.AmbientCallouts = new[] { "Tara kapitbahay, 1v1 Teks!", "Easy match muna tayo!", "Talunin lahat ng kalaban dito sa Starter Areas!" };
             dodong.WinBanter = "Haha! Sabi sa'yo swerte 'tong Bantay Kalye ko eh!";
-            dodong.LoseBanter = "Ayos! Galing mo na — puntahan mo naman si Mark sa Kalye!";
+            dodong.LoseBanter = "Ayos! Hanapin at talunin ang iba pang kalaban sa Neighborhood at Kalye!";
 
             // Story 2: Mark (Easy) — Sari-Sari & Kalye (North Sidewalk beside Kalye Kiosk, clear of Court Entrance)
             var mark = CreateOpponent("Mark", AIDifficulty.Easy, "tumbang_striker", 2, 60,
@@ -1428,9 +1468,9 @@ namespace TeksMaster.World
                 isSeated: false, isWandering: false, isBenchSitter: false,
                 npcId: "mark", areaOverride: BarangayAreaId.SariSariAndKalye, isStory: true, storyOrder: 2);
             mark.ChallengeQuote = "Dito sa Kalye Kiosk ako nagte-Teks! Ready ka na ba sa Tumbang Striker ko?";
-            mark.AmbientCallouts = new[] { "Teks tayo dito sa Kalye!", "Bili ka muna ng packs sa Kiosk!", "Talunin mo ako para buksan ang Basketball Court!" };
+            mark.AmbientCallouts = new[] { "Teks tayo dito sa Kalye!", "Bili ka muna ng packs sa Kiosk!", "Talunin lahat ng Starter rivals para sa Court!" };
             mark.WinBanter = "Hehe! Subukan mo ulit, walang atrasan!";
-            mark.LoseBanter = "Grabe solid ng flick mo! Bukas na pinto papuntang Basketball Court!";
+            mark.LoseBanter = "Grabe solid ng flick mo! Ubusin lahat ng Starter rivals para buksan ang Court!";
 
             // Story 3: Carlo (Medium) — Basketball Court (replaces old East Plaza AI Carlo)
             var carlo = CreateOpponent("Carlo", AIDifficulty.Medium, "agila_kid", 3, 140,
@@ -1438,10 +1478,10 @@ namespace TeksMaster.World
                 35,
                 isSeated: false, isWandering: true, isBenchSitter: false,
                 npcId: "carlo", areaOverride: BarangayAreaId.BasketballCourt, isStory: true, storyOrder: 3);
-            carlo.ChallengeQuote = "Welcome sa Basketball Court! Talunin mo Agila Kid ko para makapasok sa Old Neighborhood!";
-            carlo.AmbientCallouts = new[] { "Court Ace Carlo 'to!", "Subukan mo Agila Kid ko!", "Talunin mo ako para sa Old Neighborhood!" };
+            carlo.ChallengeQuote = "Welcome sa Basketball Court! Harapin ang lahat ng kalaban dito para makapasok sa Old Neighborhood!";
+            carlo.AmbientCallouts = new[] { "Court Ace Carlo 'to!", "Subukan mo Agila Kid ko!", "Talunin lahat sa Court para sa Old Neighborhood!" };
             carlo.WinBanter = "Nice try! Malakas talaga ang Court rotation ko!";
-            carlo.LoseBanter = "Galing! Handa ka na kay Joshua sa Old Neighborhood!";
+            carlo.LoseBanter = "Galing! Talunin lahat sa Court para makapasok kay Joshua sa Old Neighborhood!";
 
             // Story 4: Joshua (Hard) — Old Neighborhood
             var joshua = CreateOpponent("Joshua", AIDifficulty.Hard, "panday_blade", 4, 260,
@@ -1450,9 +1490,9 @@ namespace TeksMaster.World
                 isSeated: false, isWandering: false, isBenchSitter: false,
                 npcId: "joshua", areaOverride: BarangayAreaId.OldNeighborhood, isStory: true, storyOrder: 4);
             joshua.ChallengeQuote = "Bihira ang nakakarating dito sa Old Neighborhood! Harapin mo Panday Blade ko!";
-            joshua.AmbientCallouts = new[] { "Old Neighborhood Veteran ako!", "Hard difficulty duel — palag?", "Talunin mo ako para buksan ang Fiesta Arena!" };
+            joshua.AmbientCallouts = new[] { "Old Neighborhood Veteran ako!", "Hard difficulty duel — palag?", "Talunin lahat dito para buksan ang Fiesta Arena!" };
             joshua.WinBanter = "Matibay pa rin ang Old Neighborhood! Balik ka pag handa ka na!";
-            joshua.LoseBanter = "Respeto! Bukas na ang Fiesta Teks Arena — naghihintay si Teks Master!";
+            joshua.LoseBanter = "Respeto! Tapusin lahat ng kalaban sa Old Neighborhood para buksan ang Fiesta Arena!";
 
             // Story 5: Teks Master (Extreme Champion) — Fiesta Teks Arena (South of Highway, Δz = -10.0)
             var teksMaster = CreateOpponent("Teks Master", AIDifficulty.Extreme, "adarna_phoenix", 5, 500,
@@ -1518,7 +1558,7 @@ namespace TeksMaster.World
 
             // 4. Sidelines Stronger Opponents & Bosses (Bleachers Bench Sitter + Shady Area)
             var tisoy = CreateOpponent("Boss Tisoy", AIDifficulty.Hard, "mecha_bathala", 4, 250,
-                new Vector3(-3.2f, 0f, 6.92f), Quaternion.Euler(0f, 180f, 0f),
+                new Vector3(-3.2f, 0f, 7.54f), Quaternion.Euler(0f, 180f, 0f),
                 22,
                 isSeated: false, isWandering: false, isBenchSitter: true);
             tisoy.ChallengeQuote = "Lakasan mo flick mo, bata — hindi ka uubra sa Mecha Bathala ko!";
@@ -1736,9 +1776,9 @@ namespace TeksMaster.World
             CreateHiddenCard(hiddenGroup, "hidden_behind_sarisari", "agila_kid",
                 BarangayAreaId.BasketballCourt, new Vector3(12.2f, 0.35f, 6.8f), "NE Court Corner", 75, 8);
             CreateHiddenCard(hiddenGroup, "hidden_under_shady_bench", "tikbalang_striker",
-                BarangayAreaId.BasketballCourt, new Vector3(11.4f, 0.22f, -6.65f), "Under Shady Bench", 75, 8);
+                BarangayAreaId.BasketballCourt, new Vector3(9.4f, 0.22f, -7.42f), "Under Shady Bench", 75, 8);
             CreateHiddenCard(hiddenGroup, "hidden_beside_bleachers", "luksong_tinik",
-                BarangayAreaId.BasketballCourt, new Vector3(-9.8f, 0.30f, 7.6f), "Beside Sideline Bleachers", 55, 5);
+                BarangayAreaId.BasketballCourt, new Vector3(-9.8f, 0.30f, 8.2f), "Beside Sideline Bleachers", 55, 5);
             CreateHiddenCard(hiddenGroup, "hidden_sw_court_fence", "kid_kidlat",
                 BarangayAreaId.BasketballCourt, new Vector3(-13.4f, 0.30f, -7.2f), "SW Court Chain-Link Fence", 75, 8);
 

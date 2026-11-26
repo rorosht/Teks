@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -119,6 +120,13 @@ namespace TeksMaster.UI
             public bool WasSettled;
         }
 
+        private struct CurrencyPillPair
+        {
+            public RectTransform Root;
+            public Text CoinsText;
+            public Text GemsText;
+        }
+
         // Modals
         private GameObject _inventoryModal;
         private GameObject _inventoryScrollRoot;
@@ -128,12 +136,11 @@ namespace TeksMaster.UI
         private Image _tabCardsBtnImg;
         private Image _tabFusionBtnImg;
         private bool _isFusionTabOpen;
-        private Text _inventoryHeaderCoins;
+        private CurrencyPillPair _inventoryCurrencyPair;
 
         private GameObject _shopModal;
-        private Text _shopVendorBannerText;
         private Text _shopModalTimerText;
-        private Text _shopModalCoinsText;
+        private CurrencyPillPair _shopCurrencyPair;
         private Button _shopDailyFreeBtn;
         private Text _shopDailyFreeBtnText;
         private Button _shopDailyPackBtn;
@@ -142,6 +149,18 @@ namespace TeksMaster.UI
         private Transform _shopSlotsContainer;
         private Transform _packRevealContainer;
         private Text _packRevealHeader;
+        private CanvasGroup _packRevealCanvasGroup;
+        private float _packRevealHoldTimer;
+        private float _packRevealFadeTimer;
+        private bool _packRevealActive;
+        private const float PackRevealHoldDuration = 4.5f;
+        private const float PackRevealFadeDuration = 1.1f;
+        private const string DefaultPackRevealHint = "Open a Booster Pack or Claim your Daily Free 3-Card Draw to reveal new Teks cards here!";
+        private readonly CanvasGroup[] _shopSlotCanvasGroups = new CanvasGroup[4];
+        private readonly float[] _shopSlotFadeTimers = new float[4];
+        private const float SlotSoldHoldDuration = 0.8f;
+        private const float SlotSoldFadeDuration = 0.9f;
+        private const float SlotSoldFinalAlpha = 0.36f;
 
         private GameObject _wagerModal;
         private Text _wagerChallengeQuoteText;
@@ -158,6 +177,7 @@ namespace TeksMaster.UI
         private Text _wagerOppOddsPillText;
         private Image _wagerOppAvatarImg;
         private Text _wagerOppBadgeText;
+        private Text _wagerOppRewardPillText;
         private Image _wagerOppCardFrame;
         private Image _wagerOppCardImg;
         private Text _wagerOppCardLevelBadge;
@@ -189,7 +209,13 @@ namespace TeksMaster.UI
         // Toast
         private GameObject _toastPanel;
         private Text _toastText;
+        private GameObject _toastCoinChip;
+        private Text _toastCoinChipText;
+        private GameObject _toastGemChip;
+        private Text _toastGemChipText;
         private float _toastTimer;
+        private static readonly Regex ToastCoinRegex = new Regex(@"([+-]?\d[\d,]*)\s*(?:Barya\s+)?Coins?\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex ToastGemRegex = new Regex(@"([+-]?\d[\d,]*)\s*Gems?\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         // NPC Floating Tags
         private Transform _npcTagsLayer;
@@ -1002,17 +1028,27 @@ namespace TeksMaster.UI
         {
             _inventoryModal = CreateModalBackdrop("InventoryModal", new Vector2(1060f, 720f), out RectTransform window);
 
-            var header = CreateText("InvModalHeader", window, "TEKS ALBUM, UPGRADES & CARD FUSION", 26, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
+            var header = CreateText("InvModalHeader", window, "TEKS ALBUM, UPGRADES & CARD FUSION", 25, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
+            header.resizeTextForBestFit = true;
+            header.resizeTextMinSize = 18;
+            header.resizeTextMaxSize = 25;
             header.rectTransform.anchorMin = new Vector2(0f, 1f);
-            header.rectTransform.anchorMax = new Vector2(0.70f, 1f);
+            header.rectTransform.anchorMax = new Vector2(0.58f, 1f);
             header.rectTransform.offsetMin = new Vector2(28f, -58f);
             header.rectTransform.offsetMax = new Vector2(0f, -12f);
 
-            _inventoryHeaderCoins = CreateText("InvModalCoins", window, "2,450 COINS", 22, FontStyle.Bold, new Color(1.0f, 0.88f, 0.36f), TextAnchor.MiddleRight);
-            _inventoryHeaderCoins.rectTransform.anchorMin = new Vector2(0.6f, 1f);
-            _inventoryHeaderCoins.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _inventoryHeaderCoins.rectTransform.offsetMin = new Vector2(0f, -56f);
-            _inventoryHeaderCoins.rectTransform.offsetMax = new Vector2(-78f, -14f);
+            _inventoryCurrencyPair = CreateCurrencyPillPair(
+                "InvModalCurrency",
+                window,
+                new Vector2(344f, 36f),
+                15,
+                20f,
+                showUnitLabels: true
+            );
+            _inventoryCurrencyPair.Root.anchorMin = new Vector2(1f, 1f);
+            _inventoryCurrencyPair.Root.anchorMax = new Vector2(1f, 1f);
+            _inventoryCurrencyPair.Root.pivot = new Vector2(1f, 1f);
+            _inventoryCurrencyPair.Root.anchoredPosition = new Vector2(-74f, -15f);
 
             var closeBtn = CreateButton("CloseInvBtn", window, "X", new Color(0.84f, 0.20f, 0.20f), 18, () =>
             {
@@ -1082,17 +1118,24 @@ namespace TeksMaster.UI
             header.rectTransform.offsetMin = new Vector2(28f, -50f);
             header.rectTransform.offsetMax = new Vector2(0f, -10f);
 
-            _shopModalTimerText = CreateText("ShopModalTimer", window, "NEW CARDS IN 04:59", 19, FontStyle.Bold, new Color(0.55f, 1.0f, 0.45f), TextAnchor.MiddleRight);
+            _shopModalTimerText = CreateText("ShopModalTimer", window, "NEW CARDS IN 04:59", 18, FontStyle.Bold, new Color(0.55f, 1.0f, 0.45f), TextAnchor.MiddleRight);
             _shopModalTimerText.rectTransform.anchorMin = new Vector2(0.55f, 1f);
             _shopModalTimerText.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _shopModalTimerText.rectTransform.offsetMin = new Vector2(0f, -38f);
-            _shopModalTimerText.rectTransform.offsetMax = new Vector2(-84f, -10f);
+            _shopModalTimerText.rectTransform.offsetMin = new Vector2(0f, -33f);
+            _shopModalTimerText.rectTransform.offsetMax = new Vector2(-84f, -7f);
 
-            _shopModalCoinsText = CreateText("ShopModalCoins", window, "2,450 COINS", 16, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleRight);
-            _shopModalCoinsText.rectTransform.anchorMin = new Vector2(0.55f, 1f);
-            _shopModalCoinsText.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _shopModalCoinsText.rectTransform.offsetMin = new Vector2(0f, -62f);
-            _shopModalCoinsText.rectTransform.offsetMax = new Vector2(-84f, -36f);
+            _shopCurrencyPair = CreateCurrencyPillPair(
+                "ShopModalCurrency",
+                window,
+                new Vector2(334f, 28f),
+                14,
+                18f,
+                showUnitLabels: true
+            );
+            _shopCurrencyPair.Root.anchorMin = new Vector2(1f, 1f);
+            _shopCurrencyPair.Root.anchorMax = new Vector2(1f, 1f);
+            _shopCurrencyPair.Root.pivot = new Vector2(1f, 1f);
+            _shopCurrencyPair.Root.anchoredPosition = new Vector2(-84f, -35f);
 
             var closeBtn = CreateButton("CloseShopBtn", window, "X", new Color(0.84f, 0.20f, 0.20f), 18, CloseAllModals);
             var closeRt = closeBtn.GetComponent<RectTransform>();
@@ -1101,7 +1144,7 @@ namespace TeksMaster.UI
             closeRt.anchoredPosition = new Vector2(-34f, -34f);
             closeRt.sizeDelta = new Vector2(40f, 40f);
 
-            // Aligned Top Utility Row (Aling Nena Greeting + Quick Daily Draw + Sell Dupes + Refresh)
+            // Top Utility Action Row (Daily Free Draw, Sell Extra Dupes, Manual Refresh)
             var utilityGo = new GameObject("ShopUtilityRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             utilityGo.transform.SetParent(window, false);
             var utilRt = utilityGo.GetComponent<RectTransform>();
@@ -1110,30 +1153,17 @@ namespace TeksMaster.UI
             utilRt.offsetMin = new Vector2(26f, -104f);
             utilRt.offsetMax = new Vector2(-26f, -66f);
             var utilHlg = utilityGo.GetComponent<HorizontalLayoutGroup>();
-            utilHlg.spacing = 10f;
+            utilHlg.spacing = 14f;
             utilHlg.childControlWidth = true;
             utilHlg.childControlHeight = true;
-            utilHlg.childForceExpandWidth = false;
+            utilHlg.childForceExpandWidth = true;
             utilHlg.childForceExpandHeight = true;
 
-            var vendorBox = CreateRoundedPanel("VendorGreetingBox", utilityGo.transform, new Color(0.13f, 0.21f, 0.29f, 0.95f), new Vector2(540f, 38f));
-            AddOutline(vendorBox.gameObject, new Color(0.28f, 0.44f, 0.62f), 1.4f);
-            var vendorLe = vendorBox.gameObject.AddComponent<LayoutElement>();
-            vendorLe.flexibleWidth = 1f;
-            vendorLe.minWidth = 420f;
-            _shopVendorBannerText = CreateText("VendorTxt", vendorBox, "Aling Nena: \"Bili na! May -30% Sulit Sale ngayon!\"", 14, FontStyle.Italic, new Color(1.0f, 0.94f, 0.72f), TextAnchor.MiddleLeft);
-            _shopVendorBannerText.resizeTextForBestFit = true;
-            _shopVendorBannerText.resizeTextMinSize = 11;
-            _shopVendorBannerText.resizeTextMaxSize = 14;
-            StretchFull(_shopVendorBannerText.rectTransform, 12f);
-
-            _shopDailyFreeBtn = CreateButton("DailyBaryaBtn", utilityGo.transform, "DAILY FREE (3 CARDS)", new Color(0.84f, 0.54f, 0.10f), 13, OnDailyFreeDrawClicked);
+            _shopDailyFreeBtn = CreateButton("DailyBaryaBtn", utilityGo.transform, "DAILY FREE (3 CARDS)", new Color(0.84f, 0.54f, 0.10f), 14, OnDailyFreeDrawClicked);
             AddOutline(_shopDailyFreeBtn.gameObject, new Color(1.0f, 0.86f, 0.34f), 1.4f);
-            var dfLe = _shopDailyFreeBtn.gameObject.AddComponent<LayoutElement>();
-            dfLe.preferredWidth = 194f;
             _shopDailyFreeBtnText = _shopDailyFreeBtn.GetComponentInChildren<Text>();
 
-            var sellAllBtn = CreateButton("SellAllDupesBtn", utilityGo.transform, "SELL EXTRA DUPES", new Color(0.62f, 0.34f, 0.16f), 13, () =>
+            var sellAllBtn = CreateButton("SellAllDupesBtn", utilityGo.transform, "SELL EXTRA DUPES", new Color(0.62f, 0.34f, 0.16f), 14, () =>
             {
                 if (PlayerInventory.Instance != null && PlayerInventory.Instance.TrySellAllExtraDuplicates(out int sold, out int earned))
                 {
@@ -1146,13 +1176,12 @@ namespace TeksMaster.UI
                     ShowToast("No extra duplicate cards to sell!");
                 }
             });
-            var saLe = sellAllBtn.gameObject.AddComponent<LayoutElement>();
-            saLe.preferredWidth = 170f;
 
-            var refreshBtn = CreateButton("ManualRefreshBtn", utilityGo.transform, "REFRESH (50c)", new Color(0.22f, 0.44f, 0.78f), 13, () =>
+            var refreshBtn = CreateButton("ManualRefreshBtn", utilityGo.transform, "REFRESH (50c)", new Color(0.22f, 0.44f, 0.78f), 14, () =>
             {
                 if (ShopManager.Instance != null && ShopManager.Instance.TryManualRefresh(out string msg))
                 {
+                    Array.Clear(_shopSlotFadeTimers, 0, _shopSlotFadeTimers.Length);
                     TeksAudioManager.Instance?.PlayCoinClink();
                     ShowToast(msg);
                     PopulateShopModal();
@@ -1162,8 +1191,6 @@ namespace TeksMaster.UI
                     ShowToast("Need 50 Coins to refresh early!");
                 }
             });
-            var rfLe = refreshBtn.gameObject.AddComponent<LayoutElement>();
-            rfLe.preferredWidth = 142f;
 
             // Rotating Singles Row Header
             var singlesTitle = CreateText("SinglesTitle", window, "5-MINUTE ROTATING SINGLES (Includes a -30% SULIT SALE & Slot 4 SUPER SLOT Rare+)", 15, FontStyle.Bold, new Color(0.82f, 0.90f, 1.0f), TextAnchor.MiddleLeft);
@@ -1307,7 +1334,7 @@ namespace TeksMaster.UI
             revealTray.offsetMax = new Vector2(-26f, 194f);
             AddOutline(revealTray.gameObject, new Color(0.26f, 0.38f, 0.56f), 1.5f);
 
-            _packRevealHeader = CreateText("PackRevealHeader", revealTray, "Open a Booster Pack or Claim your Daily Free 3-Card Draw to reveal new Teks cards here!", 14, FontStyle.Italic, new Color(0.84f, 0.90f, 0.98f), TextAnchor.MiddleLeft);
+            _packRevealHeader = CreateText("PackRevealHeader", revealTray, DefaultPackRevealHint, 14, FontStyle.Italic, new Color(0.84f, 0.90f, 0.98f), TextAnchor.MiddleLeft);
             _packRevealHeader.rectTransform.anchorMin = new Vector2(0f, 1f);
             _packRevealHeader.rectTransform.anchorMax = new Vector2(1f, 1f);
             _packRevealHeader.rectTransform.offsetMin = new Vector2(16f, -30f);
@@ -1327,6 +1354,7 @@ namespace TeksMaster.UI
             revHlg.childControlHeight = true;
             revHlg.childForceExpandWidth = false;
             revHlg.childForceExpandHeight = true;
+            _packRevealCanvasGroup = revealGo.AddComponent<CanvasGroup>();
             _packRevealContainer = revealGo.transform;
 
             _shopModal.SetActive(false);
@@ -1477,12 +1505,12 @@ namespace TeksMaster.UI
             quoteBox.GetComponent<Image>().raycastTarget = false;
             AddOutline(quoteBox.gameObject, new Color(0.94f, 0.74f, 0.24f, 0.78f), 1.4f);
 
-            var quoteAccent = CreateRoundedPanel("QuoteAccent", quoteBox, new Color(0.98f, 0.78f, 0.24f), Vector2.zero);
-            quoteAccent.anchorMin = new Vector2(0f, 0f);
-            quoteAccent.anchorMax = new Vector2(0f, 1f);
-            quoteAccent.offsetMin = new Vector2(4f, 5f);
-            quoteAccent.offsetMax = new Vector2(8f, -5f);
-            quoteAccent.GetComponent<Image>().raycastTarget = false;
+            var quoteTopRim = CreateRoundedPanel("QuoteTopRim", quoteBox, new Color(1f, 1f, 1f, 0.07f), Vector2.zero);
+            quoteTopRim.anchorMin = new Vector2(0.03f, 0.88f);
+            quoteTopRim.anchorMax = new Vector2(0.97f, 0.96f);
+            quoteTopRim.offsetMin = Vector2.zero;
+            quoteTopRim.offsetMax = Vector2.zero;
+            quoteTopRim.GetComponent<Image>().raycastTarget = false;
 
             _wagerChallengeQuoteText = CreateText("WagerQuoteTxt", quoteBox, "Dodong: \"Hoy! Teks tayo!\"", 14, FontStyle.Italic, new Color(1.0f, 0.95f, 0.76f), TextAnchor.MiddleCenter);
             _wagerChallengeQuoteText.resizeTextForBestFit = true;
@@ -1491,20 +1519,34 @@ namespace TeksMaster.UI
             _wagerChallengeQuoteText.verticalOverflow = VerticalWrapMode.Truncate;
             _wagerChallengeQuoteText.rectTransform.anchorMin = Vector2.zero;
             _wagerChallengeQuoteText.rectTransform.anchorMax = Vector2.one;
-            _wagerChallengeQuoteText.rectTransform.offsetMin = new Vector2(18f, 4f);
-            _wagerChallengeQuoteText.rectTransform.offsetMax = new Vector2(-14f, -4f);
+            _wagerChallengeQuoteText.rectTransform.offsetMin = new Vector2(16f, 4f);
+            _wagerChallengeQuoteText.rectTransform.offsetMax = new Vector2(-16f, -4f);
 
             // LEFT PLAYER DUELIST CARD (Emerald Theme)
             var playerBox = CreateRoundedPanel("WagerPlayerBox", window, new Color(0.09f, 0.14f, 0.23f, 1f), new Vector2(392f, 294f));
             playerBox.anchoredPosition = new Vector2(-244f, 68f);
             AddOutline(playerBox.gameObject, new Color(0.28f, 0.82f, 0.48f), 2.0f);
 
-            var pHdr = CreateRoundedPanel("PlayerHeaderBand", playerBox, new Color(0.08f, 0.24f, 0.20f, 1f), Vector2.zero);
+            var pHdrGo = new GameObject("PlayerHeaderBand", typeof(RectTransform), typeof(Image));
+            pHdrGo.transform.SetParent(playerBox, false);
+            var pHdr = pHdrGo.GetComponent<RectTransform>();
             pHdr.anchorMin = new Vector2(0f, 1f);
             pHdr.anchorMax = new Vector2(1f, 1f);
-            pHdr.offsetMin = new Vector2(2f, -38f);
-            pHdr.offsetMax = new Vector2(-2f, -2f);
-            pHdr.GetComponent<Image>().raycastTarget = false;
+            pHdr.offsetMin = new Vector2(3f, -37f);
+            pHdr.offsetMax = new Vector2(-3f, -3f);
+            var pHdrImg = pHdrGo.GetComponent<Image>();
+            pHdrImg.color = new Color(0.08f, 0.24f, 0.20f, 1f);
+            pHdrImg.raycastTarget = false;
+
+            var pHdrLineGo = new GameObject("PlayerHeaderDivider", typeof(RectTransform), typeof(Image));
+            pHdrLineGo.transform.SetParent(pHdr, false);
+            var pHdrLine = pHdrLineGo.GetComponent<RectTransform>();
+            pHdrLine.anchorMin = new Vector2(0f, 0f);
+            pHdrLine.anchorMax = new Vector2(1f, 0f);
+            pHdrLine.offsetMin = new Vector2(0f, 0f);
+            pHdrLine.offsetMax = new Vector2(0f, 1.5f);
+            pHdrLineGo.GetComponent<Image>().color = new Color(0.28f, 0.82f, 0.48f, 0.85f);
+            pHdrLineGo.GetComponent<Image>().raycastTarget = false;
 
             _wagerPlayerName = CreateText("PlayerPamatoLbl", pHdr, "PLAYER", 15, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
             _wagerPlayerName.resizeTextForBestFit = true;
@@ -1525,8 +1567,8 @@ namespace TeksMaster.UI
             _wagerPlayerOddsPillText = CreateText("POddsTxt", pOddsPill, "50% CHUB", 11, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
             StretchFull(_wagerPlayerOddsPillText.rectTransform, 2f);
 
-            var playerAvatarFrame = CreateRoundedPanel("WagerPlayerAvatarFrame", playerBox, new Color(0.06f, 0.10f, 0.18f), new Vector2(98f, 98f));
-            playerAvatarFrame.anchoredPosition = new Vector2(-114f, 48f);
+            var playerAvatarFrame = CreateRoundedPanel("WagerPlayerAvatarFrame", playerBox, new Color(0.06f, 0.10f, 0.18f), new Vector2(94f, 94f));
+            playerAvatarFrame.anchoredPosition = new Vector2(-114f, 44f);
             AddOutline(playerAvatarFrame.gameObject, new Color(1.0f, 0.84f, 0.28f), 1.8f);
             _wagerPlayerAvatarImg = CreateImage("WagerPlayerAvatarImg", playerAvatarFrame, CharacterResourceGenerator.GetCharacterPortraitSprite(PlayerCharacterType.StreetKid));
             StretchFull(_wagerPlayerAvatarImg.rectTransform, 4f);
@@ -1558,8 +1600,8 @@ namespace TeksMaster.UI
             AddTextShadow(cycleLbl.gameObject);
 
             // Player Framed 2:3 Collectible Pamato Card Slab
-            var playerCardSlab = CreateCollectibleCardSlab("WagerPlayerCardSlab", playerBox, null, 1, new Vector2(116f, 174f), out _wagerPlayerCardFrame, out _wagerPlayerCardImg);
-            playerCardSlab.anchoredPosition = new Vector2(68f, 16f);
+            var playerCardSlab = CreateCollectibleCardSlab("WagerPlayerCardSlab", playerBox, null, 1, new Vector2(108f, 162f), out _wagerPlayerCardFrame, out _wagerPlayerCardImg);
+            playerCardSlab.anchoredPosition = new Vector2(68f, 10f);
             AttachWagerCardBadges(playerCardSlab, out _wagerPlayerCardLevelBadge, out _wagerPlayerCardStarsText);
 
             _wagerPlayerCardText = CreateText("WagerPlayerCardTxt", playerBox, "HERO\n[Legendary • Heroes]", 12, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
@@ -1567,7 +1609,7 @@ namespace TeksMaster.UI
             _wagerPlayerCardText.resizeTextForBestFit = true;
             _wagerPlayerCardText.resizeTextMinSize = 10;
             _wagerPlayerCardText.resizeTextMaxSize = 12;
-            _wagerPlayerCardText.rectTransform.anchoredPosition = new Vector2(68f, -104f);
+            _wagerPlayerCardText.rectTransform.anchoredPosition = new Vector2(68f, -102f);
             _wagerPlayerCardText.rectTransform.sizeDelta = new Vector2(204f, 44f);
             AddTextShadow(_wagerPlayerCardText.gameObject);
 
@@ -1576,12 +1618,26 @@ namespace TeksMaster.UI
             oppBox.anchoredPosition = new Vector2(244f, 68f);
             AddOutline(oppBox.gameObject, new Color(0.96f, 0.52f, 0.22f), 2.0f);
 
-            var oHdr = CreateRoundedPanel("OppHeaderBand", oppBox, new Color(0.28f, 0.14f, 0.10f, 1f), Vector2.zero);
+            var oHdrGo = new GameObject("OppHeaderBand", typeof(RectTransform), typeof(Image));
+            oHdrGo.transform.SetParent(oppBox, false);
+            var oHdr = oHdrGo.GetComponent<RectTransform>();
             oHdr.anchorMin = new Vector2(0f, 1f);
             oHdr.anchorMax = new Vector2(1f, 1f);
-            oHdr.offsetMin = new Vector2(2f, -38f);
-            oHdr.offsetMax = new Vector2(-2f, -2f);
-            oHdr.GetComponent<Image>().raycastTarget = false;
+            oHdr.offsetMin = new Vector2(3f, -37f);
+            oHdr.offsetMax = new Vector2(-3f, -3f);
+            var oHdrImg = oHdrGo.GetComponent<Image>();
+            oHdrImg.color = new Color(0.28f, 0.14f, 0.10f, 1f);
+            oHdrImg.raycastTarget = false;
+
+            var oHdrLineGo = new GameObject("OppHeaderDivider", typeof(RectTransform), typeof(Image));
+            oHdrLineGo.transform.SetParent(oHdr, false);
+            var oHdrLine = oHdrLineGo.GetComponent<RectTransform>();
+            oHdrLine.anchorMin = new Vector2(0f, 0f);
+            oHdrLine.anchorMax = new Vector2(1f, 0f);
+            oHdrLine.offsetMin = new Vector2(0f, 0f);
+            oHdrLine.offsetMax = new Vector2(0f, 1.5f);
+            oHdrLineGo.GetComponent<Image>().color = new Color(0.96f, 0.52f, 0.22f, 0.85f);
+            oHdrLineGo.GetComponent<Image>().raycastTarget = false;
 
             _wagerOppName = CreateText("WagerOppLbl", oHdr, "OPPONENT", 15, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
             _wagerOppName.resizeTextForBestFit = true;
@@ -1603,8 +1659,8 @@ namespace TeksMaster.UI
             StretchFull(_wagerOppOddsPillText.rectTransform, 2f);
 
             // Opponent Framed 2:3 Collectible Pamato Card Slab (facing center VS!)
-            var oppCardSlab = CreateCollectibleCardSlab("WagerOppCardSlab", oppBox, null, 1, new Vector2(116f, 174f), out _wagerOppCardFrame, out _wagerOppCardImg);
-            oppCardSlab.anchoredPosition = new Vector2(-68f, 16f);
+            var oppCardSlab = CreateCollectibleCardSlab("WagerOppCardSlab", oppBox, null, 1, new Vector2(108f, 162f), out _wagerOppCardFrame, out _wagerOppCardImg);
+            oppCardSlab.anchoredPosition = new Vector2(-68f, 10f);
             AttachWagerCardBadges(oppCardSlab, out _wagerOppCardLevelBadge, out _wagerOppCardStarsText);
 
             _wagerOppCardText = CreateText("WagerOppCardTxt", oppBox, "PAMATO\n[Rare • Heroes]", 12, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
@@ -1612,18 +1668,18 @@ namespace TeksMaster.UI
             _wagerOppCardText.resizeTextForBestFit = true;
             _wagerOppCardText.resizeTextMinSize = 10;
             _wagerOppCardText.resizeTextMaxSize = 12;
-            _wagerOppCardText.rectTransform.anchoredPosition = new Vector2(-68f, -104f);
+            _wagerOppCardText.rectTransform.anchoredPosition = new Vector2(-68f, -102f);
             _wagerOppCardText.rectTransform.sizeDelta = new Vector2(204f, 44f);
             AddTextShadow(_wagerOppCardText.gameObject);
 
-            var oppAvatarFrame = CreateRoundedPanel("WagerOppAvatarFrame", oppBox, new Color(0.06f, 0.10f, 0.18f), new Vector2(98f, 98f));
-            oppAvatarFrame.anchoredPosition = new Vector2(114f, 48f);
+            var oppAvatarFrame = CreateRoundedPanel("WagerOppAvatarFrame", oppBox, new Color(0.06f, 0.10f, 0.18f), new Vector2(94f, 94f));
+            oppAvatarFrame.anchoredPosition = new Vector2(114f, 44f);
             AddOutline(oppAvatarFrame.gameObject, new Color(0.98f, 0.60f, 0.24f), 1.8f);
             _wagerOppAvatarImg = CreateImage("WagerOppAvatarImg", oppAvatarFrame, null);
             StretchFull(_wagerOppAvatarImg.rectTransform, 4f);
 
-            var oppBadgeBox = CreateRoundedPanel("WagerOppBadgeBox", oppBox, new Color(0.06f, 0.10f, 0.17f, 0.96f), new Vector2(138f, 74f));
-            oppBadgeBox.anchoredPosition = new Vector2(114f, -46f);
+            var oppBadgeBox = CreateRoundedPanel("WagerOppBadgeBox", oppBox, new Color(0.06f, 0.10f, 0.17f, 0.96f), new Vector2(138f, 44f));
+            oppBadgeBox.anchoredPosition = new Vector2(114f, -32f);
             oppBadgeBox.GetComponent<Image>().raycastTarget = false;
             AddOutline(oppBadgeBox.gameObject, new Color(0.94f, 0.56f, 0.24f, 0.7f), 1f);
             _wagerOppBadgeText = CreateText("WagerOppBadgeTxt", oppBadgeBox, "Area\n[Story]", 11, FontStyle.Bold, new Color(1.0f, 0.88f, 0.74f), TextAnchor.MiddleCenter);
@@ -1631,6 +1687,23 @@ namespace TeksMaster.UI
             _wagerOppBadgeText.resizeTextMinSize = 9;
             _wagerOppBadgeText.resizeTextMaxSize = 11;
             StretchFull(_wagerOppBadgeText.rectTransform, 4f);
+
+            var oppRewardPill = CreateRoundedPanel("WagerOppRewardPill", oppBox, new Color(0.24f, 0.14f, 0.08f, 0.98f), new Vector2(138f, 38f));
+            oppRewardPill.anchoredPosition = new Vector2(114f, -94f);
+            oppRewardPill.GetComponent<Image>().raycastTarget = false;
+            AddOutline(oppRewardPill.gameObject, new Color(0.98f, 0.70f, 0.24f), 1.4f);
+            var oppRewardGloss = CreateRoundedPanel("RewardGloss", oppRewardPill, new Color(1f, 1f, 1f, 0.10f), Vector2.zero);
+            oppRewardGloss.anchorMin = new Vector2(0.04f, 0.58f);
+            oppRewardGloss.anchorMax = new Vector2(0.96f, 0.93f);
+            oppRewardGloss.offsetMin = Vector2.zero;
+            oppRewardGloss.offsetMax = Vector2.zero;
+            oppRewardGloss.GetComponent<Image>().raycastTarget = false;
+            _wagerOppRewardPillText = CreateText("OppRewardTxt", oppRewardPill, "BASE WIN: +100c", 11, FontStyle.Bold, new Color(1.0f, 0.90f, 0.42f), TextAnchor.MiddleCenter);
+            _wagerOppRewardPillText.resizeTextForBestFit = true;
+            _wagerOppRewardPillText.resizeTextMinSize = 9;
+            _wagerOppRewardPillText.resizeTextMaxSize = 11;
+            StretchFull(_wagerOppRewardPillText.rectTransform, 4f);
+            AddTextShadow(_wagerOppRewardPillText.gameObject);
 
             // Center Glowing VS Medallion Badge (layered cleanly on top of gap)
             var vsBadge = CreateRoundedPanel("VsMedallion", window, new Color(0.07f, 0.10f, 0.18f, 1f), new Vector2(78f, 78f));
@@ -1642,6 +1715,13 @@ namespace TeksMaster.UI
             StretchFull(vsInner, 7f);
             vsInner.GetComponent<Image>().raycastTarget = false;
             AddOutline(vsInner.gameObject, new Color(1.0f, 0.58f, 0.20f), 1.4f);
+
+            var vsGloss = CreateRoundedPanel("VsGloss", vsInner, new Color(1f, 1f, 1f, 0.12f), Vector2.zero);
+            vsGloss.anchorMin = new Vector2(0.08f, 0.56f);
+            vsGloss.anchorMax = new Vector2(0.92f, 0.94f);
+            vsGloss.offsetMin = Vector2.zero;
+            vsGloss.offsetMax = Vector2.zero;
+            vsGloss.GetComponent<Image>().raycastTarget = false;
 
             var vsTxt = CreateText("VsText", vsInner, "VS", 30, FontStyle.Bold, new Color(1.0f, 0.88f, 0.26f), TextAnchor.MiddleCenter);
             StretchFull(vsTxt.rectTransform, 2f);
@@ -1757,6 +1837,12 @@ namespace TeksMaster.UI
             caRt.sizeDelta = new Vector2(172f, 48f);
             ApplyButtonTint(cancelBtn, new Color(0.56f, 0.20f, 0.24f));
             AddOutline(cancelBtn.gameObject, new Color(0.96f, 0.52f, 0.54f), 1.5f);
+            var caGloss = CreateRoundedPanel("CancelGloss", caRt, new Color(1f, 1f, 1f, 0.12f), Vector2.zero);
+            caGloss.anchorMin = new Vector2(0.04f, 0.58f);
+            caGloss.anchorMax = new Vector2(0.96f, 0.94f);
+            caGloss.offsetMin = Vector2.zero;
+            caGloss.offsetMax = Vector2.zero;
+            caGloss.GetComponent<Image>().raycastTarget = false;
             var caLbl = CreateText("Label", caRt, "CANCEL", 17, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
             StretchFull(caLbl.rectTransform, 4f);
             AddTextShadow(caLbl.gameObject);
@@ -1792,12 +1878,12 @@ namespace TeksMaster.UI
             pill.GetComponent<Image>().raycastTarget = false;
             AddOutline(pill.gameObject, new Color(accentColor.r, accentColor.g, accentColor.b, 0.72f), 1.4f);
 
-            var accent = CreateRoundedPanel("Accent", pill, accentColor, Vector2.zero);
-            accent.anchorMin = new Vector2(0f, 0f);
-            accent.anchorMax = new Vector2(0f, 1f);
-            accent.offsetMin = new Vector2(4f, 6f);
-            accent.offsetMax = new Vector2(8f, -6f);
-            accent.GetComponent<Image>().raycastTarget = false;
+            var topAccent = CreateRoundedPanel("TopAccent", pill, accentColor, Vector2.zero);
+            topAccent.anchorMin = new Vector2(0.06f, 1f);
+            topAccent.anchorMax = new Vector2(0.94f, 1f);
+            topAccent.offsetMin = new Vector2(0f, -3f);
+            topAccent.offsetMax = new Vector2(0f, -1f);
+            topAccent.GetComponent<Image>().raycastTarget = false;
 
             var txt = CreateText("StatTxt", pill, initialText, 13, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
             txt.supportRichText = true;
@@ -1806,8 +1892,8 @@ namespace TeksMaster.UI
             txt.resizeTextMaxSize = 13;
             txt.rectTransform.anchorMin = Vector2.zero;
             txt.rectTransform.anchorMax = Vector2.one;
-            txt.rectTransform.offsetMin = new Vector2(14f, 2f);
-            txt.rectTransform.offsetMax = new Vector2(-8f, -2f);
+            txt.rectTransform.offsetMin = new Vector2(10f, 2f);
+            txt.rectTransform.offsetMax = new Vector2(-10f, -4f);
             AddTextShadow(txt.gameObject);
             return txt;
         }
@@ -2130,7 +2216,7 @@ namespace TeksMaster.UI
 
         public void OpenTournamentModal()
         {
-            OpenModesModalOnTab(1);
+            OpenModesModalOnTab(0);
         }
 
         public void OpenModesModalOnTab(int tabIndex)
@@ -2138,7 +2224,6 @@ namespace TeksMaster.UI
             if (TeksMatchManager.Instance != null && TeksMatchManager.Instance.State != MatchState.Idle) return;
             CloseSellConfirmModal();
             CloseAllModals();
-            _activeModesTabIndex = Mathf.Clamp(tabIndex, 0, 2);
             PopulateModesModal();
             if (_modesModal != null) _modesModal.SetActive(true);
             SyncPlayerMovementLock();
@@ -2164,7 +2249,7 @@ namespace TeksMaster.UI
 
         private void CreateToastBanner()
         {
-            _toastPanel = CreateRoundedPanel("ToastBanner", _canvas.transform, new Color(0.06f, 0.10f, 0.17f, 0.96f), new Vector2(680f, 50f)).gameObject;
+            _toastPanel = CreateRoundedPanel("ToastBanner", _canvas.transform, new Color(0.06f, 0.10f, 0.17f, 0.96f), new Vector2(740f, 54f)).gameObject;
             var rt = _toastPanel.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 1f);
             rt.anchorMax = new Vector2(0.5f, 1f);
@@ -2172,10 +2257,69 @@ namespace TeksMaster.UI
             rt.anchoredPosition = new Vector2(0f, -94f);
             AddOutline(_toastPanel, new Color(0.95f, 0.78f, 0.24f), 2f);
 
+            var topGloss = CreateRoundedPanel("ToastGloss", rt, new Color(1f, 1f, 1f, 0.08f), Vector2.zero);
+            topGloss.anchorMin = new Vector2(0.02f, 0.60f);
+            topGloss.anchorMax = new Vector2(0.98f, 0.94f);
+            topGloss.offsetMin = Vector2.zero;
+            topGloss.offsetMax = Vector2.zero;
+            topGloss.GetComponent<Image>().raycastTarget = false;
+
             _toastText = CreateText("ToastLabel", rt, "", 17, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            _toastText.resizeTextForBestFit = true;
+            _toastText.resizeTextMinSize = 12;
+            _toastText.resizeTextMaxSize = 17;
             _toastText.lineSpacing = 1.15f;
-            StretchFull(_toastText.rectTransform, 10f);
+            StretchFull(_toastText.rectTransform, 12f);
             AddTextShadow(_toastText.gameObject);
+
+            var chipsRow = new GameObject("ToastCurrencyChips", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            chipsRow.transform.SetParent(rt, false);
+            var chipsRt = chipsRow.GetComponent<RectTransform>();
+            chipsRt.anchorMin = new Vector2(1f, 0.5f);
+            chipsRt.anchorMax = new Vector2(1f, 0.5f);
+            chipsRt.pivot = new Vector2(1f, 0.5f);
+            chipsRt.anchoredPosition = new Vector2(-12f, 0f);
+            chipsRt.sizeDelta = new Vector2(210f, 34f);
+            var hlg = chipsRow.GetComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 8f;
+            hlg.childAlignment = TextAnchor.MiddleRight;
+            hlg.childControlWidth = false;
+            hlg.childControlHeight = false;
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = false;
+
+            var coinChipRt = CreateSingleCurrencyChip(
+                "ToastCoinChip",
+                chipsRow.transform,
+                "coin",
+                "+0",
+                new Color(0.16f, 0.12f, 0.05f, 0.98f),
+                new Color(0.98f, 0.78f, 0.22f),
+                new Color(1.0f, 0.90f, 0.36f),
+                new Vector2(98f, 32f),
+                14,
+                18f,
+                out _toastCoinChipText
+            );
+            _toastCoinChip = coinChipRt.gameObject;
+            _toastCoinChip.SetActive(false);
+
+            var gemChipRt = CreateSingleCurrencyChip(
+                "ToastGemChip",
+                chipsRow.transform,
+                "gem",
+                "+0",
+                new Color(0.05f, 0.13f, 0.22f, 0.98f),
+                new Color(0.32f, 0.86f, 1.0f),
+                new Color(0.46f, 0.96f, 1.0f),
+                new Vector2(88f, 32f),
+                14,
+                18f,
+                out _toastGemChipText
+            );
+            _toastGemChip = gemChipRt.gameObject;
+            _toastGemChip.SetActive(false);
+
             _toastPanel.SetActive(false);
         }
 
@@ -2233,6 +2377,8 @@ namespace TeksMaster.UI
                 if (_shopTimerText != null) _shopTimerText.text = $"5M REFRESH  |  {fmt}";
                 if (_shopModalTimerText != null && _shopModal.activeSelf) _shopModalTimerText.text = $"NEW CARDS IN {fmt}";
             }
+
+            UpdateShopPurchaseCooldowns();
 
             if (PlayerController.Instance != null && _zonePillText != null)
             {
@@ -2772,7 +2918,7 @@ namespace TeksMaster.UI
 
             if (_inventoryModal != null && _inventoryModal.activeSelf)
             {
-                if (_inventoryHeaderCoins != null) _inventoryHeaderCoins.text = $"{inv.Coins:N0} COINS  |  {inv.Gems:N0} GEMS";
+                UpdateCurrencyPillPair(_inventoryCurrencyPair, inv.Coins, inv.Gems, true);
                 if (!_isFusionTabOpen) PopulateInventoryModal();
             }
             if (_shopModal != null && _shopModal.activeSelf) PopulateShopModal();
@@ -2940,7 +3086,7 @@ namespace TeksMaster.UI
             var inv = PlayerInventory.Instance;
             if (inv == null || _fusionListContent == null) return;
 
-            if (_inventoryHeaderCoins != null) _inventoryHeaderCoins.text = $"{inv.Coins:N0} COINS  |  {inv.Gems:N0} GEMS";
+            UpdateCurrencyPillPair(_inventoryCurrencyPair, inv.Coins, inv.Gems, true);
 
             for (int i = _fusionListContent.childCount - 1; i >= 0; i--)
             {
@@ -3244,7 +3390,7 @@ namespace TeksMaster.UI
             var inv = PlayerInventory.Instance;
             if (inv == null || _inventoryGridContent == null) return;
 
-            if (_inventoryHeaderCoins != null) _inventoryHeaderCoins.text = $"{inv.Coins:N0} COINS  |  {inv.Gems:N0} GEMS";
+            UpdateCurrencyPillPair(_inventoryCurrencyPair, inv.Coins, inv.Gems, true);
 
             for (int i = _inventoryGridContent.childCount - 1; i >= 0; i--)
             {
@@ -3296,19 +3442,46 @@ namespace TeksMaster.UI
 
                 int sweetPct = Mathf.RoundToInt(owned.GetFlickSweetSpotBonus() * 100f);
                 string stageLabel = owned.FusionStage > 0 ? $"Fusion Stage {owned.FusionStage}" : "Base Stage";
-                var statsTxt = CreateText(
-                    "Stats",
-                    cardBox,
-                    $"HP:{owned.GetHP(def)}  ATK:{owned.GetAtk(def)}  PWR:{owned.GetPower(def)}\nSweetSpot +{sweetPct}%  |  {stageLabel}\nQty: x{owned.Quantity} (Extras: x{owned.DuplicateCount})",
-                    12,
-                    FontStyle.Normal,
-                    new Color(0.84f, 0.90f, 0.98f),
-                    TextAnchor.UpperLeft
+
+                var statsRoot = new GameObject("StatsContainer", typeof(RectTransform)).GetComponent<RectTransform>();
+                statsRoot.SetParent(cardBox, false);
+                statsRoot.anchorMin = new Vector2(0f, 1f);
+                statsRoot.anchorMax = new Vector2(1f, 1f);
+                statsRoot.offsetMin = new Vector2(124f, -158f);
+                statsRoot.offsetMax = new Vector2(-10f, -86f);
+
+                var row1 = new GameObject("CombatStatsRow", typeof(RectTransform), typeof(HorizontalLayoutGroup)).GetComponent<RectTransform>();
+                row1.SetParent(statsRoot, false);
+                row1.anchorMin = new Vector2(0f, 1f);
+                row1.anchorMax = new Vector2(1f, 1f);
+                row1.offsetMin = new Vector2(0f, -23f);
+                row1.offsetMax = Vector2.zero;
+                var row1Hlg = row1.GetComponent<HorizontalLayoutGroup>();
+                row1Hlg.spacing = 4f;
+                row1Hlg.childControlWidth = true;
+                row1Hlg.childControlHeight = true;
+                row1Hlg.childForceExpandWidth = true;
+                row1Hlg.childForceExpandHeight = true;
+
+                CreateInventoryStatChip(row1, new Color(0.06f, 0.16f, 0.12f, 0.96f), new Color(0.26f, 0.80f, 0.48f), $"<color=#6FF29D>HP</color> {owned.GetHP(def)}");
+                CreateInventoryStatChip(row1, new Color(0.18f, 0.09f, 0.08f, 0.96f), new Color(0.92f, 0.46f, 0.34f), $"<color=#FF9E70>ATK</color> {owned.GetAtk(def)}");
+                CreateInventoryStatChip(row1, new Color(0.18f, 0.13f, 0.05f, 0.96f), new Color(0.96f, 0.76f, 0.22f), $"<color=#FFD94A>PWR</color> {owned.GetPower(def)}");
+
+                CreateInventoryStatBarPill(
+                    statsRoot,
+                    -27f,
+                    new Color(0.06f, 0.10f, 0.18f, 0.96f),
+                    new Color(0.24f, 0.42f, 0.64f),
+                    $"<color=#64D8FF>SweetSpot +{sweetPct}%</color>  •  <color={(owned.FusionStage > 0 ? "#E09EFF" : "#B8CCE2")}>{stageLabel}</color>"
                 );
-                statsTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
-                statsTxt.rectTransform.anchorMax = new Vector2(1f, 1f);
-                statsTxt.rectTransform.offsetMin = new Vector2(124f, -158f);
-                statsTxt.rectTransform.offsetMax = new Vector2(-10f, -86f);
+
+                CreateInventoryStatBarPill(
+                    statsRoot,
+                    -51f,
+                    new Color(0.06f, 0.10f, 0.18f, 0.96f),
+                    owned.DuplicateCount > 0 ? new Color(0.84f, 0.66f, 0.22f, 0.85f) : new Color(0.22f, 0.30f, 0.44f),
+                    $"<color=#D6E6FA>Qty: x{owned.Quantity}</color>  •  <color={(owned.DuplicateCount > 0 ? "#FFD94A" : "#7E90A8")}>Extras: x{owned.DuplicateCount}</color>"
+                );
 
                 // Action buttons row at bottom
                 var equipBtn = CreateButton("EquipBtn", cardBox, isEquipped ? "EQUIPPED" : "EQUIP", isEquipped ? new Color(0.32f, 0.42f, 0.56f) : new Color(0.20f, 0.54f, 0.88f), 13, () =>
@@ -3365,6 +3538,38 @@ namespace TeksMaster.UI
             }
         }
 
+        private void CreateInventoryStatChip(Transform parent, Color bgColor, Color borderColor, string richText)
+        {
+            var chip = CreateRoundedPanel("StatChip", parent, bgColor, new Vector2(56f, 23f));
+            chip.GetComponent<Image>().raycastTarget = false;
+            AddOutline(chip.gameObject, borderColor, 1f);
+
+            var txt = CreateText("Txt", chip, richText, 10, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            txt.supportRichText = true;
+            txt.resizeTextForBestFit = true;
+            txt.resizeTextMinSize = 8;
+            txt.resizeTextMaxSize = 10;
+            StretchFull(txt.rectTransform, 2f);
+        }
+
+        private void CreateInventoryStatBarPill(RectTransform parent, float topOffset, Color bgColor, Color borderColor, string richText)
+        {
+            var pill = CreateRoundedPanel("StatBarPill", parent, bgColor, Vector2.zero);
+            pill.anchorMin = new Vector2(0f, 1f);
+            pill.anchorMax = new Vector2(1f, 1f);
+            pill.offsetMin = new Vector2(0f, topOffset - 20f);
+            pill.offsetMax = new Vector2(0f, topOffset);
+            pill.GetComponent<Image>().raycastTarget = false;
+            AddOutline(pill.gameObject, borderColor, 1f);
+
+            var txt = CreateText("Txt", pill, richText, 10, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            txt.supportRichText = true;
+            txt.resizeTextForBestFit = true;
+            txt.resizeTextMinSize = 8;
+            txt.resizeTextMaxSize = 10;
+            StretchFull(txt.rectTransform, 4f);
+        }
+
         private RectTransform CreateCollectibleCardSlab(
             string name,
             Transform parent,
@@ -3405,11 +3610,10 @@ namespace TeksMaster.UI
             var inv = PlayerInventory.Instance;
             if (shop == null || _shopSlotsContainer == null) return;
 
-            if (_shopModalCoinsText != null && inv != null)
+            if (inv != null)
             {
-                _shopModalCoinsText.text = $"{inv.Coins:N0} COINS  |  {inv.Gems:N0} GEMS";
+                UpdateCurrencyPillPair(_shopCurrencyPair, inv.Coins, inv.Gems, true);
             }
-            if (_shopVendorBannerText != null) _shopVendorBannerText.text = shop.LastVendorMessage;
 
             bool canDailyDraw = shop.CanClaimDailyFreeDraw;
             if (_shopDailyFreeBtn != null)
@@ -3435,6 +3639,10 @@ namespace TeksMaster.UI
                 }
             }
 
+            for (int i = 0; i < _shopSlotCanvasGroups.Length; i++)
+            {
+                _shopSlotCanvasGroups[i] = null;
+            }
             for (int i = _shopSlotsContainer.childCount - 1; i >= 0; i--)
             {
                 Destroy(_shopSlotsContainer.GetChild(i).gameObject);
@@ -3461,6 +3669,21 @@ namespace TeksMaster.UI
                 boxImg.type = Image.Type.Sliced;
                 boxImg.color = cabinetBg;
                 AddOutline(box, borderCol, (slot.IsSuperSlot || slot.IsFlashSale) ? 2.6f : 2.0f);
+
+                var slotCg = box.AddComponent<CanvasGroup>();
+                if (i < _shopSlotCanvasGroups.Length)
+                {
+                    _shopSlotCanvasGroups[i] = slotCg;
+                    if (slot.IsSoldOut)
+                    {
+                        slotCg.alpha = _shopSlotFadeTimers[i] > 0f ? 1f : SlotSoldFinalAlpha;
+                    }
+                    else
+                    {
+                        _shopSlotFadeTimers[i] = 0f;
+                        slotCg.alpha = 1f;
+                    }
+                }
 
                 var boxRt = box.GetComponent<RectTransform>();
 
@@ -3621,6 +3844,7 @@ namespace TeksMaster.UI
 
                 // Bottom Tactile Buy Button
                 int capturedIdx = i;
+                var capturedCard = slot.Card;
                 string btnLabel = slot.IsSoldOut
                     ? "SOLD OUT"
                     : (slot.IsFlashSale ? $"SALE {slot.Price}c (Was {slot.OriginalPrice}c)" : $"BUY  •  {slot.Price} COINS");
@@ -3637,6 +3861,11 @@ namespace TeksMaster.UI
                     {
                         TeksAudioManager.Instance?.PlayCoinClink();
                         ShowToast(msg);
+                        if (capturedIdx >= 0 && capturedIdx < _shopSlotFadeTimers.Length)
+                        {
+                            _shopSlotFadeTimers[capturedIdx] = SlotSoldHoldDuration + SlotSoldFadeDuration;
+                        }
+                        RenderPackReveal($"CARD BOUGHT! {capturedCard.Name} added to your Collection:", new List<TeksCardDefinition> { capturedCard });
                         PopulateShopModal();
                     }
                     else
@@ -3726,22 +3955,36 @@ namespace TeksMaster.UI
 
         private void RenderPackReveal(string headerText, List<TeksCardDefinition> drawn)
         {
-            if (_shopModalCoinsText != null && PlayerInventory.Instance != null)
+            if (PlayerInventory.Instance != null)
             {
-                _shopModalCoinsText.text = $"{PlayerInventory.Instance.Coins:N0} COINS  |  {PlayerInventory.Instance.Gems:N0} GEMS";
+                UpdateCurrencyPillPair(_shopCurrencyPair, PlayerInventory.Instance.Coins, PlayerInventory.Instance.Gems, true);
             }
-            if (_shopVendorBannerText != null && ShopManager.Instance != null)
+            if (_packRevealHeader != null)
             {
-                _shopVendorBannerText.text = ShopManager.Instance.LastVendorMessage;
+                _packRevealHeader.text = headerText;
+                var hc = _packRevealHeader.color;
+                hc.a = 1f;
+                _packRevealHeader.color = hc;
             }
-            if (_packRevealHeader != null) _packRevealHeader.text = headerText;
+            if (_packRevealCanvasGroup != null)
+            {
+                _packRevealCanvasGroup.alpha = 1f;
+            }
 
             for (int i = _packRevealContainer.childCount - 1; i >= 0; i--)
             {
                 Destroy(_packRevealContainer.GetChild(i).gameObject);
             }
 
-            if (drawn == null || drawn.Count == 0) return;
+            if (drawn == null || drawn.Count == 0)
+            {
+                _packRevealActive = false;
+                return;
+            }
+
+            _packRevealActive = true;
+            _packRevealHoldTimer = PackRevealHoldDuration;
+            _packRevealFadeTimer = PackRevealFadeDuration;
 
             int count = drawn.Count;
             float spacing = count > 4 ? 10f : 12f;
@@ -3880,6 +4123,72 @@ namespace TeksMaster.UI
             }
         }
 
+        private void UpdateShopPurchaseCooldowns()
+        {
+            if (_shopModal == null || !_shopModal.activeSelf) return;
+
+            float dt = Time.unscaledDeltaTime;
+
+            if (_packRevealActive)
+            {
+                if (_packRevealHoldTimer > 0f)
+                {
+                    _packRevealHoldTimer -= dt;
+                }
+                else
+                {
+                    _packRevealFadeTimer -= dt;
+                    float fadeAlpha = Mathf.Clamp01(_packRevealFadeTimer / PackRevealFadeDuration);
+                    if (_packRevealCanvasGroup != null) _packRevealCanvasGroup.alpha = fadeAlpha;
+                    if (_packRevealHeader != null)
+                    {
+                        var hc = _packRevealHeader.color;
+                        hc.a = fadeAlpha;
+                        _packRevealHeader.color = hc;
+                    }
+
+                    if (_packRevealFadeTimer <= 0f)
+                    {
+                        _packRevealActive = false;
+                        if (_packRevealContainer != null)
+                        {
+                            for (int i = _packRevealContainer.childCount - 1; i >= 0; i--)
+                            {
+                                Destroy(_packRevealContainer.GetChild(i).gameObject);
+                            }
+                        }
+                        if (_packRevealCanvasGroup != null) _packRevealCanvasGroup.alpha = 1f;
+                        if (_packRevealHeader != null)
+                        {
+                            _packRevealHeader.text = DefaultPackRevealHint;
+                            var hc = _packRevealHeader.color;
+                            hc.a = 1f;
+                            _packRevealHeader.color = hc;
+                        }
+                    }
+                }
+            }
+
+            for (int i = 0; i < _shopSlotFadeTimers.Length; i++)
+            {
+                if (_shopSlotFadeTimers[i] <= 0f) continue;
+                _shopSlotFadeTimers[i] = Mathf.Max(0f, _shopSlotFadeTimers[i] - dt);
+
+                var cg = _shopSlotCanvasGroups[i];
+                if (cg == null) continue;
+
+                if (_shopSlotFadeTimers[i] <= SlotSoldFadeDuration)
+                {
+                    float t = 1f - Mathf.Clamp01(_shopSlotFadeTimers[i] / SlotSoldFadeDuration);
+                    cg.alpha = Mathf.Lerp(1f, SlotSoldFinalAlpha, t);
+                }
+                else
+                {
+                    cg.alpha = 1f;
+                }
+            }
+        }
+
         private void PopulateWagerModal()
         {
             var mm = TeksMatchManager.Instance;
@@ -3940,6 +4249,11 @@ namespace TeksMaster.UI
                 string roleTag = opp.IsChampion ? "[CHAMPION]" : (opp.IsStoryOpponent ? "[STORY]" : $"[{opp.Difficulty}]");
                 string defeatedTag = inv.HasDefeatedNpc(opp.GetEffectiveNpcId()) ? "\nDEFEATED ✓" : string.Empty;
                 _wagerOppBadgeText.text = $"{areaName}\n{roleTag}{defeatedTag}";
+            }
+            if (_wagerOppRewardPillText != null)
+            {
+                int baseWin = TeksMatchManager.GetBaseCoinReward(opp);
+                _wagerOppRewardPillText.text = $"BASE WIN: +{baseWin:N0}c";
             }
             if (_wagerChallengeQuoteText != null)
             {
@@ -4052,9 +4366,180 @@ namespace TeksMaster.UI
         public void ShowToast(string message)
         {
             if (_toastPanel == null || _toastText == null) return;
-            _toastText.text = message;
+            string safeMessage = message ?? string.Empty;
+            _toastText.text = safeMessage;
+
+            bool hasCoin = false;
+            bool hasGem = false;
+            if (_toastCoinChip != null && _toastCoinChipText != null)
+            {
+                var coinMatch = ToastCoinRegex.Match(safeMessage);
+                if (coinMatch.Success)
+                {
+                    hasCoin = true;
+                    _toastCoinChipText.text = coinMatch.Groups[1].Value;
+                    _toastCoinChip.SetActive(true);
+                }
+                else
+                {
+                    _toastCoinChip.SetActive(false);
+                }
+            }
+
+            if (_toastGemChip != null && _toastGemChipText != null)
+            {
+                var gemMatch = ToastGemRegex.Match(safeMessage);
+                if (gemMatch.Success)
+                {
+                    hasGem = true;
+                    _toastGemChipText.text = gemMatch.Groups[1].Value;
+                    _toastGemChip.SetActive(true);
+                }
+                else
+                {
+                    _toastGemChip.SetActive(false);
+                }
+            }
+
+            int activeChips = (hasCoin ? 1 : 0) + (hasGem ? 1 : 0);
+            if (activeChips == 0)
+            {
+                _toastText.alignment = TextAnchor.MiddleCenter;
+                _toastText.rectTransform.offsetMin = new Vector2(12f, 6f);
+                _toastText.rectTransform.offsetMax = new Vector2(-12f, -6f);
+            }
+            else if (activeChips == 1)
+            {
+                _toastText.alignment = TextAnchor.MiddleLeft;
+                _toastText.rectTransform.offsetMin = new Vector2(18f, 6f);
+                _toastText.rectTransform.offsetMax = new Vector2(-122f, -6f);
+            }
+            else
+            {
+                _toastText.alignment = TextAnchor.MiddleLeft;
+                _toastText.rectTransform.offsetMin = new Vector2(18f, 6f);
+                _toastText.rectTransform.offsetMax = new Vector2(-222f, -6f);
+            }
+
             _toastPanel.SetActive(true);
             _toastTimer = 2.8f;
+        }
+
+        private CurrencyPillPair CreateCurrencyPillPair(
+            string name,
+            Transform parent,
+            Vector2 size,
+            int fontSize,
+            float iconSize,
+            bool showUnitLabels)
+        {
+            var rowGo = new GameObject(name, typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            rowGo.transform.SetParent(parent, false);
+            var rowRt = rowGo.GetComponent<RectTransform>();
+            rowRt.sizeDelta = size;
+
+            var hlg = rowGo.GetComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 8f;
+            hlg.childAlignment = TextAnchor.MiddleRight;
+            hlg.childControlWidth = false;
+            hlg.childControlHeight = false;
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = false;
+
+            float availW = Mathf.Max(80f, size.x - hlg.spacing);
+            float coinW = Mathf.Round(availW * 0.56f);
+            float gemW = availW - coinW;
+
+            CreateSingleCurrencyChip(
+                name + "_Coin",
+                rowRt,
+                "coin",
+                showUnitLabels ? "0 COINS" : "0",
+                new Color(0.14f, 0.11f, 0.05f, 0.96f),
+                new Color(0.98f, 0.78f, 0.22f),
+                new Color(1.0f, 0.90f, 0.36f),
+                new Vector2(coinW, size.y),
+                fontSize,
+                iconSize,
+                out Text coinsText
+            );
+
+            CreateSingleCurrencyChip(
+                name + "_Gem",
+                rowRt,
+                "gem",
+                showUnitLabels ? "0 GEMS" : "0",
+                new Color(0.05f, 0.13f, 0.21f, 0.96f),
+                new Color(0.32f, 0.86f, 1.0f),
+                new Color(0.46f, 0.96f, 1.0f),
+                new Vector2(gemW, size.y),
+                fontSize,
+                iconSize,
+                out Text gemsText
+            );
+
+            return new CurrencyPillPair
+            {
+                Root = rowRt,
+                CoinsText = coinsText,
+                GemsText = gemsText
+            };
+        }
+
+        private RectTransform CreateSingleCurrencyChip(
+            string name,
+            Transform parent,
+            string iconName,
+            string label,
+            Color bgColor,
+            Color outlineColor,
+            Color textColor,
+            Vector2 size,
+            int fontSize,
+            float iconSize,
+            out Text labelText)
+        {
+            var pill = CreateRoundedPanel(name, parent, bgColor, size);
+            pill.GetComponent<Image>().raycastTarget = false;
+            AddOutline(pill.gameObject, outlineColor, 1.3f);
+
+            var le = pill.gameObject.AddComponent<LayoutElement>();
+            le.preferredWidth = size.x;
+            le.preferredHeight = size.y;
+            le.minWidth = size.x;
+            le.minHeight = size.y;
+
+            var icon = CreateImage("Icon", pill, CardArtGenerator.GetUIIconSprite(iconName));
+            icon.preserveAspect = true;
+            icon.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+            icon.rectTransform.anchorMax = new Vector2(0f, 0.5f);
+            icon.rectTransform.anchoredPosition = new Vector2(8f + iconSize * 0.5f, 0f);
+            icon.rectTransform.sizeDelta = new Vector2(iconSize, iconSize);
+
+            labelText = CreateText("Value", pill, label, fontSize, FontStyle.Bold, textColor, TextAnchor.MiddleLeft);
+            labelText.resizeTextForBestFit = true;
+            labelText.resizeTextMinSize = 10;
+            labelText.resizeTextMaxSize = fontSize;
+            labelText.verticalOverflow = VerticalWrapMode.Truncate;
+            labelText.rectTransform.anchorMin = Vector2.zero;
+            labelText.rectTransform.anchorMax = Vector2.one;
+            labelText.rectTransform.offsetMin = new Vector2(13f + iconSize, 2f);
+            labelText.rectTransform.offsetMax = new Vector2(-8f, -2f);
+            AddTextShadow(labelText.gameObject);
+
+            return pill;
+        }
+
+        private static void UpdateCurrencyPillPair(CurrencyPillPair pair, int coins, int gems, bool includeLabels = true)
+        {
+            if (pair.CoinsText != null)
+            {
+                pair.CoinsText.text = includeLabels ? $"{coins:N0} COINS" : $"{coins:N0}";
+            }
+            if (pair.GemsText != null)
+            {
+                pair.GemsText.text = includeLabels ? $"{gems:N0} GEMS" : $"{gems:N0}";
+            }
         }
 
         private GameObject CreateModalBackdrop(string name, Vector2 windowSize, out RectTransform windowRt)

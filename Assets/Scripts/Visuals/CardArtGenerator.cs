@@ -783,9 +783,19 @@ namespace TeksMaster.Visuals
                     }
                     break;
                 case "coin":
-                    FillEllipse(tex, 32, 32, 24, 24, new Color(0.98f, 0.76f, 0.12f));
-                    FillEllipse(tex, 32, 32, 18, 18, new Color(1.0f, 0.88f, 0.30f));
-                    FillRect(tex, 29, 20, 6, 24, new Color(0.86f, 0.56f, 0.06f));
+                    // Embossed Golden Barya Coin with rim, inner ring, shine, and Peso/Barya emblem
+                    FillEllipse(tex, 32, 32, 26f, 26f, new Color(0.66f, 0.40f, 0.04f));
+                    FillEllipse(tex, 32, 32, 23.5f, 23.5f, new Color(0.98f, 0.76f, 0.12f));
+                    FillEllipse(tex, 32, 32, 18.5f, 18.5f, new Color(0.84f, 0.56f, 0.06f));
+                    FillEllipse(tex, 32, 32, 16f, 16f, new Color(1.0f, 0.87f, 0.28f));
+                    // Gloss crescent at top-left
+                    FillEllipse(tex, 25, 42, 7f, 4f, new Color(1.0f, 0.98f, 0.78f, 0.85f));
+                    // Stylized peso/barya vertical bar + crossbars
+                    FillRect(tex, 30, 19, 4, 26, new Color(0.76f, 0.46f, 0.04f));
+                    FillRect(tex, 24, 34, 15, 4, new Color(0.76f, 0.46f, 0.04f));
+                    FillRect(tex, 24, 27, 15, 4, new Color(0.76f, 0.46f, 0.04f));
+                    FillEllipse(tex, 37, 37, 4.5f, 4.5f, new Color(0.76f, 0.46f, 0.04f));
+                    FillEllipse(tex, 36, 37, 2.2f, 2.2f, new Color(1.0f, 0.87f, 0.28f));
                     break;
                 case "star":
                     DrawStar(tex, 32, 32, 24f, 10f, new Color(1.0f, 0.86f, 0.18f));
@@ -813,27 +823,35 @@ namespace TeksMaster.Visuals
                     FillTriangle(tex, new Vector2(16, 28), new Vector2(48, 28), new Vector2(32, 8), new Color(0.28f, 0.68f, 0.98f));
                     break;
                 case "gem":
-                    // Faceted turquoise-cyan Barangay Gem
-                    FillTriangle(tex, new Vector2(10, 40), new Vector2(54, 40), new Vector2(32, 8), new Color(0.08f, 0.52f, 0.86f));
-                    FillTriangle(tex, new Vector2(10, 40), new Vector2(20, 54), new Vector2(44, 54), new Color(0.26f, 0.88f, 1.0f));
-                    FillTriangle(tex, new Vector2(10, 40), new Vector2(44, 54), new Vector2(54, 40), new Color(0.18f, 0.78f, 0.98f));
-                    FillTriangle(tex, new Vector2(20, 40), new Vector2(44, 40), new Vector2(32, 11), new Color(0.22f, 0.82f, 0.98f));
-                    FillTriangle(tex, new Vector2(22, 40), new Vector2(32, 52), new Vector2(42, 40), new Color(0.76f, 0.98f, 1.0f));
-                    FillTriangle(tex, new Vector2(20, 54), new Vector2(32, 52), new Vector2(22, 40), new Color(0.92f, 1.0f, 1.0f));
-                    DrawStar(tex, 22, 49, 5f, 2f, Color.white);
+                    // Faceted Sapphire-Cyan Barangay Gem with dark border and crisp highlights
+                    FillTriangle(tex, new Vector2(7, 40), new Vector2(57, 40), new Vector2(32, 5), new Color(0.04f, 0.32f, 0.62f));
+                    FillTriangle(tex, new Vector2(7, 40), new Vector2(18, 57), new Vector2(46, 57), new Color(0.06f, 0.44f, 0.78f));
+                    FillTriangle(tex, new Vector2(7, 40), new Vector2(46, 57), new Vector2(57, 40), new Color(0.06f, 0.44f, 0.78f));
+
+                    FillTriangle(tex, new Vector2(10, 40), new Vector2(54, 40), new Vector2(32, 8), new Color(0.10f, 0.58f, 0.92f));
+                    FillTriangle(tex, new Vector2(10, 40), new Vector2(20, 54), new Vector2(44, 54), new Color(0.28f, 0.90f, 1.0f));
+                    FillTriangle(tex, new Vector2(10, 40), new Vector2(44, 54), new Vector2(54, 40), new Color(0.18f, 0.80f, 0.98f));
+                    FillTriangle(tex, new Vector2(20, 40), new Vector2(44, 40), new Vector2(32, 11), new Color(0.26f, 0.86f, 1.0f));
+                    FillTriangle(tex, new Vector2(22, 40), new Vector2(32, 53), new Vector2(42, 40), new Color(0.78f, 0.99f, 1.0f));
+                    FillTriangle(tex, new Vector2(20, 54), new Vector2(32, 53), new Vector2(22, 40), new Color(0.94f, 1.0f, 1.0f));
+                    DrawStar(tex, 21, 49, 6f, 2.4f, Color.white);
                     break;
                 case "trophy":
-                    // Golden Championship Trophy
-                    FillEllipse(tex, 15, 42, 8, 9, new Color(0.92f, 0.70f, 0.12f));
-                    FillEllipse(tex, 15, 42, 4, 5, Color.clear);
-                    FillEllipse(tex, 49, 42, 8, 9, new Color(0.92f, 0.70f, 0.12f));
-                    FillEllipse(tex, 49, 42, 4, 5, Color.clear);
+                    // Golden Championship Trophy with dark rim & bright cup sheen
+                    FillEllipse(tex, 15, 42, 8.5f, 9.5f, new Color(0.68f, 0.44f, 0.04f));
+                    FillEllipse(tex, 15, 42, 7.2f, 8.2f, new Color(0.94f, 0.72f, 0.14f));
+                    FillEllipse(tex, 15, 42, 3.8f, 4.8f, Color.clear);
+                    FillEllipse(tex, 49, 42, 8.5f, 9.5f, new Color(0.68f, 0.44f, 0.04f));
+                    FillEllipse(tex, 49, 42, 7.2f, 8.2f, new Color(0.94f, 0.72f, 0.14f));
+                    FillEllipse(tex, 49, 42, 3.8f, 4.8f, Color.clear);
+                    FillRect(tex, 17, 34, 30, 21, new Color(0.68f, 0.44f, 0.04f));
                     FillRect(tex, 18, 34, 28, 20, new Color(0.98f, 0.78f, 0.14f));
                     FillEllipse(tex, 32, 34, 14, 12, new Color(0.98f, 0.78f, 0.14f));
-                    FillRect(tex, 21, 36, 5, 15, new Color(1.0f, 0.93f, 0.54f)); // Cup highlight
+                    FillRect(tex, 21, 36, 5, 15, new Color(1.0f, 0.95f, 0.60f)); // Cup highlight
+                    FillRect(tex, 18, 52, 28, 2, new Color(1.0f, 0.94f, 0.56f)); // Top lip shine
                     FillRect(tex, 28, 17, 8, 11, new Color(0.86f, 0.62f, 0.08f)); // Stem
                     FillRect(tex, 20, 12, 24, 6, new Color(0.78f, 0.54f, 0.08f)); // Upper base
-                    FillRect(tex, 16, 8, 32, 5, new Color(0.46f, 0.28f, 0.10f));  // Pedestal
+                    FillRect(tex, 15, 7, 34, 6, new Color(0.42f, 0.24f, 0.08f));  // Pedestal
                     break;
                 case "lock":
                     // Padlock icon for locked areas/gates

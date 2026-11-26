@@ -14,16 +14,20 @@ namespace TeksMaster.Characters
 
         private Vector3 _matchCameraPos;
         private Quaternion _matchCameraRot;
+        private float _matchPosLerpSpeed = 6.5f;
+        private float _matchRotLerpSpeed = 7.5f;
         private float _orbitYaw = 18f;
         private float _orbitPitch = 28f;
         private float _orbitDistance = 11.2f;
         private float _titleAngle = -28f;
 
-        public void SetMatchCamera(Vector3 worldPos, Vector3 lookTarget)
+        public void SetMatchCamera(Vector3 worldPos, Vector3 lookTarget, float posLerpSpeed = 6.5f, float rotLerpSpeed = 7.5f)
         {
             IsMatchCameraActive = true;
             _matchCameraPos = worldPos;
             _matchCameraRot = Quaternion.LookRotation((lookTarget - worldPos).normalized, Vector3.up);
+            _matchPosLerpSpeed = Mathf.Max(1f, posLerpSpeed);
+            _matchRotLerpSpeed = Mathf.Max(1f, rotLerpSpeed);
         }
 
         public void ClearMatchCamera()
@@ -46,8 +50,8 @@ namespace TeksMaster.Characters
 
             if (IsMatchCameraActive)
             {
-                transform.position = Vector3.Lerp(transform.position, _matchCameraPos, Time.deltaTime * 6.5f);
-                transform.rotation = Quaternion.Slerp(transform.rotation, _matchCameraRot, Time.deltaTime * 7.5f);
+                transform.position = Vector3.Lerp(transform.position, _matchCameraPos, Mathf.Clamp01(Time.deltaTime * _matchPosLerpSpeed));
+                transform.rotation = Quaternion.Slerp(transform.rotation, _matchCameraRot, Mathf.Clamp01(Time.deltaTime * _matchRotLerpSpeed));
                 return;
             }
 

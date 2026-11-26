@@ -25,6 +25,11 @@ namespace TeksMaster.UI
         private Text _missionTrackerHeaderText;
         private Text _missionTrackerBodyText;
         private Text _missionTrackerRewardText;
+        private GameObject _missionTrackerRewardRow;
+        private GameObject _missionTrackerCoinChip;
+        private Text _missionTrackerCoinText;
+        private GameObject _missionTrackerGemChip;
+        private Text _missionTrackerGemText;
         private Image _missionTrackerFillBar;
 
         // Navigation State
@@ -57,7 +62,7 @@ namespace TeksMaster.UI
         private GameObject _profileModal;
         private Image _profileAvatarImg;
         private Text _profileNicknameText;
-        private Text _profileCurrencyText;
+        private CurrencyPillPair _profileCurrencyPair;
         private Image _profileCharBtnImg;
         private Text _profileCharBtnText;
         private Text _profileCharSubText;
@@ -76,15 +81,15 @@ namespace TeksMaster.UI
         private int _activeMissionTabIndex;
         private readonly Image[] _missionTabImages = new Image[6];
         private readonly Text[] _missionTabTexts = new Text[6];
-        private Text _questsHeaderCurrencyText;
+        private CurrencyPillPair _questsCurrencyPair;
 
-        // Game Modes Modal ([G])
+        // Championship Tournament Modal ([G])
         private GameObject _modesModal;
-        private int _activeModesTabIndex;
-        private readonly Image[] _modesTabImages = new Image[3];
-        private Transform _modesListContent;
+        private CurrencyPillPair _modesCurrencyPair;
         private Text _modesActiveStatusText;
-        private Button _modesExitActiveBtn;
+        private Transform _modesHeroContainer;
+        private Transform _modesStepperRow;
+        private Transform _modesBracketRow;
 
         // Hidden Card Reveal Celebration Modal
         private GameObject _hiddenCardRevealModal;
@@ -294,7 +299,7 @@ namespace TeksMaster.UI
             miRt.anchoredPosition = new Vector2(232f, -200f);
             miRt.sizeDelta = new Vector2(216f, 40f);
 
-            var modesMenuBtn = CreateButton("MenuModesBtn", window, "GAME MODES", new Color(0.16f, 0.58f, 0.72f), 14, () =>
+            var modesMenuBtn = CreateButton("MenuModesBtn", window, "TOURNAMENT", new Color(0.84f, 0.54f, 0.10f), 14, () =>
             {
                 OpenSubModalFromMainMenu(() =>
                 {
@@ -552,7 +557,7 @@ namespace TeksMaster.UI
             _missionTrackerFillBar.color = new Color(0.24f, 0.86f, 0.44f);
             _missionTrackerFillBar.raycastTarget = false;
 
-            // Band 4 Right: Dedicated Rewards callout
+            // Band 4 Right: Dedicated Rewards callout (Coin/Gem Icon Chips + Fallback Text)
             _missionTrackerRewardText = CreateText("TrackerReward", panel, "+100 Coins  +5 Gems", 12, FontStyle.Bold, new Color(1.0f, 0.86f, 0.34f), TextAnchor.MiddleRight);
             _missionTrackerRewardText.resizeTextForBestFit = true;
             _missionTrackerRewardText.resizeTextMinSize = 10;
@@ -561,6 +566,54 @@ namespace TeksMaster.UI
             _missionTrackerRewardText.rectTransform.anchorMax = new Vector2(1f, 0f);
             _missionTrackerRewardText.rectTransform.offsetMin = new Vector2(238f, 6f);
             _missionTrackerRewardText.rectTransform.offsetMax = new Vector2(-14f, 26f);
+
+            var rewardRowGo = new GameObject("TrackerRewardRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            rewardRowGo.transform.SetParent(panel, false);
+            var rewardRowRt = rewardRowGo.GetComponent<RectTransform>();
+            rewardRowRt.anchorMin = new Vector2(1f, 0f);
+            rewardRowRt.anchorMax = new Vector2(1f, 0f);
+            rewardRowRt.pivot = new Vector2(1f, 0f);
+            rewardRowRt.anchoredPosition = new Vector2(-14f, 6f);
+            rewardRowRt.sizeDelta = new Vector2(186f, 21f);
+            var rwHlg = rewardRowGo.GetComponent<HorizontalLayoutGroup>();
+            rwHlg.spacing = 6f;
+            rwHlg.childAlignment = TextAnchor.MiddleRight;
+            rwHlg.childControlWidth = false;
+            rwHlg.childControlHeight = false;
+            rwHlg.childForceExpandWidth = false;
+            rwHlg.childForceExpandHeight = false;
+            _missionTrackerRewardRow = rewardRowGo;
+
+            var trCoin = CreateSingleCurrencyChip(
+                "TrackerCoinChip",
+                rewardRowGo.transform,
+                "coin",
+                "+100",
+                new Color(0.15f, 0.11f, 0.04f, 0.96f),
+                new Color(0.98f, 0.78f, 0.22f),
+                new Color(1.0f, 0.90f, 0.36f),
+                new Vector2(88f, 20f),
+                11,
+                14f,
+                out _missionTrackerCoinText
+            );
+            _missionTrackerCoinChip = trCoin.gameObject;
+
+            var trGem = CreateSingleCurrencyChip(
+                "TrackerGemChip",
+                rewardRowGo.transform,
+                "gem",
+                "+5",
+                new Color(0.05f, 0.13f, 0.21f, 0.96f),
+                new Color(0.32f, 0.86f, 1.0f),
+                new Color(0.46f, 0.96f, 1.0f),
+                new Vector2(74f, 20f),
+                11,
+                14f,
+                out _missionTrackerGemText
+            );
+            _missionTrackerGemChip = trGem.gameObject;
+            _missionTrackerRewardText.gameObject.SetActive(false);
         }
 
         private void RefreshMissionTrackerHud()
@@ -582,7 +635,12 @@ namespace TeksMaster.UI
                 _missionTrackerHeaderText.text = "ALL MISSIONS COMPLETE!";
                 _missionTrackerHeaderText.color = new Color(0.42f, 0.98f, 0.56f);
                 _missionTrackerBodyText.text = "You have completed every Barangay mission and achievement!";
-                if (_missionTrackerRewardText != null) _missionTrackerRewardText.text = "VIEW LOG [Q]";
+                if (_missionTrackerRewardRow != null) _missionTrackerRewardRow.SetActive(false);
+                if (_missionTrackerRewardText != null)
+                {
+                    _missionTrackerRewardText.gameObject.SetActive(true);
+                    _missionTrackerRewardText.text = "VIEW LOG [Q]";
+                }
 
                 if (_missionTrackerFillBar != null)
                 {
@@ -624,9 +682,28 @@ namespace TeksMaster.UI
             }
 
             _missionTrackerBodyText.text = q.Description;
+            bool hasCoinsOrGems = q.CoinReward > 0 || q.GemReward > 0;
+            if (_missionTrackerRewardRow != null)
+            {
+                _missionTrackerRewardRow.SetActive(hasCoinsOrGems);
+                if (_missionTrackerCoinChip != null)
+                {
+                    _missionTrackerCoinChip.SetActive(q.CoinReward > 0);
+                    if (_missionTrackerCoinText != null) _missionTrackerCoinText.text = $"+{q.CoinReward:N0}";
+                }
+                if (_missionTrackerGemChip != null)
+                {
+                    _missionTrackerGemChip.SetActive(q.GemReward > 0);
+                    if (_missionTrackerGemText != null) _missionTrackerGemText.text = $"+{q.GemReward:N0}";
+                }
+            }
             if (_missionTrackerRewardText != null)
             {
-                _missionTrackerRewardText.text = FormatQuestRewardSummary(q);
+                _missionTrackerRewardText.gameObject.SetActive(!hasCoinsOrGems);
+                if (!hasCoinsOrGems)
+                {
+                    _missionTrackerRewardText.text = FormatQuestRewardSummary(q);
+                }
             }
 
             if (_missionTrackerFillBar != null)
@@ -645,17 +722,27 @@ namespace TeksMaster.UI
         {
             _questsModal = CreateModalBackdrop("QuestsModal", new Vector2(940f, 640f), out RectTransform window);
 
-            var header = CreateText("QuestsHeader", window, "BARANGAY MISSIONS & ACHIEVEMENTS [Q]", 25, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
+            var header = CreateText("QuestsHeader", window, "BARANGAY MISSIONS & ACHIEVEMENTS [Q]", 24, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
+            header.resizeTextForBestFit = true;
+            header.resizeTextMinSize = 18;
+            header.resizeTextMaxSize = 24;
             header.rectTransform.anchorMin = new Vector2(0f, 1f);
-            header.rectTransform.anchorMax = new Vector2(0.62f, 1f);
+            header.rectTransform.anchorMax = new Vector2(0.56f, 1f);
             header.rectTransform.offsetMin = new Vector2(26f, -54f);
             header.rectTransform.offsetMax = new Vector2(0f, -12f);
 
-            _questsHeaderCurrencyText = CreateText("QuestsCurrency", window, "2,450 COINS  |  25 GEMS", 18, FontStyle.Bold, new Color(0.84f, 0.94f, 1.0f), TextAnchor.MiddleRight);
-            _questsHeaderCurrencyText.rectTransform.anchorMin = new Vector2(0.58f, 1f);
-            _questsHeaderCurrencyText.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _questsHeaderCurrencyText.rectTransform.offsetMin = new Vector2(0f, -54f);
-            _questsHeaderCurrencyText.rectTransform.offsetMax = new Vector2(-82f, -12f);
+            _questsCurrencyPair = CreateCurrencyPillPair(
+                "QuestsCurrency",
+                window,
+                new Vector2(332f, 34f),
+                14,
+                18f,
+                showUnitLabels: true
+            );
+            _questsCurrencyPair.Root.anchorMin = new Vector2(1f, 1f);
+            _questsCurrencyPair.Root.anchorMax = new Vector2(1f, 1f);
+            _questsCurrencyPair.Root.pivot = new Vector2(1f, 1f);
+            _questsCurrencyPair.Root.anchoredPosition = new Vector2(-74f, -16f);
 
             var closeBtn = CreateButton("CloseQuestsBtn", window, "X", new Color(0.84f, 0.20f, 0.20f), 18, CloseAllModals);
             var closeRt = closeBtn.GetComponent<RectTransform>();
@@ -716,10 +803,7 @@ namespace TeksMaster.UI
             var inv = PlayerInventory.Instance;
             if (inv == null || _questsListContent == null) return;
 
-            if (_questsHeaderCurrencyText != null)
-            {
-                _questsHeaderCurrencyText.text = $"{inv.Coins:N0} COINS  |  {inv.Gems:N0} GEMS";
-            }
+            UpdateCurrencyPillPair(_questsCurrencyPair, inv.Coins, inv.Gems, true);
 
             string[] baseLabels = { "ALL", "MAIN STORY", "DAILY", "COLLECTION", "EXPLORATION", "ACHIEVEMENTS" };
             MissionCategory[] tabCats =
@@ -799,18 +883,104 @@ namespace TeksMaster.UI
                 var descTxt = CreateText(
                     "Desc",
                     row,
-                    $"{q.Description}\nProgress: {q.CurrentProgress} / {q.TargetCount}   |   Rewards: {FormatQuestRewardSummary(q)}",
+                    $"{q.Description}   •   Progress: {q.CurrentProgress} / {q.TargetCount}",
                     13,
                     FontStyle.Normal,
                     new Color(0.84f, 0.92f, 1.0f),
-                    TextAnchor.UpperLeft
+                    TextAnchor.MiddleLeft
                 );
-                descTxt.lineSpacing = 1.28f;
+                descTxt.resizeTextForBestFit = true;
+                descTxt.resizeTextMinSize = 11;
+                descTxt.resizeTextMaxSize = 13;
                 descTxt.verticalOverflow = VerticalWrapMode.Truncate;
                 descTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
                 descTxt.rectTransform.anchorMax = new Vector2(0.74f, 1f);
-                descTxt.rectTransform.offsetMin = new Vector2(20f, 10f);
+                descTxt.rectTransform.offsetMin = new Vector2(20f, 38f);
                 descTxt.rectTransform.offsetMax = new Vector2(-10f, -38f);
+
+                var rewardsRow = new GameObject("RewardsRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+                rewardsRow.transform.SetParent(row, false);
+                var rwRt = rewardsRow.GetComponent<RectTransform>();
+                rwRt.anchorMin = new Vector2(0f, 0f);
+                rwRt.anchorMax = new Vector2(0.74f, 0f);
+                rwRt.offsetMin = new Vector2(20f, 9f);
+                rwRt.offsetMax = new Vector2(-10f, 34f);
+                var rwHlg = rewardsRow.GetComponent<HorizontalLayoutGroup>();
+                rwHlg.spacing = 8f;
+                rwHlg.childAlignment = TextAnchor.MiddleLeft;
+                rwHlg.childControlWidth = false;
+                rwHlg.childControlHeight = false;
+                rwHlg.childForceExpandWidth = false;
+                rwHlg.childForceExpandHeight = false;
+
+                var rwLbl = CreateText("RewardLbl", rewardsRow.transform, "REWARD:", 11, FontStyle.Bold, new Color(0.76f, 0.84f, 0.96f), TextAnchor.MiddleLeft);
+                var rwLblLe = rwLbl.gameObject.AddComponent<LayoutElement>();
+                rwLblLe.preferredWidth = 58f;
+                rwLblLe.preferredHeight = 24f;
+
+                if (q.CoinReward > 0)
+                {
+                    CreateSingleCurrencyChip(
+                        "CoinRewardChip",
+                        rewardsRow.transform,
+                        "coin",
+                        $"+{q.CoinReward:N0} COINS",
+                        new Color(0.15f, 0.11f, 0.04f, 0.96f),
+                        new Color(0.98f, 0.78f, 0.22f),
+                        new Color(1.0f, 0.90f, 0.36f),
+                        new Vector2(120f, 24f),
+                        12,
+                        15f,
+                        out _
+                    );
+                }
+                if (q.GemReward > 0)
+                {
+                    CreateSingleCurrencyChip(
+                        "GemRewardChip",
+                        rewardsRow.transform,
+                        "gem",
+                        $"+{q.GemReward:N0} GEMS",
+                        new Color(0.05f, 0.13f, 0.21f, 0.96f),
+                        new Color(0.32f, 0.86f, 1.0f),
+                        new Color(0.46f, 0.96f, 1.0f),
+                        new Vector2(102f, 24f),
+                        12,
+                        15f,
+                        out _
+                    );
+                }
+                if (q.HasPackReward)
+                {
+                    CreateSingleCurrencyChip(
+                        "PackRewardChip",
+                        rewardsRow.transform,
+                        "star",
+                        $"+{q.PackRewardType.ToString().ToUpper()} PACK",
+                        new Color(0.16f, 0.10f, 0.24f, 0.96f),
+                        new Color(0.74f, 0.44f, 0.98f),
+                        new Color(0.90f, 0.78f, 1.0f),
+                        new Vector2(138f, 24f),
+                        11,
+                        14f,
+                        out _
+                    );
+                }
+                if (!string.IsNullOrEmpty(q.SpecialCardRewardId))
+                {
+                    var cDef = TeksDatabase.GetCard(q.SpecialCardRewardId);
+                    string cLabel = cDef != null ? $"+{cDef.Name.ToUpper()} CARD" : "+SPECIAL CARD";
+                    var cardPill = CreateRoundedPanel("CardRewardChip", rewardsRow.transform, new Color(0.12f, 0.20f, 0.16f, 0.96f), new Vector2(148f, 24f));
+                    AddOutline(cardPill.gameObject, new Color(0.36f, 0.88f, 0.56f), 1.2f);
+                    var cardLe = cardPill.gameObject.AddComponent<LayoutElement>();
+                    cardLe.preferredWidth = 148f;
+                    cardLe.preferredHeight = 24f;
+                    var cpTxt = CreateText("Txt", cardPill, cLabel, 11, FontStyle.Bold, new Color(0.68f, 1.0f, 0.78f), TextAnchor.MiddleCenter);
+                    cpTxt.resizeTextForBestFit = true;
+                    cpTxt.resizeTextMinSize = 9;
+                    cpTxt.resizeTextMaxSize = 11;
+                    StretchFull(cpTxt.rectTransform, 4f);
+                }
 
                 string capturedId = q.Id;
                 string btnLbl = q.IsClaimed ? "CLAIMED ✓" : (canClaim ? "CLAIM REWARD!" : $"{q.CurrentProgress} / {q.TargetCount}");
@@ -887,36 +1057,43 @@ namespace TeksMaster.UI
         }
 
         // =====================================================================
-        // 4. GAME MODES MODAL ([G] — Quick Battle, 3-Round Tournament, 3 Challenges)
+        // 4. DEDICATED CHAMPIONSHIP TOURNAMENT MODAL ([G])
         // =====================================================================
 
         private void CreateModesModal()
         {
-            _modesModal = CreateModalBackdrop("GameModesModal", new Vector2(940f, 640f), out RectTransform window);
+            _modesModal = CreateModalBackdrop("TournamentModal", new Vector2(980f, 680f), out RectTransform window);
+            AddOutline(window.gameObject, new Color(0.96f, 0.76f, 0.22f), 2.5f);
 
-            var header = CreateText("ModesHeader", window, "BARANGAY GAME MODES [G]", 25, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleLeft);
+            var trophyIcon = CreateImage("TourneyHeaderTrophy", window, CardArtGenerator.GetUIIconSprite("trophy"));
+            trophyIcon.preserveAspect = true;
+            trophyIcon.rectTransform.anchorMin = new Vector2(0f, 1f);
+            trophyIcon.rectTransform.anchorMax = new Vector2(0f, 1f);
+            trophyIcon.rectTransform.anchoredPosition = new Vector2(38f, -34f);
+            trophyIcon.rectTransform.sizeDelta = new Vector2(30f, 30f);
+
+            var header = CreateText("ModesHeader", window, "BARANGAY TOURNAMENT [G]", 25, FontStyle.Bold, new Color(1.0f, 0.86f, 0.26f), TextAnchor.MiddleLeft);
+            header.resizeTextForBestFit = true;
+            header.resizeTextMinSize = 18;
+            header.resizeTextMaxSize = 25;
             header.rectTransform.anchorMin = new Vector2(0f, 1f);
-            header.rectTransform.anchorMax = new Vector2(0.55f, 1f);
-            header.rectTransform.offsetMin = new Vector2(26f, -54f);
+            header.rectTransform.anchorMax = new Vector2(0.52f, 1f);
+            header.rectTransform.offsetMin = new Vector2(62f, -56f);
             header.rectTransform.offsetMax = new Vector2(0f, -12f);
+            AddTextShadow(header.gameObject);
 
-            _modesActiveStatusText = CreateText("ModesActiveStatus", window, "ACTIVE MODE: STORY EXPLORATION", 15, FontStyle.Bold, new Color(0.68f, 0.94f, 0.76f), TextAnchor.MiddleRight);
-            _modesActiveStatusText.rectTransform.anchorMin = new Vector2(0.45f, 1f);
-            _modesActiveStatusText.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _modesActiveStatusText.rectTransform.offsetMin = new Vector2(0f, -54f);
-            _modesActiveStatusText.rectTransform.offsetMax = new Vector2(-215f, -12f);
-
-            _modesExitActiveBtn = CreateButton("ExitActiveModeBtn", window, "EXIT ACTIVE MODE", new Color(0.76f, 0.28f, 0.24f), 12, () =>
-            {
-                TeksGameModeManager.Instance?.ExitActiveMode(true);
-                ShowToast("Returned to Story Mode exploration.");
-                PopulateModesModal();
-            });
-            var exRt = _modesExitActiveBtn.GetComponent<RectTransform>();
-            exRt.anchorMin = new Vector2(1f, 1f);
-            exRt.anchorMax = new Vector2(1f, 1f);
-            exRt.anchoredPosition = new Vector2(-132f, -34f);
-            exRt.sizeDelta = new Vector2(138f, 34f);
+            _modesCurrencyPair = CreateCurrencyPillPair(
+                "TournamentHeaderCurrency",
+                window,
+                new Vector2(340f, 36f),
+                14,
+                19f,
+                showUnitLabels: true
+            );
+            _modesCurrencyPair.Root.anchorMin = new Vector2(1f, 1f);
+            _modesCurrencyPair.Root.anchorMax = new Vector2(1f, 1f);
+            _modesCurrencyPair.Root.pivot = new Vector2(1f, 1f);
+            _modesCurrencyPair.Root.anchoredPosition = new Vector2(-74f, -16f);
 
             var closeBtn = CreateButton("CloseModesBtn", window, "X", new Color(0.84f, 0.20f, 0.20f), 18, CloseAllModals);
             var closeRt = closeBtn.GetComponent<RectTransform>();
@@ -925,40 +1102,48 @@ namespace TeksMaster.UI
             closeRt.anchoredPosition = new Vector2(-34f, -34f);
             closeRt.sizeDelta = new Vector2(40f, 40f);
 
-            string[] modeTabs =
-            {
-                "QUICK BATTLE (FREE PLAY)",
-                "TOURNAMENT (3 ROUNDS)",
-                "CHALLENGE MODE (3 RULES)"
-            };
+            // Championship Hero Banner Section
+            var heroGo = new GameObject("TournamentHeroContainer", typeof(RectTransform));
+            heroGo.transform.SetParent(window, false);
+            var heroRt = heroGo.GetComponent<RectTransform>();
+            heroRt.anchorMin = new Vector2(0f, 1f);
+            heroRt.anchorMax = new Vector2(1f, 1f);
+            heroRt.offsetMin = new Vector2(24f, -198f);
+            heroRt.offsetMax = new Vector2(-24f, -66f);
+            _modesHeroContainer = heroGo.transform;
 
-            for (int i = 0; i < 3; i++)
-            {
-                int capturedIdx = i;
-                var btn = CreateButton("ModeTab_" + i, window, modeTabs[i], new Color(0.18f, 0.28f, 0.42f), 14, () =>
-                {
-                    _activeModesTabIndex = capturedIdx;
-                    PopulateModesModal();
-                });
-                var bRt = btn.GetComponent<RectTransform>();
-                bRt.anchorMin = new Vector2(0f, 1f);
-                bRt.anchorMax = new Vector2(0f, 1f);
-                bRt.anchoredPosition = new Vector2(174f + i * 296f, -82f);
-                bRt.sizeDelta = new Vector2(282f, 36f);
-                _modesTabImages[i] = btn.GetComponent<Image>();
-            }
+            // 3-Stage Bracket Progress Stepper
+            var stepperGo = new GameObject("TournamentStepperRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            stepperGo.transform.SetParent(window, false);
+            var stepRt = stepperGo.GetComponent<RectTransform>();
+            stepRt.anchorMin = new Vector2(0f, 1f);
+            stepRt.anchorMax = new Vector2(1f, 1f);
+            stepRt.offsetMin = new Vector2(24f, -242f);
+            stepRt.offsetMax = new Vector2(-24f, -208f);
+            var stepHlg = stepperGo.GetComponent<HorizontalLayoutGroup>();
+            stepHlg.spacing = 6f;
+            stepHlg.childAlignment = TextAnchor.MiddleCenter;
+            stepHlg.childControlWidth = false;
+            stepHlg.childControlHeight = false;
+            stepHlg.childForceExpandWidth = false;
+            stepHlg.childForceExpandHeight = false;
+            _modesStepperRow = stepperGo.transform;
 
-            CreateScrollView("ModesScrollView", window, new Vector2(24f, 22f), new Vector2(-24f, -112f), out _modesListContent);
-            var vlg = _modesListContent.gameObject.AddComponent<VerticalLayoutGroup>();
-            vlg.spacing = 12f;
-            vlg.padding = new RectOffset(10, 10, 10, 10);
-            vlg.childControlWidth = true;
-            vlg.childControlHeight = false;
-            vlg.childForceExpandWidth = true;
-            vlg.childForceExpandHeight = false;
-
-            var fitter = _modesListContent.gameObject.AddComponent<ContentSizeFitter>();
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            // 3-Column Championship Bracket Matchup Cards
+            var bracketGo = new GameObject("TournamentBracketRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            bracketGo.transform.SetParent(window, false);
+            var brRt = bracketGo.GetComponent<RectTransform>();
+            brRt.anchorMin = Vector2.zero;
+            brRt.anchorMax = Vector2.one;
+            brRt.offsetMin = new Vector2(24f, 22f);
+            brRt.offsetMax = new Vector2(-24f, -252f);
+            var brHlg = bracketGo.GetComponent<HorizontalLayoutGroup>();
+            brHlg.spacing = 14f;
+            brHlg.childControlWidth = true;
+            brHlg.childControlHeight = true;
+            brHlg.childForceExpandWidth = true;
+            brHlg.childForceExpandHeight = true;
+            _modesBracketRow = bracketGo.transform;
 
             _modesModal.SetActive(false);
         }
@@ -978,203 +1163,186 @@ namespace TeksMaster.UI
 
         private void PopulateModesModal()
         {
-            if (_modesListContent == null) return;
+            if (_modesHeroContainer == null || _modesStepperRow == null || _modesBracketRow == null) return;
+
             var gm = TeksGameModeManager.Instance;
             var inv = PlayerInventory.Instance;
 
-            for (int i = 0; i < 3; i++)
+            if (inv != null)
             {
-                if (_modesTabImages[i] != null)
-                {
-                    _modesTabImages[i].color = (_activeModesTabIndex == i)
-                        ? new Color(0.18f, 0.58f, 0.86f)
-                        : new Color(0.16f, 0.22f, 0.34f);
-                }
+                UpdateCurrencyPillPair(_modesCurrencyPair, inv.Coins, inv.Gems, true);
             }
 
-            bool specialActive = gm != null && gm.IsSpecialModeActive;
-            if (_modesActiveStatusText != null)
-            {
-                _modesActiveStatusText.text = specialActive ? gm.GetModeStatusBanner() : "ACTIVE MODE: STORY EXPLORATION";
-            }
-            if (_modesExitActiveBtn != null)
-            {
-                _modesExitActiveBtn.gameObject.SetActive(specialActive);
-            }
+            ClearChildren(_modesHeroContainer);
+            ClearChildren(_modesStepperRow);
+            ClearChildren(_modesBracketRow);
 
-            for (int i = _modesListContent.childCount - 1; i >= 0; i--)
-            {
-                Destroy(_modesListContent.GetChild(i).gameObject);
-            }
-
-            if (_activeModesTabIndex == 0)
-            {
-                PopulateQuickBattleTab(gm, inv);
-            }
-            else if (_activeModesTabIndex == 1)
-            {
-                PopulateTournamentTab(gm, inv);
-            }
-            else
-            {
-                PopulateChallengeTab(gm, inv);
-            }
+            BuildTournamentHeroBanner(gm, inv);
+            BuildTournamentBracketCards(gm);
         }
 
-        private void PopulateQuickBattleTab(TeksGameModeManager gm, PlayerInventory inv)
+        private static void ClearChildren(Transform parent)
         {
-            var infoRow = CreateRoundedPanel("QuickBattleInfo", _modesListContent, new Color(0.11f, 0.19f, 0.29f, 1f), new Vector2(860f, 68f));
-            infoRow.gameObject.AddComponent<LayoutElement>().preferredHeight = 68f;
-            var infoTxt = CreateText(
-                "InfoTxt",
-                infoRow,
-                "QUICK BATTLE / FREE PLAY ROSTER: Instant same-area 2-card Teks match against any unlocked Barangay opponent!\nToggle Free Play Unlock All on the right to open every Barangay gate and duel any rival immediately.",
-                13,
-                FontStyle.Bold,
-                new Color(0.82f, 0.94f, 1.0f),
-                TextAnchor.MiddleLeft
-            );
-            infoTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
-            infoTxt.rectTransform.anchorMax = new Vector2(0.70f, 1f);
-            infoTxt.rectTransform.offsetMin = new Vector2(14f, 6f);
-            infoTxt.rectTransform.offsetMax = new Vector2(-8f, -6f);
-
-            bool freePlay = inv != null && inv.FreePlayUnlockAll;
-            var freePlayBtn = CreateButton(
-                "QuickBattleFreePlayBtn",
-                infoRow,
-                freePlay ? "FREE PLAY UNLOCK ALL: ON ✓" : "FREE PLAY UNLOCK ALL: OFF",
-                freePlay ? new Color(0.18f, 0.70f, 0.36f) : new Color(0.24f, 0.34f, 0.50f),
-                12,
-                () =>
-                {
-                    if (inv == null) return;
-                    inv.ToggleFreePlayUnlockAll();
-                    BarangayCourtBuilder.Instance?.RefreshAreaGates();
-                    ShowToast(inv.FreePlayUnlockAll
-                        ? "Free Play Unlock All ENABLED — All Barangay Areas & Gates opened!"
-                        : "Free Play Unlock All DISABLED — Story Progression area locks active.");
-                    PopulateModesModal();
-                }
-            );
-            var fpRt = freePlayBtn.GetComponent<RectTransform>();
-            fpRt.anchorMin = new Vector2(1f, 0.5f);
-            fpRt.anchorMax = new Vector2(1f, 0.5f);
-            fpRt.anchoredPosition = new Vector2(-124f, 0f);
-            fpRt.sizeDelta = new Vector2(226f, 40f);
-
-            List<NpcOpponent> opponents = gm != null
-                ? gm.GetAllOpponents()
-                : (BarangayCourtBuilder.Instance != null ? BarangayCourtBuilder.Instance.SpawnedOpponents : new List<NpcOpponent>());
-
-            for (int i = 0; i < opponents.Count; i++)
+            if (parent == null) return;
+            for (int i = parent.childCount - 1; i >= 0; i--)
             {
-                var npc = opponents[i];
-                if (npc == null) continue;
-
-                bool unlocked = gm != null ? gm.IsOpponentUnlocked(npc) : (inv == null || inv.IsAreaUnlocked(npc.AreaId));
-                bool defeated = inv != null && inv.HasDefeatedNpc(npc.GetEffectiveNpcId());
-                int baseReward = TeksMatchManager.GetBaseCoinReward(npc);
-                var favCard = TeksDatabase.GetCard(npc.FavoriteCardId);
-                string favCardLabel = favCard != null ? $"{favCard.Name} ({TeksDatabase.GetRarityName(favCard.Rarity)})" : npc.FavoriteCardId;
-                string areaName = BarangayCourtBuilder.GetAreaDisplayName(npc.AreaId);
-
-                var row = CreateRoundedPanel("QB_" + npc.GetEffectiveNpcId(), _modesListContent, unlocked ? new Color(0.13f, 0.18f, 0.28f, 1f) : new Color(0.10f, 0.12f, 0.18f, 0.9f), new Vector2(860f, 84f));
-                row.gameObject.AddComponent<LayoutElement>().preferredHeight = 84f;
-                AddOutline(row.gameObject, unlocked ? npc.GetDifficultyColor() : new Color(0.28f, 0.32f, 0.40f), 2f);
-
-                string storyBadge = npc.IsChampion ? " [CHAMPION]" : (npc.IsStoryOpponent ? " [STORY]" : string.Empty);
-                string defeatedBadge = defeated ? "  •  ✓ DEFEATED" : string.Empty;
-
-                var titleTxt = CreateText(
-                    "Title",
-                    row,
-                    $"{npc.GetDisplayTag().ToUpper()}{storyBadge}   |   Area: {areaName}{defeatedBadge}",
-                    15,
-                    FontStyle.Bold,
-                    unlocked ? Color.white : new Color(0.62f, 0.68f, 0.76f),
-                    TextAnchor.MiddleLeft
-                );
-                titleTxt.rectTransform.anchorMin = new Vector2(0f, 0.50f);
-                titleTxt.rectTransform.anchorMax = new Vector2(0.74f, 1f);
-                titleTxt.rectTransform.offsetMin = new Vector2(18f, 0f);
-                titleTxt.rectTransform.offsetMax = new Vector2(-8f, -6f);
-
-                string subLine = unlocked
-                    ? $"Pamato: {favCardLabel}  |  AI Front Odds: {Mathf.RoundToInt(npc.GetAiChubProbability() * 100f)}%  |  Win Reward: +{baseReward} Coins"
-                    : $"LOCKED — {inv?.GetAreaUnlockRequirementText(npc.AreaId)}";
-
-                var subTxt = CreateText("Sub", row, subLine, 13, FontStyle.Normal, unlocked ? new Color(0.80f, 0.90f, 1.0f) : new Color(0.94f, 0.62f, 0.42f), TextAnchor.MiddleLeft);
-                subTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
-                subTxt.rectTransform.anchorMax = new Vector2(0.74f, 0.52f);
-                subTxt.rectTransform.offsetMin = new Vector2(18f, 6f);
-                subTxt.rectTransform.offsetMax = new Vector2(-8f, 0f);
-
-                var capturedNpc = npc;
-                var challengeBtn = CreateButton(
-                    "QuickDuelBtn",
-                    row,
-                    unlocked ? "CHALLENGE NOW" : "AREA LOCKED",
-                    unlocked ? new Color(0.18f, 0.72f, 0.34f) : new Color(0.25f, 0.28f, 0.34f),
-                    13,
-                    () =>
-                    {
-                        if (!unlocked)
-                        {
-                            ShowToast(inv != null ? inv.GetAreaUnlockRequirementText(capturedNpc.AreaId) : "Unlock this area first!");
-                            return;
-                        }
-                        StartGameFromMenuIfNeeded();
-                        CloseAllModals();
-                        if (gm != null && gm.StartQuickBattle(capturedNpc, out string msg))
-                        {
-                            ShowToast(msg);
-                        }
-                        else if (TeksMatchManager.Instance != null)
-                        {
-                            TeksMatchManager.Instance.StartChallenge(capturedNpc);
-                        }
-                    }
-                );
-                var cRt = challengeBtn.GetComponent<RectTransform>();
-                cRt.anchorMin = new Vector2(1f, 0.5f);
-                cRt.anchorMax = new Vector2(1f, 0.5f);
-                cRt.anchoredPosition = new Vector2(-102f, 0f);
-                cRt.sizeDelta = new Vector2(174f, 44f);
-                challengeBtn.interactable = unlocked;
+                var child = parent.GetChild(i);
+                child.gameObject.SetActive(false);
+                child.SetParent(null, false);
+                Destroy(child.gameObject);
             }
         }
 
-        private void PopulateTournamentTab(TeksGameModeManager gm, PlayerInventory inv)
+        private void BuildTournamentHeroBanner(TeksGameModeManager gm, PlayerInventory inv)
         {
             int tourneysWon = inv != null ? inv.TournamentsWon : 0;
             int totalRounds = TeksGameModeManager.TournamentRoundCount;
-            var banner = CreateRoundedPanel("TourneyBanner", _modesListContent, new Color(0.18f, 0.14f, 0.08f, 1f), new Vector2(860f, 102f));
-            banner.gameObject.AddComponent<LayoutElement>().preferredHeight = 102f;
-            AddOutline(banner.gameObject, new Color(1.0f, 0.82f, 0.22f), 2f);
+            bool tourneyActive = gm != null && gm.ActiveMode == GameModeType.Tournament && gm.RunState != ModeRunState.Inactive;
+            bool hasWaitingRound = tourneyActive && gm.RunState == ModeRunState.AwaitingNextRound;
+            bool canAffordEntry = inv == null || inv.Coins >= TeksGameModeManager.TournamentEntryFee;
 
-            var bTxt = CreateText(
-                "TourneyBannerTxt",
+            var banner = CreateRoundedPanel("TourneyHeroBanner", _modesHeroContainer, new Color(0.15f, 0.11f, 0.05f, 1f), Vector2.zero);
+            StretchFull(banner, 0f);
+            AddOutline(banner.gameObject, new Color(0.98f, 0.78f, 0.22f), 2.2f);
+
+            var topGloss = CreateRoundedPanel("HeroGloss", banner, new Color(1f, 1f, 1f, 0.07f), Vector2.zero);
+            topGloss.anchorMin = new Vector2(0.01f, 0.58f);
+            topGloss.anchorMax = new Vector2(0.99f, 0.96f);
+            topGloss.offsetMin = Vector2.zero;
+            topGloss.offsetMax = Vector2.zero;
+            topGloss.GetComponent<Image>().raycastTarget = false;
+
+            // Left: Trophy Medallion + Trophy Count Badge
+            var medallion = CreateRoundedPanel("TrophyMedallion", banner, new Color(0.24f, 0.16f, 0.06f, 1f), new Vector2(78f, 78f));
+            medallion.anchorMin = new Vector2(0f, 1f);
+            medallion.anchorMax = new Vector2(0f, 1f);
+            medallion.anchoredPosition = new Vector2(58f, -52f);
+            AddOutline(medallion.gameObject, new Color(1.0f, 0.84f, 0.24f), 2f);
+            var trophyImg = CreateImage("TrophyImg", medallion, CardArtGenerator.GetUIIconSprite("trophy"));
+            trophyImg.preserveAspect = true;
+            StretchFull(trophyImg.rectTransform, 10f);
+
+            var trophyCountPill = CreateRoundedPanel("TrophyCountPill", banner, new Color(0.26f, 0.18f, 0.05f, 1f), new Vector2(96f, 24f));
+            trophyCountPill.anchorMin = new Vector2(0f, 0f);
+            trophyCountPill.anchorMax = new Vector2(0f, 0f);
+            trophyCountPill.anchoredPosition = new Vector2(58f, 20f);
+            AddOutline(trophyCountPill.gameObject, new Color(0.96f, 0.76f, 0.20f), 1.2f);
+            var tcTxt = CreateText("TrophyCountTxt", trophyCountPill, $"CUPS: {tourneysWon}", 12, FontStyle.Bold, new Color(1.0f, 0.90f, 0.42f), TextAnchor.MiddleCenter);
+            StretchFull(tcTxt.rectTransform, 2f);
+
+            // Center: Championship Title, Status/Subhead & Prize Pool Icon Chips
+            string heroHeading = tourneyActive && gm != null
+                ? gm.GetModeStatusBanner()
+                : $"BARANGAY {totalRounds}-ROUND CHAMPIONSHIP";
+            var titleTxt = CreateText(
+                "HeroTitle",
                 banner,
-                $"BARANGAY {totalRounds}-ROUND CHAMPIONSHIP TOURNAMENT   (Trophies Won: {tourneysWon})\nEntry Fee: {TeksGameModeManager.TournamentEntryFee:N0} Coins   •   Quarterfinals -> Semifinals -> Finals\nPrize Pool: +{TeksGameModeManager.TournamentTrophyCoins:N0} Coins + {TeksGameModeManager.TournamentTrophyGems} Gems + Champion Trophy!",
-                15,
+                heroHeading,
+                20,
                 FontStyle.Bold,
-                new Color(1.0f, 0.92f, 0.52f),
+                tourneyActive ? new Color(0.46f, 1.0f, 0.64f) : new Color(1.0f, 0.88f, 0.32f),
                 TextAnchor.MiddleLeft
             );
-            bTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
-            bTxt.rectTransform.anchorMax = new Vector2(0.71f, 1f);
-            bTxt.rectTransform.offsetMin = new Vector2(18f, 8f);
-            bTxt.rectTransform.offsetMax = new Vector2(-8f, -8f);
+            titleTxt.resizeTextForBestFit = true;
+            titleTxt.resizeTextMinSize = 14;
+            titleTxt.resizeTextMaxSize = 20;
+            titleTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
+            titleTxt.rectTransform.anchorMax = new Vector2(1f, 1f);
+            titleTxt.rectTransform.offsetMin = new Vector2(122f, -38f);
+            titleTxt.rectTransform.offsetMax = new Vector2(-264f, -10f);
+            AddTextShadow(titleTxt.gameObject);
+            _modesActiveStatusText = titleTxt;
 
-            bool hasWaitingRound = gm != null && gm.ActiveMode == GameModeType.Tournament && gm.RunState == ModeRunState.AwaitingNextRound;
-            string startLabel = hasWaitingRound
+            string subMsg = hasWaitingRound
+                ? $"Victory secured! Continue to {TeksGameModeManager.GetTournamentRoundName(gm.TournamentCurrentRoundIndex)} in the Tournament Arena!"
+                : "Defeat Quarterfinals, Semifinals & Finals back-to-back to win the Championship Prize Pool!";
+            var subTxt = CreateText("HeroSub", banner, subMsg, 13, FontStyle.Normal, new Color(0.92f, 0.90f, 0.82f), TextAnchor.MiddleLeft);
+            subTxt.resizeTextForBestFit = true;
+            subTxt.resizeTextMinSize = 10;
+            subTxt.resizeTextMaxSize = 13;
+            subTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
+            subTxt.rectTransform.anchorMax = new Vector2(1f, 1f);
+            subTxt.rectTransform.offsetMin = new Vector2(122f, -66f);
+            subTxt.rectTransform.offsetMax = new Vector2(-264f, -38f);
+
+            var prizeRow = new GameObject("PrizePoolRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            prizeRow.transform.SetParent(banner, false);
+            var prRt = prizeRow.GetComponent<RectTransform>();
+            prRt.anchorMin = new Vector2(0f, 0f);
+            prRt.anchorMax = new Vector2(1f, 0f);
+            prRt.offsetMin = new Vector2(122f, 14f);
+            prRt.offsetMax = new Vector2(-264f, 50f);
+            var prHlg = prizeRow.GetComponent<HorizontalLayoutGroup>();
+            prHlg.spacing = 10f;
+            prHlg.childAlignment = TextAnchor.MiddleLeft;
+            prHlg.childControlWidth = false;
+            prHlg.childControlHeight = false;
+            prHlg.childForceExpandWidth = false;
+            prHlg.childForceExpandHeight = false;
+
+            var prizeLbl = CreateText("PrizeLbl", prizeRow.transform, "PRIZE POOL:", 12, FontStyle.Bold, new Color(1.0f, 0.84f, 0.36f), TextAnchor.MiddleLeft);
+            var plLe = prizeLbl.gameObject.AddComponent<LayoutElement>();
+            plLe.preferredWidth = 84f;
+            plLe.preferredHeight = 32f;
+
+            CreateSingleCurrencyChip(
+                "PrizeCoins",
+                prizeRow.transform,
+                "coin",
+                $"+{TeksGameModeManager.TournamentTrophyCoins:N0} COINS",
+                new Color(0.18f, 0.13f, 0.04f, 0.98f),
+                new Color(0.98f, 0.78f, 0.22f),
+                new Color(1.0f, 0.90f, 0.36f),
+                new Vector2(132f, 32f),
+                13,
+                18f,
+                out _
+            );
+
+            CreateSingleCurrencyChip(
+                "PrizeGems",
+                prizeRow.transform,
+                "gem",
+                $"+{TeksGameModeManager.TournamentTrophyGems:N0} GEMS",
+                new Color(0.05f, 0.14f, 0.24f, 0.98f),
+                new Color(0.32f, 0.86f, 1.0f),
+                new Color(0.46f, 0.96f, 1.0f),
+                new Vector2(114f, 32f),
+                13,
+                18f,
+                out _
+            );
+
+            CreateSingleCurrencyChip(
+                "PrizeTrophy",
+                prizeRow.transform,
+                "trophy",
+                "+1 TROPHY",
+                new Color(0.22f, 0.14f, 0.06f, 0.98f),
+                new Color(1.0f, 0.82f, 0.28f),
+                new Color(1.0f, 0.92f, 0.56f),
+                new Vector2(112f, 32f),
+                13,
+                18f,
+                out _
+            );
+
+            // Right Action Deck: Primary Enter / Play Round CTA + Entry Coin Chip (or Leave Tournament button)
+            string ctaLabel = hasWaitingRound
                 ? $"PLAY ROUND {gm.TournamentCurrentRoundIndex + 1} / {totalRounds}"
-                : $"ENTER ({TeksGameModeManager.TournamentEntryFee} COINS)";
+                : "ENTER TOURNAMENT";
+            Color ctaBg = hasWaitingRound
+                ? new Color(0.18f, 0.72f, 0.34f)
+                : (canAffordEntry ? new Color(0.88f, 0.56f, 0.10f) : new Color(0.30f, 0.30f, 0.34f));
 
-            var startBtn = CreateButton("StartTourneyBtn", banner, startLabel, new Color(0.88f, 0.56f, 0.10f), 15, () =>
+            var startBtn = CreateButton("StartTourneyBtn", banner, ctaLabel, ctaBg, 16, () =>
             {
                 if (gm == null) return;
+                if (!hasWaitingRound && inv != null && inv.Coins < TeksGameModeManager.TournamentEntryFee)
+                {
+                    ShowToast($"Need {TeksGameModeManager.TournamentEntryFee} Barya Coins to enter! (You have {inv.Coins:N0})");
+                    return;
+                }
                 StartGameFromMenuIfNeeded();
                 CloseAllModals();
                 if (hasWaitingRound)
@@ -1191,11 +1359,52 @@ namespace TeksMaster.UI
                 }
             });
             var sRt = startBtn.GetComponent<RectTransform>();
-            sRt.anchorMin = new Vector2(1f, 0.5f);
-            sRt.anchorMax = new Vector2(1f, 0.5f);
-            sRt.anchoredPosition = new Vector2(-120f, 0f);
-            sRt.sizeDelta = new Vector2(214f, 52f);
+            sRt.anchorMin = new Vector2(1f, 1f);
+            sRt.anchorMax = new Vector2(1f, 1f);
+            sRt.anchoredPosition = new Vector2(-130f, -44f);
+            sRt.sizeDelta = new Vector2(226f, 52f);
+            ApplyButtonTint(startBtn, ctaBg);
+            AddOutline(startBtn.gameObject, hasWaitingRound ? new Color(0.60f, 1.0f, 0.68f) : new Color(1.0f, 0.88f, 0.34f), 1.8f);
 
+            if (tourneyActive)
+            {
+                var exitBtn = CreateButton("ExitActiveModeBtn", banner, "LEAVE TOURNAMENT", new Color(0.72f, 0.22f, 0.22f), 12, () =>
+                {
+                    TeksGameModeManager.Instance?.ExitActiveMode(true);
+                    ShowToast("Left Tournament bracket and returned to Story exploration.");
+                    PopulateModesModal();
+                });
+                var exRt = exitBtn.GetComponent<RectTransform>();
+                exRt.anchorMin = new Vector2(1f, 0f);
+                exRt.anchorMax = new Vector2(1f, 0f);
+                exRt.anchoredPosition = new Vector2(-130f, 30f);
+                exRt.sizeDelta = new Vector2(226f, 32f);
+                AddOutline(exitBtn.gameObject, new Color(0.96f, 0.46f, 0.46f), 1.2f);
+            }
+            else
+            {
+                var feeChip = CreateSingleCurrencyChip(
+                    "EntryFeeChip",
+                    banner,
+                    "coin",
+                    $"ENTRY FEE: {TeksGameModeManager.TournamentEntryFee:N0} COINS",
+                    canAffordEntry ? new Color(0.14f, 0.11f, 0.04f, 0.96f) : new Color(0.24f, 0.10f, 0.10f, 0.96f),
+                    canAffordEntry ? new Color(0.96f, 0.76f, 0.22f) : new Color(0.92f, 0.36f, 0.36f),
+                    canAffordEntry ? new Color(1.0f, 0.90f, 0.40f) : new Color(1.0f, 0.64f, 0.64f),
+                    new Vector2(226f, 32f),
+                    12,
+                    17f,
+                    out _
+                );
+                feeChip.anchorMin = new Vector2(1f, 0f);
+                feeChip.anchorMax = new Vector2(1f, 0f);
+                feeChip.anchoredPosition = new Vector2(-130f, 30f);
+            }
+        }
+
+        private void BuildTournamentBracketCards(TeksGameModeManager gm)
+        {
+            int totalRounds = TeksGameModeManager.TournamentRoundCount;
             IReadOnlyList<NpcOpponent> bracket = (gm != null && gm.TournamentBracket != null && gm.TournamentBracket.Count > 0)
                 ? gm.TournamentBracket
                 : (gm != null ? gm.PreviewTournamentBracket() : new List<NpcOpponent>());
@@ -1204,129 +1413,215 @@ namespace TeksMaster.UI
             int currentRound = tourneyActive ? gm.TournamentCurrentRoundIndex : 0;
             int winsCount = tourneyActive ? gm.TournamentWinsCount : 0;
 
+            // Build 3-stage bracket stepper
+            for (int i = 0; i < totalRounds; i++)
+            {
+                bool isCleared = tourneyActive && i < winsCount;
+                bool isCurrent = tourneyActive && i == currentRound && gm.RunState != ModeRunState.Victory;
+                bool isNextHighlight = isCurrent || (!tourneyActive && i == 0);
+
+                Color pillBg = isCleared
+                    ? new Color(0.14f, 0.42f, 0.24f, 1f)
+                    : (isNextHighlight ? new Color(0.26f, 0.20f, 0.06f, 1f) : new Color(0.11f, 0.15f, 0.24f, 1f));
+                Color pillOutline = isCleared
+                    ? new Color(0.32f, 0.92f, 0.52f)
+                    : (isNextHighlight ? new Color(1.0f, 0.84f, 0.24f) : new Color(0.28f, 0.40f, 0.58f));
+
+                string stageLabel = $"{i + 1}. {TeksGameModeManager.GetTournamentRoundName(i).ToUpper()}";
+                if (isCleared) stageLabel += " ✓";
+
+                var pill = CreateRoundedPanel("Step_" + i, _modesStepperRow, pillBg, new Vector2(276f, 32f));
+                AddOutline(pill.gameObject, pillOutline, isNextHighlight ? 1.8f : 1.2f);
+                var pTxt = CreateText("StepTxt", pill, stageLabel, 13, FontStyle.Bold, isCleared ? new Color(0.68f, 1.0f, 0.74f) : (isNextHighlight ? new Color(1.0f, 0.90f, 0.40f) : new Color(0.76f, 0.86f, 0.96f)), TextAnchor.MiddleCenter);
+                StretchFull(pTxt.rectTransform, 4f);
+
+                if (i < totalRounds - 1)
+                {
+                    var arrow = CreateText("Arrow_" + i, _modesStepperRow, "-->", 14, FontStyle.Bold, new Color(0.96f, 0.78f, 0.26f), TextAnchor.MiddleCenter);
+                    arrow.rectTransform.sizeDelta = new Vector2(36f, 32f);
+                }
+            }
+
+            if (bracket == null || bracket.Count == 0)
+            {
+                var emptyBox = CreateRoundedPanel("EmptyBracket", _modesBracketRow, new Color(0.10f, 0.15f, 0.24f, 1f), new Vector2(860f, 200f));
+                var emptyTxt = CreateText("EmptyTxt", emptyBox, "Bracket contenders are loading... Enter the Barangay court to seed challengers.", 16, FontStyle.Bold, new Color(0.84f, 0.92f, 1.0f), TextAnchor.MiddleCenter);
+                StretchFull(emptyTxt.rectTransform, 20f);
+                return;
+            }
+
             int rowCount = Mathf.Min(bracket.Count, totalRounds);
             for (int i = 0; i < rowCount; i++)
             {
                 var opp = bracket[i];
                 if (opp == null) continue;
 
-                string roundStage = TeksGameModeManager.GetTournamentRoundName(i).ToUpper();
-                string rTitle = $"ROUND {i + 1} — {roundStage}";
                 bool isCompleted = tourneyActive && i < winsCount;
                 bool isCurrent = tourneyActive && i == currentRound && gm.RunState != ModeRunState.Victory;
 
-                Color rowCol = isCompleted
-                    ? new Color(0.12f, 0.24f, 0.16f, 1f)
-                    : (isCurrent ? new Color(0.20f, 0.22f, 0.12f, 1f) : new Color(0.12f, 0.17f, 0.26f, 1f));
+                Color diffCol = opp.GetDifficultyColor();
+                Color cardBg = isCompleted
+                    ? new Color(0.09f, 0.18f, 0.14f, 1f)
+                    : (isCurrent ? new Color(0.14f, 0.15f, 0.10f, 1f) : new Color(0.09f, 0.14f, 0.23f, 1f));
+                Color cardBorder = isCompleted
+                    ? new Color(0.28f, 0.88f, 0.48f)
+                    : (isCurrent ? new Color(1.0f, 0.84f, 0.22f) : diffCol);
 
-                var row = CreateRoundedPanel("TourneyRound_" + i, _modesListContent, rowCol, new Vector2(860f, 86f));
-                row.gameObject.AddComponent<LayoutElement>().preferredHeight = 86f;
-                AddOutline(row.gameObject, isCurrent ? new Color(1.0f, 0.85f, 0.22f) : opp.GetDifficultyColor(), isCurrent ? 2.5f : 1.5f);
+                var card = CreateRoundedPanel("TourneyRound_" + i, _modesBracketRow, cardBg, new Vector2(300f, 400f));
+                AddOutline(card.gameObject, cardBorder, (isCurrent || isCompleted) ? 2.4f : 1.7f);
 
-                string statusTag = isCompleted ? "COMPLETED ✓" : (isCurrent ? "UP NEXT" : "BRACKET SEED");
+                // Top Stage Header Band (flush rectangular strip)
+                var headerGo = new GameObject("StageHeader", typeof(RectTransform), typeof(Image));
+                headerGo.transform.SetParent(card, false);
+                var headerRt = headerGo.GetComponent<RectTransform>();
+                headerRt.anchorMin = new Vector2(0f, 1f);
+                headerRt.anchorMax = new Vector2(1f, 1f);
+                headerRt.offsetMin = new Vector2(3f, -44f);
+                headerRt.offsetMax = new Vector2(-3f, -3f);
+                var headerImg = headerGo.GetComponent<Image>();
+                headerImg.sprite = null;
+                headerImg.color = Color.Lerp(cardBorder, Color.black, 0.56f);
+                headerImg.raycastTarget = false;
+
+                string stageName = TeksGameModeManager.GetTournamentRoundName(i).ToUpper();
+                var stageTxt = CreateText("StageTitle", headerRt, $"ROUND {i + 1} • {stageName}", 13, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
+                stageTxt.resizeTextForBestFit = true;
+                stageTxt.resizeTextMinSize = 10;
+                stageTxt.resizeTextMaxSize = 13;
+                stageTxt.rectTransform.anchorMin = Vector2.zero;
+                stageTxt.rectTransform.anchorMax = new Vector2(0.64f, 1f);
+                stageTxt.rectTransform.offsetMin = new Vector2(12f, 2f);
+                stageTxt.rectTransform.offsetMax = new Vector2(-4f, -2f);
+                AddTextShadow(stageTxt.gameObject);
+
+                string statusLabel = isCompleted ? "CLEARED ✓" : (isCurrent ? "UP NEXT" : $"SEED #{i + 1}");
+                Color statusCol = isCompleted
+                    ? new Color(0.18f, 0.66f, 0.34f)
+                    : (isCurrent ? new Color(0.88f, 0.56f, 0.10f) : new Color(0.16f, 0.24f, 0.36f));
+                var statusPill = CreateRoundedPanel("StatusPill", headerRt, statusCol, new Vector2(88f, 24f));
+                statusPill.anchorMin = new Vector2(1f, 0.5f);
+                statusPill.anchorMax = new Vector2(1f, 0.5f);
+                statusPill.anchoredPosition = new Vector2(-52f, 0f);
+                var stTxt = CreateText("StatusTxt", statusPill, statusLabel, 11, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                StretchFull(stTxt.rectTransform, 3f);
+
+                // Dual Center Visual Showcase: Opponent Portrait (Left) + Pamato Card Slab (Right)
+                var oppAvatarFrame = CreateRoundedPanel("OppAvatarFrame", card, new Color(0.06f, 0.09f, 0.16f, 1f), new Vector2(114f, 114f));
+                oppAvatarFrame.anchorMin = new Vector2(0.5f, 1f);
+                oppAvatarFrame.anchorMax = new Vector2(0.5f, 1f);
+                oppAvatarFrame.anchoredPosition = new Vector2(-68f, -124f);
+                AddOutline(oppAvatarFrame.gameObject, diffCol, 2f);
+                var oppPortraitImg = CreateImage(
+                    "OppPortrait",
+                    oppAvatarFrame,
+                    CharacterResourceGenerator.GetNpcPortraitSprite(opp.NpcName, opp.Difficulty, opp.IsChampion, opp.CharacterPrefabNumber)
+                );
+                StretchFull(oppPortraitImg.rectTransform, 5f);
+
+                var vsLbl = CreateText("VsDiv", card, "VS", 14, FontStyle.Bold, new Color(1.0f, 0.84f, 0.32f), TextAnchor.MiddleCenter);
+                vsLbl.rectTransform.anchorMin = new Vector2(0.5f, 1f);
+                vsLbl.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+                vsLbl.rectTransform.anchoredPosition = new Vector2(-4f, -124f);
+                vsLbl.rectTransform.sizeDelta = new Vector2(30f, 26f);
+
                 var cardDef = TeksDatabase.GetCard(opp.FavoriteCardId);
-                string cardName = cardDef != null ? cardDef.Name : opp.FavoriteCardId;
+                Color rarityCol = cardDef != null ? TeksDatabase.GetRarityColor(cardDef.Rarity) : new Color(0.42f, 0.72f, 1.0f);
 
-                var txt = CreateText(
-                    "RoundTxt",
-                    row,
-                    $"{rTitle}   •   [{statusTag}]\nOpponent: {opp.GetDisplayTag()}  |  Pamato: {cardName}  |  Match Reward: +{TeksMatchManager.GetBaseCoinReward(opp)} Coins",
-                    14,
-                    FontStyle.Bold,
-                    Color.white,
-                    TextAnchor.MiddleLeft
-                );
-                StretchFull(txt.rectTransform, 16f);
-            }
-        }
+                var cardSlab = CreateRoundedPanel("PamatoSlab", card, rarityCol, new Vector2(102f, 144f));
+                cardSlab.anchorMin = new Vector2(0.5f, 1f);
+                cardSlab.anchorMax = new Vector2(0.5f, 1f);
+                cardSlab.anchoredPosition = new Vector2(68f, -124f);
+                var innerSlab = CreateRoundedPanel("Inner", cardSlab, new Color(0.06f, 0.09f, 0.15f), Vector2.zero);
+                StretchFull(innerSlab, 4f);
+                var cardArtImg = CreateImage("Art", innerSlab, cardDef != null ? CardArtGenerator.GetCardPortraitSprite(cardDef, opp.CardStarRank) : null);
+                StretchFull(cardArtImg.rectTransform, 2f);
+                AttachWagerCardBadges(cardSlab, out Text lvlTxt, out Text starsTxt);
+                if (lvlTxt != null) lvlTxt.text = $"Lv.{Mathf.Max(1, opp.CardStarRank)}";
+                if (starsTxt != null)
+                {
+                    int stars = Mathf.Clamp(opp.CardStarRank, 1, 5);
+                    starsTxt.text = new string('★', stars) + new string('☆', 5 - stars);
+                }
 
-        private void PopulateChallengeTab(TeksGameModeManager gm, PlayerInventory inv)
-        {
-            int challengesDone = inv != null ? inv.ChallengesCompleted : 0;
-            var headerBox = CreateRoundedPanel("ChallengeBanner", _modesListContent, new Color(0.16f, 0.12f, 0.26f, 1f), new Vector2(860f, 62f));
-            headerBox.gameObject.AddComponent<LayoutElement>().preferredHeight = 62f;
-            var hTxt = CreateText(
-                "ChallengeHdrTxt",
-                headerBox,
-                $"SPECIAL RULE CHALLENGES   (Challenges Cleared: {challengesDone})\nTest your Teks mastery under special rules to earn bonus Barya Coins & Gems!",
-                14,
-                FontStyle.Bold,
-                new Color(0.92f, 0.84f, 1.0f),
-                TextAnchor.MiddleLeft
-            );
-            StretchFull(hTxt.rectTransform, 12f);
+                // Identity & Pamato Metadata
+                var oppNameTxt = CreateText("OppName", card, opp.NpcName.ToUpper(), 19, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                oppNameTxt.resizeTextForBestFit = true;
+                oppNameTxt.resizeTextMinSize = 14;
+                oppNameTxt.resizeTextMaxSize = 19;
+                oppNameTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
+                oppNameTxt.rectTransform.anchorMax = new Vector2(1f, 1f);
+                oppNameTxt.rectTransform.offsetMin = new Vector2(12f, -240f);
+                oppNameTxt.rectTransform.offsetMax = new Vector2(-12f, -208f);
+                AddTextShadow(oppNameTxt.gameObject);
 
-            if (gm == null) return;
-            var infos = TeksGameModeManager.GetAllChallengeInfos();
-            for (int i = 0; i < infos.Length; i++)
-            {
-                var info = infos[i];
-                bool canStart = gm.CanStartChallenge(info.RuleType, out string blockReason);
+                string diffBadgeText = opp.IsChampion
+                    ? "BARANGAY CHAMPION"
+                    : $"{opp.Difficulty.ToString().ToUpper()} CHALLENGER";
+                var diffPill = CreateRoundedPanel("DiffPill", card, Color.Lerp(diffCol, Color.black, 0.62f), new Vector2(198f, 24f));
+                diffPill.anchorMin = new Vector2(0.5f, 1f);
+                diffPill.anchorMax = new Vector2(0.5f, 1f);
+                diffPill.anchoredPosition = new Vector2(0f, -256f);
+                AddOutline(diffPill.gameObject, diffCol, 1.2f);
+                var diffTxt = CreateText("DiffTxt", diffPill, diffBadgeText, 11, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                StretchFull(diffTxt.rectTransform, 3f);
 
-                var row = CreateRoundedPanel("Challenge_" + info.RuleType, _modesListContent, new Color(0.13f, 0.18f, 0.28f, 1f), new Vector2(860f, 108f));
-                row.gameObject.AddComponent<LayoutElement>().preferredHeight = 108f;
-                AddOutline(row.gameObject, new Color(0.72f, 0.42f, 0.98f), 2f);
-
-                var titleTxt = CreateText(
-                    "Title",
-                    row,
-                    $"{info.Title.ToUpper()}   •   [{info.RuleSummary}]",
-                    16,
-                    FontStyle.Bold,
-                    new Color(1.0f, 0.88f, 0.34f),
-                    TextAnchor.MiddleLeft
-                );
-                titleTxt.rectTransform.anchorMin = new Vector2(0f, 0.58f);
-                titleTxt.rectTransform.anchorMax = new Vector2(0.74f, 1f);
-                titleTxt.rectTransform.offsetMin = new Vector2(18f, 0f);
-                titleTxt.rectTransform.offsetMax = new Vector2(-8f, -6f);
-
-                var descTxt = CreateText(
-                    "Desc",
-                    row,
-                    $"{info.Description}\nGoal: {info.TargetWins} Consecutive Wins   |   Completion Bonus: +{info.CoinReward} Barya Coins  &  +{info.GemReward} Gems",
+                string cardName = cardDef != null ? cardDef.Name.ToUpper() : opp.FavoriteCardId.ToUpper();
+                string rarityName = cardDef != null ? TeksDatabase.GetRarityName(cardDef.Rarity) : "Teks";
+                var pamatoTxt = CreateText(
+                    "PamatoInfo",
+                    card,
+                    $"Pamato: {cardName}\n[{rarityName}]",
                     13,
-                    FontStyle.Normal,
+                    FontStyle.Bold,
+                    rarityCol,
+                    TextAnchor.MiddleCenter
+                );
+                pamatoTxt.lineSpacing = 1.15f;
+                pamatoTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
+                pamatoTxt.rectTransform.anchorMax = new Vector2(1f, 1f);
+                pamatoTxt.rectTransform.offsetMin = new Vector2(12f, -318f);
+                pamatoTxt.rectTransform.offsetMax = new Vector2(-12f, -274f);
+
+                // Bottom Recessed Stats & Coin Reward Footer
+                var footerDeck = CreateRoundedPanel("FooterDeck", card, new Color(0.05f, 0.08f, 0.14f, 0.96f), Vector2.zero);
+                footerDeck.anchorMin = new Vector2(0f, 0f);
+                footerDeck.anchorMax = new Vector2(1f, 0f);
+                footerDeck.offsetMin = new Vector2(10f, 10f);
+                footerDeck.offsetMax = new Vector2(-10f, 76f);
+                AddOutline(footerDeck.gameObject, new Color(0.24f, 0.36f, 0.56f), 1.2f);
+
+                int chubPct = Mathf.RoundToInt(opp.GetAiChubProbability() * 100f);
+                var oddsTxt = CreateText(
+                    "AiOddsTxt",
+                    footerDeck,
+                    $"AI FRONT ODDS\n{chubPct}% CHUB",
+                    12,
+                    FontStyle.Bold,
                     new Color(0.84f, 0.92f, 1.0f),
-                    TextAnchor.MiddleLeft
+                    TextAnchor.MiddleCenter
                 );
-                descTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
-                descTxt.rectTransform.anchorMax = new Vector2(0.74f, 0.60f);
-                descTxt.rectTransform.offsetMin = new Vector2(18f, 8f);
-                descTxt.rectTransform.offsetMax = new Vector2(-8f, 0f);
+                oddsTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
+                oddsTxt.rectTransform.anchorMax = new Vector2(0.46f, 1f);
+                oddsTxt.rectTransform.offsetMin = new Vector2(6f, 4f);
+                oddsTxt.rectTransform.offsetMax = new Vector2(-2f, -4f);
 
-                var capturedRule = info.RuleType;
-                var startBtn = CreateButton(
-                    "StartChallengeBtn",
-                    row,
-                    canStart ? "START CHALLENGE" : "NEED COMMON CARD",
-                    canStart ? new Color(0.58f, 0.24f, 0.88f) : new Color(0.28f, 0.28f, 0.34f),
+                int matchReward = TeksMatchManager.GetBaseCoinReward(opp);
+                var rewardChip = CreateSingleCurrencyChip(
+                    "MatchRewardChip",
+                    footerDeck,
+                    "coin",
+                    $"+{matchReward:N0} COINS",
+                    new Color(0.16f, 0.12f, 0.04f, 0.98f),
+                    new Color(0.98f, 0.78f, 0.22f),
+                    new Color(1.0f, 0.90f, 0.36f),
+                    new Vector2(138f, 34f),
                     13,
-                    () =>
-                    {
-                        if (!gm.CanStartChallenge(capturedRule, out string reason))
-                        {
-                            ShowToast(reason);
-                            return;
-                        }
-                        StartGameFromMenuIfNeeded();
-                        CloseAllModals();
-                        if (gm.StartChallengeMode(capturedRule, out string msg))
-                        {
-                            ShowToast(msg);
-                        }
-                        else
-                        {
-                            ShowToast(msg);
-                        }
-                    }
+                    18f,
+                    out _
                 );
-                var sRt = startBtn.GetComponent<RectTransform>();
-                sRt.anchorMin = new Vector2(1f, 0.5f);
-                sRt.anchorMax = new Vector2(1f, 0.5f);
-                sRt.anchoredPosition = new Vector2(-104f, 0f);
-                sRt.sizeDelta = new Vector2(180f, 46f);
-                startBtn.interactable = canStart;
+                rewardChip.anchorMin = new Vector2(1f, 0.5f);
+                rewardChip.anchorMax = new Vector2(1f, 0.5f);
+                rewardChip.anchoredPosition = new Vector2(-77f, 0f);
             }
         }
 
@@ -1374,11 +1669,17 @@ namespace TeksMaster.UI
             _profileNicknameText.rectTransform.offsetMin = new Vector2(12f, -228f);
             _profileNicknameText.rectTransform.offsetMax = new Vector2(-12f, -194f);
 
-            _profileCurrencyText = CreateText("ProfileCurrency", leftCol, "0 Coins  |  0 Gems", 14, FontStyle.Bold, new Color(0.80f, 0.94f, 1.0f), TextAnchor.MiddleCenter);
-            _profileCurrencyText.rectTransform.anchorMin = new Vector2(0f, 1f);
-            _profileCurrencyText.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _profileCurrencyText.rectTransform.offsetMin = new Vector2(12f, -254f);
-            _profileCurrencyText.rectTransform.offsetMax = new Vector2(-12f, -228f);
+            _profileCurrencyPair = CreateCurrencyPillPair(
+                "ProfileCurrency",
+                leftCol,
+                new Vector2(246f, 26f),
+                13,
+                16f,
+                showUnitLabels: false
+            );
+            _profileCurrencyPair.Root.anchorMin = new Vector2(0.5f, 1f);
+            _profileCurrencyPair.Root.anchorMax = new Vector2(0.5f, 1f);
+            _profileCurrencyPair.Root.anchoredPosition = new Vector2(0f, -241f);
 
             var prevCharBtn = CreateButton("ProfileCharPrevBtn", leftCol, "<", new Color(0.18f, 0.28f, 0.44f), 16, () =>
             {
@@ -1616,10 +1917,7 @@ namespace TeksMaster.UI
             {
                 _profileNicknameText.text = inv.PlayerNickname.ToUpper();
             }
-            if (_profileCurrencyText != null)
-            {
-                _profileCurrencyText.text = $"{inv.Coins:N0} Coins   |   {inv.Gems:N0} Gems";
-            }
+            UpdateCurrencyPillPair(_profileCurrencyPair, inv.Coins, inv.Gems, false);
             if (_profileCharBtnText != null)
             {
                 _profileCharBtnText.text = $"{charPreset.DisplayName.ToUpper()} ({charIdx + 1}/{TeksCharacterPresets.Count})";
@@ -1662,7 +1960,7 @@ namespace TeksMaster.UI
                 _profileCombatStatsText.text =
                     $"Wins: {wins}    •    Losses: {losses}    •    Win Rate: {winRate}%\n" +
                     $"Current Streak: {inv.WinStreak}    •    Best Streak: {inv.BestWinStreak}\n" +
-                    $"Tournaments Won: {inv.TournamentsWon}    •    Challenges Completed: {inv.ChallengesCompleted}";
+                    $"Tournaments Won: {inv.TournamentsWon}    •    Total Matches: {inv.MatchesPlayed}";
             }
 
             int uniqueCards = inv.OwnedCards != null ? inv.OwnedCards.Count : 0;

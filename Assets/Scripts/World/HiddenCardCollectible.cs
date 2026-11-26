@@ -521,7 +521,11 @@ namespace TeksMaster.World
 
         public void RefreshLockState()
         {
-            if (string.IsNullOrWhiteSpace(UnlockHint))
+            if (PlayerInventory.Instance != null)
+            {
+                UnlockHint = ResolveDefaultUnlockHint(AreaId);
+            }
+            else if (string.IsNullOrWhiteSpace(UnlockHint))
             {
                 UnlockHint = ResolveDefaultUnlockHint(AreaId);
             }

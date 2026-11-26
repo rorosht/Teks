@@ -548,11 +548,37 @@ namespace TeksMaster.Gameplay
             Vector3 pPos = _playerCard != null ? _playerCard.transform.position : fallbackPos;
             Vector3 oPos = _opponentCard != null ? _opponentCard.transform.position : pPos;
 
+            float pVelY = 0f;
+            float oVelY = 0f;
+            int velCount = 0;
+            if (_playerCard != null)
+            {
+                var prb = _playerCard.GetComponent<Rigidbody>();
+                if (prb != null)
+                {
+                    pVelY = prb.linearVelocity.y;
+                    velCount++;
+                }
+            }
+            if (_opponentCard != null)
+            {
+                var orb = _opponentCard.GetComponent<Rigidbody>();
+                if (orb != null)
+                {
+                    oVelY = orb.linearVelocity.y;
+                    velCount++;
+                }
+            }
+            float avgVelY = velCount > 0 ? (pVelY + oVelY) / velCount : 0f;
+
             Vector3 mid = (pPos + oPos) * 0.5f;
             float maxY = Mathf.Max(pPos.y, oPos.y);
             float spread = Vector3.Distance(new Vector3(pPos.x, 0f, pPos.z), new Vector3(oPos.x, 0f, oPos.z));
 
-            Vector3 desiredFocus = new Vector3(mid.x, Mathf.Max(0.10f, mid.y), mid.z);
+            bool descending = avgVelY < -0.4f;
+            float leadY = descending ? Mathf.Clamp(avgVelY * 0.16f, -1.35f, 0f) : Mathf.Clamp(avgVelY * 0.04f, 0f, 0.25f);
+            Vector3 desiredFocus = new Vector3(mid.x, Mathf.Max(0.08f, mid.y + leadY), mid.z);
+
             if (!_flightCamInitialized || snapImmediately)
             {
                 _flightCamFocus = desiredFocus;
@@ -560,18 +586,24 @@ namespace TeksMaster.Gameplay
             }
             else
             {
-                _flightCamFocus = Vector3.Lerp(_flightCamFocus, desiredFocus, Mathf.Clamp01(Time.deltaTime * 11f));
+                float focusLerp = (descending || maxY < 2.2f) ? 26f : 16f;
+                _flightCamFocus = Vector3.Lerp(_flightCamFocus, desiredFocus, Mathf.Clamp01(Time.deltaTime * focusLerp));
             }
 
-            // Position camera to the SIDE of the battle line so neither character's body ever blocks the flying cards!
+            // Position camera to the SIDE of the battle line and tighten smoothly near the ground before impact
             Vector3 flatFocus = new Vector3(_flightCamFocus.x, 0f, _flightCamFocus.z);
-            float sideDist = Mathf.Clamp(1.85f + spread * 0.45f + maxY * 0.26f, 1.85f, 3.85f);
-            float camWorldY = Mathf.Clamp(0.95f + _flightCamFocus.y * 0.56f, 0.95f, 4.45f);
+            float nearGroundT = 1f - Mathf.Clamp01(maxY / 2.2f);
+            float baseSideDist = Mathf.Clamp(1.85f + spread * 0.45f + maxY * 0.24f, 1.85f, 3.75f);
+            float closeSideDist = Mathf.Clamp(1.32f + spread * 0.45f, 1.32f, 1.95f);
+            float sideDist = Mathf.Lerp(baseSideDist, closeSideDist, nearGroundT * (descending ? 0.85f : 0.45f));
+            float camWorldY = Mathf.Clamp(0.98f + _flightCamFocus.y * 0.52f, 0.98f, 4.30f);
 
             Vector3 camPos = flatFocus + _matchRight * sideDist - _matchForward * 0.15f + Vector3.up * camWorldY;
             Vector3 lookTarget = _flightCamFocus;
 
-            camFollow.SetMatchCamera(camPos, lookTarget);
+            float posSpeed = (descending || maxY < 2.2f) ? 18f : 13f;
+            float rotSpeed = (descending || maxY < 2.2f) ? 20f : 15f;
+            camFollow.SetMatchCamera(camPos, lookTarget, posSpeed, rotSpeed);
         }
 
         private void SetRoundResultCamera()
@@ -596,7 +628,7 @@ namespace TeksMaster.Gameplay
             float height = Mathf.Clamp(1.05f + spread * 0.16f, 1.05f, 1.55f);
             Vector3 camPos = mid + _matchRight * sideDist - _matchForward * 0.20f + Vector3.up * height;
             Vector3 lookTarget = mid + Vector3.up * 0.06f;
-            camFollow.SetMatchCamera(camPos, lookTarget);
+            camFollow.SetMatchCamera(camPos, lookTarget, posLerpSpeed: 12f, rotLerpSpeed: 14f);
         }
 
         private void RestoreCharactersAfterMatch()
