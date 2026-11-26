@@ -247,7 +247,7 @@ namespace TeksMaster.World
 
         public void BuildWorldIfNeeded()
         {
-            const string versionMarker = "WorldVersion_V8";
+            const string versionMarker = "WorldVersion_V9";
             if (_built && CourtRoot != null && CourtRoot.Find(versionMarker) != null)
             {
                 // Verify materials aren't stale/missing shaders (prevents magenta screen when Reload Domain is disabled)
@@ -968,22 +968,31 @@ namespace TeksMaster.World
                 flag.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
             }
 
-            // Directional Wooden Barangay Street Signposts at Area Entrances (all cleanly outside Highway z in [-18.5, -11.5])
-            BuildDirectionSign(zones, new Vector3(-14.8f, 0f, 3.6f), Quaternion.Euler(0f, -90f, 0f), "OLD NEIGHBORHOOD\nWEST ALLEY", woodMat);
-            BuildDirectionSign(zones, new Vector3(14.8f, 0f, 3.6f), Quaternion.Euler(0f, 90f, 0f), "PLAYER'S\nNEIGHBORHOOD", woodMat);
-            BuildDirectionSign(zones, new Vector3(4.6f, 0f, -9.2f), Quaternion.identity, "KALYE, SARI-SARI &\nSOUTH ARENAS", woodMat);
-            BuildDirectionSign(zones, new Vector3(17.8f, 0f, -19.8f), Quaternion.Euler(0f, 180f, 0f), "FIESTA TEKS ARENA\nSOUTH ENTRANCE", woodMat);
+            // Directional Double-Sided Barangay Street Signposts at Area Entrances (clear of fences, gates & roads)
+            BuildDirectionSign(zones, new Vector3(-16.2f, 0f, 4.9f), Quaternion.Euler(0f, 90f, 0f), "BASKETBALL COURT\nWEST GATE", "OLD NEIGHBORHOOD\nWEST ALLEY", woodMat);
+            BuildDirectionSign(zones, new Vector3(16.2f, 0f, 4.9f), Quaternion.Euler(0f, -90f, 0f), "BASKETBALL COURT\nEAST GATE", "PLAYER'S\nNEIGHBORHOOD", woodMat);
+            BuildDirectionSign(zones, new Vector3(5.4f, 0f, -9.9f), Quaternion.identity, "BASKETBALL COURT\nSOUTH GATE", "KALYE, SARI-SARI &\nSOUTH ARENAS", woodMat);
+            BuildDirectionSign(zones, new Vector3(17.8f, 0f, -19.6f), Quaternion.Euler(0f, 180f, 0f), "FIESTA TEKS ARENA\nSOUTH ENTRANCE", "KALYE HIGHWAY &\nMAIN COURT", woodMat);
         }
 
-        private void BuildDirectionSign(Transform parent, Vector3 pos, Quaternion rot, string text, Material woodMat)
+        private void BuildDirectionSign(Transform parent, Vector3 pos, Quaternion rot, string frontText, string backText, Material woodMat)
         {
             var sign = new GameObject("DirectionSign").transform;
             sign.SetParent(parent, false);
             sign.position = pos;
             sign.rotation = rot;
-            CreateCylinder("SignPost", sign, new Vector3(0f, 1.3f, 0f), new Vector3(0.08f, 1.3f, 0.08f), woodMat, false);
-            CreateBox("SignBoard", sign, new Vector3(0f, 2.25f, 0f), new Vector3(2.8f, 0.92f, 0.10f), CardArtGenerator.CreateLitMaterial(new Color(0.14f, 0.34f, 0.22f), 0.15f), false);
-            CreateWorldText("SignLabelFront", sign, new Vector3(0f, 2.25f, -0.07f), text, 50, new Color(1.0f, 0.92f, 0.32f), 0.19f, 0.13f);
+
+            CreateCylinder("SignPostL", sign, new Vector3(-0.88f, 1.08f, 0f), new Vector3(0.075f, 1.08f, 0.075f), woodMat, false);
+            CreateCylinder("SignPostR", sign, new Vector3(0.88f, 1.08f, 0f), new Vector3(0.075f, 1.08f, 0.075f), woodMat, false);
+            CreateBox("SignBoardTrim", sign, new Vector3(0f, 2.25f, 0f), new Vector3(2.94f, 1.04f, 0.08f), woodMat, false);
+            CreateBox("SignBoard", sign, new Vector3(0f, 2.25f, 0f), new Vector3(2.80f, 0.92f, 0.11f), CardArtGenerator.CreateLitMaterial(new Color(0.14f, 0.34f, 0.22f), 0.15f), false);
+
+            CreateWorldText("SignLabelFront", sign, new Vector3(0f, 2.25f, -0.07f), frontText, 50, new Color(1.0f, 0.92f, 0.32f), 0.19f, 0.12f);
+            if (!string.IsNullOrEmpty(backText))
+            {
+                var backTm = CreateWorldText("SignLabelBack", sign, new Vector3(0f, 2.25f, 0.07f), backText, 50, new Color(1.0f, 0.92f, 0.32f), 0.19f, 0.12f);
+                backTm.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            }
         }
 
         private void BuildTournamentArena()
@@ -1648,6 +1657,60 @@ namespace TeksMaster.World
             rico.AmbientCallouts = new[] { "FIESTA BOSS RICO!", "Sun Dragon Hero Pamato!", "Warm-up bago si Teks Master!" };
             rico.WinBanter = "Hindi pa sapat ang lakas mo para sa Fiesta Trophy!";
             rico.LoseBanter = "MABUHAY! Handa ka na talaga kay Teks Master!!";
+
+            // 10. SOUTH-WEST TOURNAMENT ARENA CONTENDERS & BLEACHER CROWD (Battle Ring center (-22.8, 0, -28.5) kept clear)
+            var enzo = CreateOpponent("Arena Kid Enzo", AIDifficulty.Medium, "patintero_flash", 3, 150,
+                new Vector3(-18.2f, 0f, -24.6f), Quaternion.Euler(0f, -135f, 0f),
+                10,
+                isSeated: false, isWandering: false, isBenchSitter: false,
+                npcId: "arena_enzo", areaOverride: BarangayAreaId.TournamentArena);
+            enzo.ChallengeQuote = "Warm-up Teks sa Tournament Arena! Subukan mo ang bilis ng Patintero Flash ko!";
+            enzo.AmbientCallouts = new[] { "Handa na sa 3-Round Cup!", "150 Coins warm-up match?", "Mabilis 'tong Patintero Flash!" };
+            enzo.WinBanter = "Solid! Mag-ensayo ka muna bago mag-register kay Kuya Ref!";
+            enzo.LoseBanter = "Lupet! Puwedeng-puwede ka na sa Tournament Bracket!";
+
+            var maya = CreateOpponent("Contender Maya", AIDifficulty.Medium, "agila_kid", 3, 180,
+                new Vector3(-26.8f, 0f, -24.8f), Quaternion.Euler(0f, 135f, 0f),
+                57,
+                isSeated: false, isWandering: false, isBenchSitter: false,
+                npcId: "arena_maya", areaOverride: BarangayAreaId.TournamentArena);
+            maya.ChallengeQuote = "Galing din akong Quarterfinals! Kaya mo ba ang Agila Kid ko — 180 Coins?";
+            maya.AmbientCallouts = new[] { "Gusto ko rin ng Gold Trophy!", "Tara exhibition match muna!", "Agila Kid, lipad!" };
+            maya.WinBanter = "Hehe, hindi basta-basta natatalo ang Arena contender!";
+            maya.LoseBanter = "Ang galing! Good luck sa Championship!";
+
+            var vince = CreateOpponent("Arena Ace Vince", AIDifficulty.Hard, "cyber_tikbalang", 4, 280,
+                new Vector3(-18.6f, 0f, -32.2f), Quaternion.Euler(0f, -45f, 0f),
+                72,
+                isSeated: false, isWandering: false, isBenchSitter: false,
+                npcId: "arena_vince", areaOverride: BarangayAreaId.TournamentArena);
+            vince.ChallengeQuote = "Ako ang paborito sa Semifinals bracket! Harapin mo Cyber Tikbalang ko!";
+            vince.AmbientCallouts = new[] { "Fused Cyber Tikbalang 'to!", "280 Coins Arena Duel!", "Malakas mga kalaban dito!" };
+            vince.WinBanter = "Mabigat talaga ang Cyber Tikbalang ko!";
+            vince.LoseBanter = "Ayos! Karapat-dapat ka ngang challenger sa Trophy!";
+
+            var chloe = CreateOpponent("Tourney Pro Chloe", AIDifficulty.Hard, "eclipse_sarimanok", 4, 320,
+                new Vector3(-26.8f, 0f, -32.0f), Quaternion.Euler(0f, 45f, 0f),
+                92,
+                isSeated: false, isWandering: false, isBenchSitter: false,
+                npcId: "arena_chloe", areaOverride: BarangayAreaId.TournamentArena);
+            chloe.ChallengeQuote = "Bago ka sumabak sa 600-Coin Cup, daanan mo muna ang Eclipse Sarimanok ko!";
+            chloe.AmbientCallouts = new[] { "Eclipse Sarimanok Pamato!", "320 Coins Pro Warm-up!", "Target ko ang 1st Prize!" };
+            chloe.WinBanter = "Swerte at lakas ang Eclipse Sarimanok ko!";
+            chloe.LoseBanter = "Solid! Ikaw na ang mukhang magcha-champion dito!";
+
+            // Seated spectators cheering along the West & South Tournament Bleachers
+            CreateSpectatorKid("ArenaSpectator_W1", new Vector3(-28.52f, 0f, -25.6f), Quaternion.Euler(0f, 90f, 0f), 12, CharacterPoseMode.SittingOnBench);
+            CreateSpectatorKid("ArenaSpectator_W2", new Vector3(-28.52f, 0f, -28.5f), Quaternion.Euler(0f, 90f, 0f), 55, CharacterPoseMode.SittingOnBench);
+            CreateSpectatorKid("ArenaSpectator_W3", new Vector3(-28.52f, 0f, -31.4f), Quaternion.Euler(0f, 90f, 0f), 16, CharacterPoseMode.SittingOnBench);
+            CreateSpectatorKid("ArenaSpectator_W4", new Vector3(-29.42f, 0.66f, -27.0f), Quaternion.Euler(0f, 90f, 0f), 64, CharacterPoseMode.SittingOnBench);
+            CreateSpectatorKid("ArenaSpectator_W5", new Vector3(-29.42f, 0.66f, -30.0f), Quaternion.Euler(0f, 90f, 0f), 21, CharacterPoseMode.SittingOnBench);
+
+            CreateSpectatorKid("ArenaSpectator_S1", new Vector3(-25.4f, 0f, -34.02f), Quaternion.identity, 79, CharacterPoseMode.SittingOnBench);
+            CreateSpectatorKid("ArenaSpectator_S2", new Vector3(-22.8f, 0f, -34.02f), Quaternion.identity, 31, CharacterPoseMode.SittingOnBench);
+            CreateSpectatorKid("ArenaSpectator_S3", new Vector3(-20.2f, 0f, -34.02f), Quaternion.identity, 66, CharacterPoseMode.SittingOnBench);
+            CreateSpectatorKid("ArenaSpectator_S4", new Vector3(-24.1f, 0.66f, -34.92f), Quaternion.identity, 15, CharacterPoseMode.SittingOnBench);
+            CreateSpectatorKid("ArenaSpectator_S5", new Vector3(-21.5f, 0.66f, -34.92f), Quaternion.identity, 83, CharacterPoseMode.SittingOnBench);
         }
 
         private void SpawnHiddenCollectibleCards()
@@ -1773,7 +1836,7 @@ namespace TeksMaster.World
             return npc;
         }
 
-        private void CreateSpectatorKid(string name, Vector3 pos, Quaternion rot, int prefabNumber)
+        private void CreateSpectatorKid(string name, Vector3 pos, Quaternion rot, int prefabNumber, CharacterPoseMode pose = CharacterPoseMode.SittingOnCourt)
         {
             var go = new GameObject(name);
             go.transform.SetParent(CourtRoot, false);
@@ -1781,7 +1844,7 @@ namespace TeksMaster.World
             go.transform.rotation = rot;
 
             var actor = CharacterVisualBuilder.BuildPackCharacterVisual(go, prefabNumber);
-            actor.SetPose(CharacterPoseMode.SittingOnCourt);
+            actor.SetPose(pose);
         }
 
         private TextMesh CreateWorldText(

@@ -342,7 +342,7 @@ namespace TeksMaster.Core
                 {
                     Id = "fuse_card",
                     Title = "Fuse 1 Card in Fusion Lab",
-                    Description = "Forge a card in the Fusion Lab using a recipe or 3 duplicates.",
+                    Description = "Forge an exclusive card in the Fusion Lab using a fusion recipe.",
                     Category = MissionCategory.Collection,
                     TargetCount = 1,
                     CoinReward = 300,

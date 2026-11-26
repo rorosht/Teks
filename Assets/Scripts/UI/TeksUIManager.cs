@@ -146,18 +146,32 @@ namespace TeksMaster.UI
         private GameObject _wagerModal;
         private Text _wagerChallengeQuoteText;
         private Text _wagerPlayerName;
+        private Text _wagerPlayerOddsPillText;
         private Image _wagerPlayerAvatarImg;
         private Text _wagerPlayerBadgeText;
+        private Image _wagerPlayerCardFrame;
+        private Image _wagerPlayerCardImg;
+        private Text _wagerPlayerCardLevelBadge;
+        private Text _wagerPlayerCardStarsText;
+        private Text _wagerPlayerCardText;
         private Text _wagerOppName;
+        private Text _wagerOppOddsPillText;
         private Image _wagerOppAvatarImg;
         private Text _wagerOppBadgeText;
-        private Text _wagerOppCardText;
+        private Image _wagerOppCardFrame;
         private Image _wagerOppCardImg;
-        private Image _wagerPlayerCardImg;
-        private Text _wagerPlayerCardText;
-        private Text _wagerStatCompareText;
+        private Text _wagerOppCardLevelBadge;
+        private Text _wagerOppCardStarsText;
+        private Text _wagerOppCardText;
+        private Text _wagerPwrCompareText;
+        private Text _wagerHpCompareText;
+        private Text _wagerAtkCompareText;
         private Text _wagerAmountText;
         private Text _wagerBonusInfoText;
+        private readonly Image[] _wagerChipImgs = new Image[5];
+        private readonly Outline[] _wagerChipOutlines = new Outline[5];
+        private readonly Text[] _wagerChipTexts = new Text[5];
+        private static readonly int[] WagerChipValues = { 0, 50, 100, 200, 500 };
         private int _selectedWagerAmount = 100;
 
         // Card Picker Modal (opened from Wager Modal)
@@ -220,6 +234,7 @@ namespace TeksMaster.UI
             CreateTopLeftHud();
             CreateTopRightHud();
             CreateTopCenterActionDock();
+            CreateCurrentMissionTrackerHud();
             CreateProximityPrompt();
             CreateBottomRightPamatoPanel();
             CreateMatchHud();
@@ -240,6 +255,7 @@ namespace TeksMaster.UI
 
             HookEvents();
             RefreshAllUI();
+            SyncPlayerMovementLock();
         }
 
         private void EnsureEventSystem()
@@ -435,16 +451,20 @@ namespace TeksMaster.UI
             _hudProfileNameRank.rectTransform.offsetMin = new Vector2(112f, -30f);
             _hudProfileNameRank.rectTransform.offsetMax = new Vector2(-12f, -6f);
 
-            _hudCharacterSubText = CreateText("ProfileCharSub", panel, "STREET KID  •  PROFILE [U]", 15, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
+            _hudCharacterSubText = CreateText("ProfileCharSub", panel, "STREET KID  •  PROFILE [U]", 14, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
+            _hudCharacterSubText.resizeTextForBestFit = true;
+            _hudCharacterSubText.resizeTextMinSize = 10;
+            _hudCharacterSubText.resizeTextMaxSize = 14;
+            _hudCharacterSubText.verticalOverflow = VerticalWrapMode.Truncate;
             _hudCharacterSubText.rectTransform.anchorMin = new Vector2(0f, 1f);
-            _hudCharacterSubText.rectTransform.anchorMax = new Vector2(0.66f, 1f);
+            _hudCharacterSubText.rectTransform.anchorMax = new Vector2(0.72f, 1f);
             _hudCharacterSubText.rectTransform.offsetMin = new Vector2(112f, -55f);
-            _hudCharacterSubText.rectTransform.offsetMax = new Vector2(0f, -31f);
+            _hudCharacterSubText.rectTransform.offsetMax = new Vector2(-4f, -31f);
 
             _hudStreakBadge = CreateText("StreakBadge", panel, "", 13, FontStyle.Bold, new Color(1.0f, 0.52f, 0.16f), TextAnchor.MiddleRight);
-            _hudStreakBadge.rectTransform.anchorMin = new Vector2(0.62f, 1f);
+            _hudStreakBadge.rectTransform.anchorMin = new Vector2(0.72f, 1f);
             _hudStreakBadge.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _hudStreakBadge.rectTransform.offsetMin = new Vector2(0f, -55f);
+            _hudStreakBadge.rectTransform.offsetMin = new Vector2(4f, -55f);
             _hudStreakBadge.rectTransform.offsetMax = new Vector2(-12f, -31f);
 
             _hudCompactStatsText = CreateText("HudCompactStats", panel, "W/L: 0-0 (0%)  •  Pamato: Hero 1★", 12, FontStyle.Bold, new Color(0.84f, 0.92f, 0.98f), TextAnchor.MiddleLeft);
@@ -1014,12 +1034,12 @@ namespace TeksMaster.UI
             ctRt.sizeDelta = new Vector2(308f, 36f);
             _tabCardsBtnImg = cardsTabBtn.GetComponent<Image>();
 
-            var fusionTabBtn = CreateButton("TabFusionBtn", window, "CARD FUSION LAB (SIMILAR & RECIPES)", new Color(0.45f, 0.22f, 0.68f), 15, () => SwitchInventoryTab(true));
+            var fusionTabBtn = CreateButton("TabFusionBtn", window, "CARD FUSION LAB (RECIPES)", new Color(0.45f, 0.22f, 0.68f), 15, () => SwitchInventoryTab(true));
             var ftRt = fusionTabBtn.GetComponent<RectTransform>();
             ftRt.anchorMin = new Vector2(0f, 1f);
             ftRt.anchorMax = new Vector2(0f, 1f);
-            ftRt.anchoredPosition = new Vector2(512f, -84f);
-            ftRt.sizeDelta = new Vector2(334f, 36f);
+            ftRt.anchoredPosition = new Vector2(496f, -84f);
+            ftRt.sizeDelta = new Vector2(300f, 36f);
             _tabFusionBtnImg = fusionTabBtn.GetComponent<Image>();
 
             // Tab 1: Owned Cards Grid
@@ -1149,8 +1169,8 @@ namespace TeksMaster.UI
             var singlesTitle = CreateText("SinglesTitle", window, "5-MINUTE ROTATING SINGLES (Includes a -30% SULIT SALE & Slot 4 SUPER SLOT Rare+)", 15, FontStyle.Bold, new Color(0.82f, 0.90f, 1.0f), TextAnchor.MiddleLeft);
             singlesTitle.rectTransform.anchorMin = new Vector2(0f, 1f);
             singlesTitle.rectTransform.anchorMax = new Vector2(1f, 1f);
-            singlesTitle.rectTransform.offsetMin = new Vector2(28f, -134f);
-            singlesTitle.rectTransform.offsetMax = new Vector2(-28f, -110f);
+            singlesTitle.rectTransform.offsetMin = new Vector2(28f, -130f);
+            singlesTitle.rectTransform.offsetMax = new Vector2(-28f, -108f);
 
             // 4 Single Slots Container
             var slotsGo = new GameObject("SlotsRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
@@ -1158,8 +1178,8 @@ namespace TeksMaster.UI
             var slotsRt = slotsGo.GetComponent<RectTransform>();
             slotsRt.anchorMin = new Vector2(0f, 1f);
             slotsRt.anchorMax = new Vector2(1f, 1f);
-            slotsRt.offsetMin = new Vector2(26f, -384f);
-            slotsRt.offsetMax = new Vector2(-26f, -138f);
+            slotsRt.offsetMin = new Vector2(26f, -388f);
+            slotsRt.offsetMax = new Vector2(-26f, -132f);
             var hlg = slotsGo.GetComponent<HorizontalLayoutGroup>();
             hlg.spacing = 14f;
             hlg.childControlWidth = true;
@@ -1173,7 +1193,7 @@ namespace TeksMaster.UI
             boosterTitle.rectTransform.anchorMin = new Vector2(0f, 1f);
             boosterTitle.rectTransform.anchorMax = new Vector2(1f, 1f);
             boosterTitle.rectTransform.offsetMin = new Vector2(28f, -418f);
-            boosterTitle.rectTransform.offsetMax = new Vector2(-28f, -392f);
+            boosterTitle.rectTransform.offsetMax = new Vector2(-28f, -394f);
 
             var packsRow = new GameObject("PacksRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             packsRow.transform.SetParent(window, false);
@@ -1181,7 +1201,7 @@ namespace TeksMaster.UI
             prRt.anchorMin = new Vector2(0f, 1f);
             prRt.anchorMax = new Vector2(1f, 1f);
             prRt.offsetMin = new Vector2(26f, -618f);
-            prRt.offsetMax = new Vector2(-26f, -422f);
+            prRt.offsetMax = new Vector2(-26f, -420f);
             var pHlg = packsRow.GetComponent<HorizontalLayoutGroup>();
             pHlg.spacing = 12f;
             pHlg.childControlWidth = true;
@@ -1283,14 +1303,14 @@ namespace TeksMaster.UI
             var revealTray = CreateRoundedPanel("PackRevealTray", window, new Color(0.05f, 0.08f, 0.14f, 0.96f), Vector2.zero);
             revealTray.anchorMin = new Vector2(0f, 0f);
             revealTray.anchorMax = new Vector2(1f, 0f);
-            revealTray.offsetMin = new Vector2(26f, 18f);
-            revealTray.offsetMax = new Vector2(-26f, 190f);
+            revealTray.offsetMin = new Vector2(26f, 14f);
+            revealTray.offsetMax = new Vector2(-26f, 194f);
             AddOutline(revealTray.gameObject, new Color(0.26f, 0.38f, 0.56f), 1.5f);
 
             _packRevealHeader = CreateText("PackRevealHeader", revealTray, "Open a Booster Pack or Claim your Daily Free 3-Card Draw to reveal new Teks cards here!", 14, FontStyle.Italic, new Color(0.84f, 0.90f, 0.98f), TextAnchor.MiddleLeft);
             _packRevealHeader.rectTransform.anchorMin = new Vector2(0f, 1f);
             _packRevealHeader.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _packRevealHeader.rectTransform.offsetMin = new Vector2(16f, -32f);
+            _packRevealHeader.rectTransform.offsetMin = new Vector2(16f, -30f);
             _packRevealHeader.rectTransform.offsetMax = new Vector2(-16f, -6f);
 
             var revealGo = new GameObject("PackRevealRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
@@ -1298,8 +1318,8 @@ namespace TeksMaster.UI
             var revRt = revealGo.GetComponent<RectTransform>();
             revRt.anchorMin = new Vector2(0f, 0f);
             revRt.anchorMax = new Vector2(1f, 1f);
-            revRt.offsetMin = new Vector2(14f, 12f);
-            revRt.offsetMax = new Vector2(-14f, -36f);
+            revRt.offsetMin = new Vector2(14f, 10f);
+            revRt.offsetMax = new Vector2(-14f, -32f);
             var revHlg = revealGo.GetComponent<HorizontalLayoutGroup>();
             revHlg.spacing = 12f;
             revHlg.childAlignment = TextAnchor.MiddleCenter;
@@ -1416,136 +1436,380 @@ namespace TeksMaster.UI
 
         private void CreateWagerModal()
         {
-            _wagerModal = CreateModalBackdrop("WagerModal", new Vector2(860f, 620f), out RectTransform window);
+            _wagerModal = CreateModalBackdrop("WagerModal", new Vector2(940f, 664f), out RectTransform window);
+            window.GetComponent<Image>().color = new Color(0.07f, 0.10f, 0.18f, 0.99f);
+            AddOutline(window.gameObject, new Color(0.36f, 0.56f, 0.86f), 2.5f);
 
-            var title = CreateText("WagerTitle", window, "CHALLENGE & WAGER SETUP", 26, FontStyle.Bold, new Color(1.0f, 0.85f, 0.28f), TextAnchor.MiddleCenter);
-            title.rectTransform.anchorMin = new Vector2(0f, 1f);
+            // Top Royal-Navy Arcade Showdown Header Bar
+            var headerBar = CreateRoundedPanel("WagerHeaderBar", window, new Color(0.05f, 0.08f, 0.16f, 1f), Vector2.zero);
+            headerBar.anchorMin = new Vector2(0f, 1f);
+            headerBar.anchorMax = new Vector2(1f, 1f);
+            headerBar.offsetMin = new Vector2(2f, -56f);
+            headerBar.offsetMax = new Vector2(-2f, -2f);
+            headerBar.GetComponent<Image>().raycastTarget = false;
+
+            var headerGoldRule = CreateRoundedPanel("HeaderGoldRule", headerBar, new Color(0.96f, 0.76f, 0.22f), Vector2.zero);
+            headerGoldRule.anchorMin = new Vector2(0f, 0f);
+            headerGoldRule.anchorMax = new Vector2(1f, 0f);
+            headerGoldRule.offsetMin = new Vector2(0f, 0f);
+            headerGoldRule.offsetMax = new Vector2(0f, 2f);
+            headerGoldRule.GetComponent<Image>().raycastTarget = false;
+
+            var title = CreateText("WagerTitle", headerBar, "TEKS SHOWDOWN & WAGER SETUP", 23, FontStyle.Bold, new Color(1.0f, 0.86f, 0.28f), TextAnchor.MiddleLeft);
+            title.rectTransform.anchorMin = new Vector2(0f, 0f);
             title.rectTransform.anchorMax = new Vector2(1f, 1f);
-            title.rectTransform.offsetMin = new Vector2(20f, -50f);
-            title.rectTransform.offsetMax = new Vector2(-20f, -10f);
+            title.rectTransform.offsetMin = new Vector2(24f, 2f);
+            title.rectTransform.offsetMax = new Vector2(-220f, -2f);
+            AddTextShadow(title.gameObject);
 
-            var quoteBox = CreateRoundedPanel("WagerQuoteBox", window, new Color(0.14f, 0.22f, 0.34f, 0.96f), new Vector2(790f, 38f));
-            quoteBox.anchorMin = new Vector2(0.5f, 1f);
-            quoteBox.anchorMax = new Vector2(0.5f, 1f);
-            quoteBox.anchoredPosition = new Vector2(0f, -72f);
-            AddOutline(quoteBox.gameObject, new Color(1.0f, 0.80f, 0.26f), 1.5f);
-            _wagerChallengeQuoteText = CreateText("WagerQuoteTxt", quoteBox, "Dodong: \"Hoy! Teks tayo!\"", 15, FontStyle.Italic, new Color(1.0f, 0.95f, 0.72f), TextAnchor.MiddleCenter);
-            StretchFull(_wagerChallengeQuoteText.rectTransform, 6f);
+            var modePill = CreateRoundedPanel("ModeFormatPill", headerBar, new Color(0.14f, 0.22f, 0.36f), new Vector2(178f, 28f));
+            modePill.anchorMin = new Vector2(1f, 0.5f);
+            modePill.anchorMax = new Vector2(1f, 0.5f);
+            modePill.anchoredPosition = new Vector2(-112f, 0f);
+            modePill.GetComponent<Image>().raycastTarget = false;
+            AddOutline(modePill.gameObject, new Color(0.96f, 0.78f, 0.28f), 1.3f);
+            var modePillTxt = CreateText("ModePillTxt", modePill, "2-CARD PAMATO DUEL", 11, FontStyle.Bold, new Color(1.0f, 0.92f, 0.56f), TextAnchor.MiddleCenter);
+            StretchFull(modePillTxt.rectTransform, 2f);
 
-            // Player side (Portrait + Rank/Streak badge + Pamato Card + Switch button)
-            var playerBox = CreateRoundedPanel("WagerPlayerBox", window, new Color(0.14f, 0.20f, 0.30f), new Vector2(340f, 276f));
-            playerBox.anchoredPosition = new Vector2(-216f, 52f);
-            AddOutline(playerBox.gameObject, new Color(0.32f, 0.78f, 0.46f), 1.5f);
+            // Challenge Dialogue Quote Ribbon
+            var quoteBox = CreateRoundedPanel("WagerQuoteBox", window, new Color(0.10f, 0.16f, 0.27f, 0.98f), new Vector2(884f, 38f));
+            quoteBox.anchoredPosition = new Vector2(0f, 246f);
+            quoteBox.GetComponent<Image>().raycastTarget = false;
+            AddOutline(quoteBox.gameObject, new Color(0.94f, 0.74f, 0.24f, 0.78f), 1.4f);
 
-            _wagerPlayerName = CreateText("PlayerPamatoLbl", playerBox, "PLAYER (50% CHUB)", 15, FontStyle.Bold, new Color(0.45f, 0.95f, 0.55f), TextAnchor.MiddleCenter);
-            _wagerPlayerName.rectTransform.anchoredPosition = new Vector2(0f, 118f);
-            _wagerPlayerName.rectTransform.sizeDelta = new Vector2(320f, 28f);
+            var quoteAccent = CreateRoundedPanel("QuoteAccent", quoteBox, new Color(0.98f, 0.78f, 0.24f), Vector2.zero);
+            quoteAccent.anchorMin = new Vector2(0f, 0f);
+            quoteAccent.anchorMax = new Vector2(0f, 1f);
+            quoteAccent.offsetMin = new Vector2(4f, 5f);
+            quoteAccent.offsetMax = new Vector2(8f, -5f);
+            quoteAccent.GetComponent<Image>().raycastTarget = false;
 
-            var playerAvatarFrame = CreateRoundedPanel("WagerPlayerAvatarFrame", playerBox, new Color(0.10f, 0.16f, 0.26f), new Vector2(84f, 84f));
-            playerAvatarFrame.anchoredPosition = new Vector2(-106f, 44f);
-            AddOutline(playerAvatarFrame.gameObject, new Color(1.0f, 0.84f, 0.28f), 1.5f);
+            _wagerChallengeQuoteText = CreateText("WagerQuoteTxt", quoteBox, "Dodong: \"Hoy! Teks tayo!\"", 14, FontStyle.Italic, new Color(1.0f, 0.95f, 0.76f), TextAnchor.MiddleCenter);
+            _wagerChallengeQuoteText.resizeTextForBestFit = true;
+            _wagerChallengeQuoteText.resizeTextMinSize = 11;
+            _wagerChallengeQuoteText.resizeTextMaxSize = 14;
+            _wagerChallengeQuoteText.verticalOverflow = VerticalWrapMode.Truncate;
+            _wagerChallengeQuoteText.rectTransform.anchorMin = Vector2.zero;
+            _wagerChallengeQuoteText.rectTransform.anchorMax = Vector2.one;
+            _wagerChallengeQuoteText.rectTransform.offsetMin = new Vector2(18f, 4f);
+            _wagerChallengeQuoteText.rectTransform.offsetMax = new Vector2(-14f, -4f);
+
+            // LEFT PLAYER DUELIST CARD (Emerald Theme)
+            var playerBox = CreateRoundedPanel("WagerPlayerBox", window, new Color(0.09f, 0.14f, 0.23f, 1f), new Vector2(392f, 294f));
+            playerBox.anchoredPosition = new Vector2(-244f, 68f);
+            AddOutline(playerBox.gameObject, new Color(0.28f, 0.82f, 0.48f), 2.0f);
+
+            var pHdr = CreateRoundedPanel("PlayerHeaderBand", playerBox, new Color(0.08f, 0.24f, 0.20f, 1f), Vector2.zero);
+            pHdr.anchorMin = new Vector2(0f, 1f);
+            pHdr.anchorMax = new Vector2(1f, 1f);
+            pHdr.offsetMin = new Vector2(2f, -38f);
+            pHdr.offsetMax = new Vector2(-2f, -2f);
+            pHdr.GetComponent<Image>().raycastTarget = false;
+
+            _wagerPlayerName = CreateText("PlayerPamatoLbl", pHdr, "PLAYER", 15, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
+            _wagerPlayerName.resizeTextForBestFit = true;
+            _wagerPlayerName.resizeTextMinSize = 11;
+            _wagerPlayerName.resizeTextMaxSize = 15;
+            _wagerPlayerName.rectTransform.anchorMin = Vector2.zero;
+            _wagerPlayerName.rectTransform.anchorMax = Vector2.one;
+            _wagerPlayerName.rectTransform.offsetMin = new Vector2(14f, 2f);
+            _wagerPlayerName.rectTransform.offsetMax = new Vector2(-114f, -2f);
+            AddTextShadow(_wagerPlayerName.gameObject);
+
+            var pOddsPill = CreateRoundedPanel("PlayerOddsPill", pHdr, new Color(0.10f, 0.46f, 0.26f), new Vector2(98f, 24f));
+            pOddsPill.anchorMin = new Vector2(1f, 0.5f);
+            pOddsPill.anchorMax = new Vector2(1f, 0.5f);
+            pOddsPill.anchoredPosition = new Vector2(-58f, 0f);
+            pOddsPill.GetComponent<Image>().raycastTarget = false;
+            AddOutline(pOddsPill.gameObject, new Color(0.45f, 0.98f, 0.58f), 1.3f);
+            _wagerPlayerOddsPillText = CreateText("POddsTxt", pOddsPill, "50% CHUB", 11, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            StretchFull(_wagerPlayerOddsPillText.rectTransform, 2f);
+
+            var playerAvatarFrame = CreateRoundedPanel("WagerPlayerAvatarFrame", playerBox, new Color(0.06f, 0.10f, 0.18f), new Vector2(98f, 98f));
+            playerAvatarFrame.anchoredPosition = new Vector2(-114f, 48f);
+            AddOutline(playerAvatarFrame.gameObject, new Color(1.0f, 0.84f, 0.28f), 1.8f);
             _wagerPlayerAvatarImg = CreateImage("WagerPlayerAvatarImg", playerAvatarFrame, CharacterResourceGenerator.GetCharacterPortraitSprite(PlayerCharacterType.StreetKid));
-            StretchFull(_wagerPlayerAvatarImg.rectTransform, 3f);
+            StretchFull(_wagerPlayerAvatarImg.rectTransform, 4f);
 
-            _wagerPlayerBadgeText = CreateText("WagerPlayerBadgeTxt", playerBox, "Baguhan\nStreak: 0", 12, FontStyle.Bold, new Color(0.84f, 0.94f, 1.0f), TextAnchor.UpperCenter);
-            _wagerPlayerBadgeText.rectTransform.anchoredPosition = new Vector2(-106f, -38f);
-            _wagerPlayerBadgeText.rectTransform.sizeDelta = new Vector2(114f, 70f);
+            var playerBadgeBox = CreateRoundedPanel("WagerPlayerBadgeBox", playerBox, new Color(0.06f, 0.10f, 0.17f, 0.96f), new Vector2(138f, 44f));
+            playerBadgeBox.anchoredPosition = new Vector2(-114f, -32f);
+            playerBadgeBox.GetComponent<Image>().raycastTarget = false;
+            AddOutline(playerBadgeBox.gameObject, new Color(0.28f, 0.62f, 0.46f, 0.7f), 1f);
+            _wagerPlayerBadgeText = CreateText("WagerPlayerBadgeTxt", playerBadgeBox, "Baguhan\nWins: 0", 11, FontStyle.Bold, new Color(0.84f, 0.94f, 1.0f), TextAnchor.MiddleCenter);
+            _wagerPlayerBadgeText.resizeTextForBestFit = true;
+            _wagerPlayerBadgeText.resizeTextMinSize = 9;
+            _wagerPlayerBadgeText.resizeTextMaxSize = 11;
+            StretchFull(_wagerPlayerBadgeText.rectTransform, 4f);
 
-            _wagerPlayerCardImg = CreateImage("WagerPlayerImg", playerBox, null);
-            _wagerPlayerCardImg.rectTransform.sizeDelta = new Vector2(102f, 136f);
-            _wagerPlayerCardImg.rectTransform.anchoredPosition = new Vector2(56f, 24f);
-
-            _wagerPlayerCardText = CreateText("WagerPlayerCardTxt", playerBox, "HERO (Lv.5)", 13, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            _wagerPlayerCardText.rectTransform.anchoredPosition = new Vector2(56f, -66f);
-            _wagerPlayerCardText.rectTransform.sizeDelta = new Vector2(204f, 40f);
-
-            var cycleBtn = CreateButton("CyclePamatoBtn", playerBox, "CHOOSE CARD", new Color(0.24f, 0.42f, 0.68f), 13, OpenCardPickerModal);
+            var cycleBtn = CreateButton("CyclePamatoBtn", playerBox, "", new Color(0.16f, 0.44f, 0.78f), 13, OpenCardPickerModal);
             var cyRt = cycleBtn.GetComponent<RectTransform>();
-            cyRt.anchoredPosition = new Vector2(0f, -114f);
-            cyRt.sizeDelta = new Vector2(180f, 30f);
+            cyRt.anchoredPosition = new Vector2(-114f, -94f);
+            cyRt.sizeDelta = new Vector2(138f, 38f);
+            ApplyButtonTint(cycleBtn, new Color(0.16f, 0.44f, 0.78f));
+            AddOutline(cycleBtn.gameObject, new Color(0.46f, 0.80f, 1.0f), 1.4f);
+            var cycleGloss = CreateRoundedPanel("CycleGloss", cyRt, new Color(1f, 1f, 1f, 0.14f), Vector2.zero);
+            cycleGloss.anchorMin = new Vector2(0.04f, 0.58f);
+            cycleGloss.anchorMax = new Vector2(0.96f, 0.93f);
+            cycleGloss.offsetMin = Vector2.zero;
+            cycleGloss.offsetMax = Vector2.zero;
+            cycleGloss.GetComponent<Image>().raycastTarget = false;
+            var cycleLbl = CreateText("Label", cyRt, "CHOOSE CARD", 12, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            StretchFull(cycleLbl.rectTransform, 4f);
+            AddTextShadow(cycleLbl.gameObject);
 
-            CreateText("VsText", window, "VS", 36, FontStyle.Bold, new Color(1.0f, 0.80f, 0.20f), TextAnchor.MiddleCenter)
-                .rectTransform.anchoredPosition = new Vector2(0f, 56f);
+            // Player Framed 2:3 Collectible Pamato Card Slab
+            var playerCardSlab = CreateCollectibleCardSlab("WagerPlayerCardSlab", playerBox, null, 1, new Vector2(116f, 174f), out _wagerPlayerCardFrame, out _wagerPlayerCardImg);
+            playerCardSlab.anchoredPosition = new Vector2(68f, 16f);
+            AttachWagerCardBadges(playerCardSlab, out _wagerPlayerCardLevelBadge, out _wagerPlayerCardStarsText);
 
-            // Opponent side (Portrait + Area/Story/Champion/Defeated badge + Resolved Distinct Card)
-            var oppBox = CreateRoundedPanel("WagerOppBox", window, new Color(0.14f, 0.20f, 0.30f), new Vector2(340f, 276f));
-            oppBox.anchoredPosition = new Vector2(216f, 52f);
-            AddOutline(oppBox.gameObject, new Color(0.95f, 0.56f, 0.24f), 1.5f);
+            _wagerPlayerCardText = CreateText("WagerPlayerCardTxt", playerBox, "HERO\n[Legendary • Heroes]", 12, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            _wagerPlayerCardText.supportRichText = true;
+            _wagerPlayerCardText.resizeTextForBestFit = true;
+            _wagerPlayerCardText.resizeTextMinSize = 10;
+            _wagerPlayerCardText.resizeTextMaxSize = 12;
+            _wagerPlayerCardText.rectTransform.anchoredPosition = new Vector2(68f, -104f);
+            _wagerPlayerCardText.rectTransform.sizeDelta = new Vector2(204f, 44f);
+            AddTextShadow(_wagerPlayerCardText.gameObject);
 
-            _wagerOppName = CreateText("WagerOppLbl", oppBox, "AI GELO (50% CHUB)", 15, FontStyle.Bold, new Color(1.0f, 0.66f, 0.34f), TextAnchor.MiddleCenter);
-            _wagerOppName.rectTransform.anchoredPosition = new Vector2(0f, 118f);
-            _wagerOppName.rectTransform.sizeDelta = new Vector2(320f, 28f);
+            // RIGHT OPPONENT DUELIST CARD (Fiery Amber Theme — Mirrored!)
+            var oppBox = CreateRoundedPanel("WagerOppBox", window, new Color(0.09f, 0.14f, 0.23f, 1f), new Vector2(392f, 294f));
+            oppBox.anchoredPosition = new Vector2(244f, 68f);
+            AddOutline(oppBox.gameObject, new Color(0.96f, 0.52f, 0.22f), 2.0f);
 
-            _wagerOppCardImg = CreateImage("WagerOppImg", oppBox, null);
-            _wagerOppCardImg.rectTransform.sizeDelta = new Vector2(102f, 136f);
-            _wagerOppCardImg.rectTransform.anchoredPosition = new Vector2(-56f, 24f);
+            var oHdr = CreateRoundedPanel("OppHeaderBand", oppBox, new Color(0.28f, 0.14f, 0.10f, 1f), Vector2.zero);
+            oHdr.anchorMin = new Vector2(0f, 1f);
+            oHdr.anchorMax = new Vector2(1f, 1f);
+            oHdr.offsetMin = new Vector2(2f, -38f);
+            oHdr.offsetMax = new Vector2(-2f, -2f);
+            oHdr.GetComponent<Image>().raycastTarget = false;
 
-            _wagerOppCardText = CreateText("WagerOppCardTxt", oppBox, "KID KIDLAT 3★", 13, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            _wagerOppCardText.rectTransform.anchoredPosition = new Vector2(-56f, -66f);
-            _wagerOppCardText.rectTransform.sizeDelta = new Vector2(204f, 40f);
+            _wagerOppName = CreateText("WagerOppLbl", oHdr, "OPPONENT", 15, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
+            _wagerOppName.resizeTextForBestFit = true;
+            _wagerOppName.resizeTextMinSize = 11;
+            _wagerOppName.resizeTextMaxSize = 15;
+            _wagerOppName.rectTransform.anchorMin = Vector2.zero;
+            _wagerOppName.rectTransform.anchorMax = Vector2.one;
+            _wagerOppName.rectTransform.offsetMin = new Vector2(14f, 2f);
+            _wagerOppName.rectTransform.offsetMax = new Vector2(-114f, -2f);
+            AddTextShadow(_wagerOppName.gameObject);
 
-            var oppAvatarFrame = CreateRoundedPanel("WagerOppAvatarFrame", oppBox, new Color(0.10f, 0.16f, 0.26f), new Vector2(84f, 84f));
-            oppAvatarFrame.anchoredPosition = new Vector2(106f, 44f);
-            AddOutline(oppAvatarFrame.gameObject, new Color(0.96f, 0.60f, 0.24f), 1.5f);
+            var oOddsPill = CreateRoundedPanel("OppOddsPill", oHdr, new Color(0.56f, 0.26f, 0.08f), new Vector2(98f, 24f));
+            oOddsPill.anchorMin = new Vector2(1f, 0.5f);
+            oOddsPill.anchorMax = new Vector2(1f, 0.5f);
+            oOddsPill.anchoredPosition = new Vector2(-58f, 0f);
+            oOddsPill.GetComponent<Image>().raycastTarget = false;
+            AddOutline(oOddsPill.gameObject, new Color(1.0f, 0.72f, 0.30f), 1.3f);
+            _wagerOppOddsPillText = CreateText("OOddsTxt", oOddsPill, "50% CHUB", 11, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            StretchFull(_wagerOppOddsPillText.rectTransform, 2f);
+
+            // Opponent Framed 2:3 Collectible Pamato Card Slab (facing center VS!)
+            var oppCardSlab = CreateCollectibleCardSlab("WagerOppCardSlab", oppBox, null, 1, new Vector2(116f, 174f), out _wagerOppCardFrame, out _wagerOppCardImg);
+            oppCardSlab.anchoredPosition = new Vector2(-68f, 16f);
+            AttachWagerCardBadges(oppCardSlab, out _wagerOppCardLevelBadge, out _wagerOppCardStarsText);
+
+            _wagerOppCardText = CreateText("WagerOppCardTxt", oppBox, "PAMATO\n[Rare • Heroes]", 12, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            _wagerOppCardText.supportRichText = true;
+            _wagerOppCardText.resizeTextForBestFit = true;
+            _wagerOppCardText.resizeTextMinSize = 10;
+            _wagerOppCardText.resizeTextMaxSize = 12;
+            _wagerOppCardText.rectTransform.anchoredPosition = new Vector2(-68f, -104f);
+            _wagerOppCardText.rectTransform.sizeDelta = new Vector2(204f, 44f);
+            AddTextShadow(_wagerOppCardText.gameObject);
+
+            var oppAvatarFrame = CreateRoundedPanel("WagerOppAvatarFrame", oppBox, new Color(0.06f, 0.10f, 0.18f), new Vector2(98f, 98f));
+            oppAvatarFrame.anchoredPosition = new Vector2(114f, 48f);
+            AddOutline(oppAvatarFrame.gameObject, new Color(0.98f, 0.60f, 0.24f), 1.8f);
             _wagerOppAvatarImg = CreateImage("WagerOppAvatarImg", oppAvatarFrame, null);
-            StretchFull(_wagerOppAvatarImg.rectTransform, 3f);
+            StretchFull(_wagerOppAvatarImg.rectTransform, 4f);
 
-            _wagerOppBadgeText = CreateText("WagerOppBadgeTxt", oppBox, "Basketball Court\nMedium", 12, FontStyle.Bold, new Color(1.0f, 0.88f, 0.72f), TextAnchor.UpperCenter);
-            _wagerOppBadgeText.rectTransform.anchoredPosition = new Vector2(106f, -38f);
-            _wagerOppBadgeText.rectTransform.sizeDelta = new Vector2(114f, 70f);
+            var oppBadgeBox = CreateRoundedPanel("WagerOppBadgeBox", oppBox, new Color(0.06f, 0.10f, 0.17f, 0.96f), new Vector2(138f, 74f));
+            oppBadgeBox.anchoredPosition = new Vector2(114f, -46f);
+            oppBadgeBox.GetComponent<Image>().raycastTarget = false;
+            AddOutline(oppBadgeBox.gameObject, new Color(0.94f, 0.56f, 0.24f, 0.7f), 1f);
+            _wagerOppBadgeText = CreateText("WagerOppBadgeTxt", oppBadgeBox, "Area\n[Story]", 11, FontStyle.Bold, new Color(1.0f, 0.88f, 0.74f), TextAnchor.MiddleCenter);
+            _wagerOppBadgeText.resizeTextForBestFit = true;
+            _wagerOppBadgeText.resizeTextMinSize = 9;
+            _wagerOppBadgeText.resizeTextMaxSize = 11;
+            StretchFull(_wagerOppBadgeText.rectTransform, 4f);
 
-            // Card stat comparison bar
-            var statBar = CreateRoundedPanel("WagerStatCompareBar", window, new Color(0.08f, 0.12f, 0.20f, 0.95f), new Vector2(790f, 34f));
-            statBar.anchoredPosition = new Vector2(0f, -108f);
-            AddOutline(statBar.gameObject, new Color(0.32f, 0.50f, 0.76f), 1f);
-            _wagerStatCompareText = CreateText("WagerStatCompareTxt", statBar, "CARD MATCHUP:  PWR 0 vs 0   |   HP 0 vs 0   |   ATK 0 vs 0", 14, FontStyle.Bold, new Color(0.84f, 0.94f, 1.0f), TextAnchor.MiddleCenter);
-            StretchFull(_wagerStatCompareText.rectTransform, 4f);
+            // Center Glowing VS Medallion Badge (layered cleanly on top of gap)
+            var vsBadge = CreateRoundedPanel("VsMedallion", window, new Color(0.07f, 0.10f, 0.18f, 1f), new Vector2(78f, 78f));
+            vsBadge.anchoredPosition = new Vector2(0f, 68f);
+            vsBadge.GetComponent<Image>().raycastTarget = false;
+            AddOutline(vsBadge.gameObject, new Color(1.0f, 0.84f, 0.24f), 2.8f);
 
-            // Coin wager selector row
-            _wagerAmountText = CreateText("WagerAmountTxt", window, "MATCH WAGER: 100 COINS", 19, FontStyle.Bold, new Color(1.0f, 0.88f, 0.32f), TextAnchor.MiddleCenter);
-            _wagerAmountText.rectTransform.anchoredPosition = new Vector2(0f, -148f);
-            _wagerAmountText.rectTransform.sizeDelta = new Vector2(780f, 32f);
+            var vsInner = CreateRoundedPanel("VsInner", vsBadge, new Color(0.32f, 0.13f, 0.08f, 1f), Vector2.zero);
+            StretchFull(vsInner, 7f);
+            vsInner.GetComponent<Image>().raycastTarget = false;
+            AddOutline(vsInner.gameObject, new Color(1.0f, 0.58f, 0.20f), 1.4f);
 
-            int[] wagerOptions = { 50, 100, 200, 500 };
-            for (int i = 0; i < wagerOptions.Length; i++)
+            var vsTxt = CreateText("VsText", vsInner, "VS", 30, FontStyle.Bold, new Color(1.0f, 0.88f, 0.26f), TextAnchor.MiddleCenter);
+            StretchFull(vsTxt.rectTransform, 2f);
+            AddTextShadow(vsTxt.gameObject);
+
+            // Head-to-Head Colored Stat Pills Row
+            var statRowGo = new GameObject("WagerStatCompareRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            statRowGo.transform.SetParent(window, false);
+            var statRowRt = statRowGo.GetComponent<RectTransform>();
+            statRowRt.anchoredPosition = new Vector2(0f, -110f);
+            statRowRt.sizeDelta = new Vector2(884f, 44f);
+            var statHlg = statRowGo.GetComponent<HorizontalLayoutGroup>();
+            statHlg.spacing = 12f;
+            statHlg.childControlWidth = true;
+            statHlg.childControlHeight = true;
+            statHlg.childForceExpandWidth = true;
+            statHlg.childForceExpandHeight = true;
+
+            _wagerPwrCompareText = CreateWagerStatPill("PwrPill", statRowGo.transform, new Color(1.0f, 0.80f, 0.24f), "POWER: 0 vs 0");
+            _wagerHpCompareText = CreateWagerStatPill("HpPill", statRowGo.transform, new Color(0.34f, 0.92f, 0.56f), "HP: 0 vs 0");
+            _wagerAtkCompareText = CreateWagerStatPill("AtkPill", statRowGo.transform, new Color(1.0f, 0.48f, 0.36f), "ATK: 0 vs 0");
+
+            // Recessed Wager Control Deck
+            var wagerDeck = CreateRoundedPanel("WagerControlDeck", window, new Color(0.05f, 0.08f, 0.15f, 0.98f), new Vector2(884f, 114f));
+            wagerDeck.anchoredPosition = new Vector2(0f, -198f);
+            AddOutline(wagerDeck.gameObject, new Color(0.28f, 0.42f, 0.64f), 1.5f);
+
+            _wagerAmountText = CreateText("WagerAmountTxt", wagerDeck, "MATCH WAGER: 100 COINS", 18, FontStyle.Bold, new Color(1.0f, 0.88f, 0.32f), TextAnchor.MiddleCenter);
+            _wagerAmountText.resizeTextForBestFit = true;
+            _wagerAmountText.resizeTextMinSize = 13;
+            _wagerAmountText.resizeTextMaxSize = 18;
+            _wagerAmountText.rectTransform.anchoredPosition = new Vector2(0f, 34f);
+            _wagerAmountText.rectTransform.sizeDelta = new Vector2(844f, 28f);
+            AddTextShadow(_wagerAmountText.gameObject);
+
+            for (int i = 0; i < WagerChipValues.Length; i++)
             {
-                int val = wagerOptions[i];
-                var b = CreateButton("Wager_" + val, window, val + " COINS", new Color(0.22f, 0.32f, 0.48f), 14, () =>
+                int val = WagerChipValues[i];
+                string chipLabel = val == 0 ? "FREE (0c)" : $"{val} COINS";
+                var chipBtn = CreateButton("Wager_" + val, wagerDeck, chipLabel, new Color(0.18f, 0.27f, 0.42f), 13, () =>
                 {
                     int maxCoins = PlayerInventory.Instance != null ? PlayerInventory.Instance.Coins : 0;
-                    _selectedWagerAmount = Mathf.Clamp(val, 0, Mathf.Max(0, maxCoins));
+                    if (val == 0)
+                    {
+                        _selectedWagerAmount = 0;
+                    }
+                    else
+                    {
+                        _selectedWagerAmount = Mathf.Clamp(val, 0, Mathf.Max(0, maxCoins));
+                        if (val > maxCoins)
+                        {
+                            ShowToast($"Need {val:N0} Coins for that wager — set to {maxCoins:N0} Coins.");
+                        }
+                    }
                     RefreshWagerText();
                 });
-                var bRt = b.GetComponent<RectTransform>();
-                bRt.anchoredPosition = new Vector2(-180f + i * 120f, -184f);
-                bRt.sizeDelta = new Vector2(108f, 32f);
+
+                var bRt = chipBtn.GetComponent<RectTransform>();
+                bRt.anchoredPosition = new Vector2(-304f + i * 152f, -2f);
+                bRt.sizeDelta = new Vector2(138f, 34f);
+                ApplyButtonTint(chipBtn, new Color(0.18f, 0.27f, 0.42f));
+                AddOutline(chipBtn.gameObject, new Color(0.36f, 0.56f, 0.84f), 1.3f);
+
+                _wagerChipImgs[i] = chipBtn.GetComponent<Image>();
+                _wagerChipOutlines[i] = chipBtn.GetComponent<Outline>();
+                _wagerChipTexts[i] = chipBtn.GetComponentInChildren<Text>();
+                if (_wagerChipTexts[i] != null)
+                {
+                    _wagerChipTexts[i].resizeTextForBestFit = true;
+                    _wagerChipTexts[i].resizeTextMinSize = 10;
+                    _wagerChipTexts[i].resizeTextMaxSize = 13;
+                    AddTextShadow(_wagerChipTexts[i].gameObject);
+                }
             }
 
-            _wagerBonusInfoText = CreateText("WagerBonusTxt", window, "", 14, FontStyle.Italic, new Color(0.68f, 0.94f, 0.72f), TextAnchor.MiddleCenter);
-            _wagerBonusInfoText.rectTransform.anchoredPosition = new Vector2(0f, -218f);
-            _wagerBonusInfoText.rectTransform.sizeDelta = new Vector2(790f, 26f);
+            _wagerBonusInfoText = CreateText("WagerBonusTxt", wagerDeck, "", 13, FontStyle.Italic, new Color(0.68f, 0.94f, 0.78f), TextAnchor.MiddleCenter);
+            _wagerBonusInfoText.resizeTextForBestFit = true;
+            _wagerBonusInfoText.resizeTextMinSize = 10;
+            _wagerBonusInfoText.resizeTextMaxSize = 13;
+            _wagerBonusInfoText.rectTransform.anchoredPosition = new Vector2(0f, -38f);
+            _wagerBonusInfoText.rectTransform.sizeDelta = new Vector2(844f, 24f);
 
-            var startBtn = CreateButton("StartMatchBtn", window, "START FLICK MATCH!", new Color(0.18f, 0.74f, 0.32f), 20, () =>
+            // Beveled Primary Action Buttons
+            var startBtn = CreateButton("StartMatchBtn", window, "", new Color(0.16f, 0.72f, 0.32f), 19, () =>
             {
                 CloseCardPickerModal();
                 _wagerModal.SetActive(false);
                 TeksMatchManager.Instance?.BeginFlickMatch(_selectedWagerAmount);
             });
             var stRt = startBtn.GetComponent<RectTransform>();
-            stRt.anchoredPosition = new Vector2(-100f, -258f);
-            stRt.sizeDelta = new Vector2(250f, 44f);
+            stRt.anchoredPosition = new Vector2(-102f, -292f);
+            stRt.sizeDelta = new Vector2(300f, 48f);
+            ApplyButtonTint(startBtn, new Color(0.16f, 0.72f, 0.32f));
+            AddOutline(startBtn.gameObject, new Color(0.56f, 1.0f, 0.66f), 2.0f);
+            var stGloss = CreateRoundedPanel("StartGloss", stRt, new Color(1f, 1f, 1f, 0.14f), Vector2.zero);
+            stGloss.anchorMin = new Vector2(0.03f, 0.58f);
+            stGloss.anchorMax = new Vector2(0.97f, 0.94f);
+            stGloss.offsetMin = Vector2.zero;
+            stGloss.offsetMax = Vector2.zero;
+            stGloss.GetComponent<Image>().raycastTarget = false;
+            var stLbl = CreateText("Label", stRt, "START FLICK MATCH!", 19, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            StretchFull(stLbl.rectTransform, 4f);
+            AddTextShadow(stLbl.gameObject);
 
-            var cancelBtn = CreateButton("CancelWagerBtn", window, "CANCEL", new Color(0.55f, 0.24f, 0.26f), 18, () =>
+            var cancelBtn = CreateButton("CancelWagerBtn", window, "", new Color(0.56f, 0.20f, 0.24f), 17, () =>
             {
                 CloseCardPickerModal();
                 _wagerModal.SetActive(false);
                 TeksMatchManager.Instance?.CancelChallenge();
             });
             var caRt = cancelBtn.GetComponent<RectTransform>();
-            caRt.anchoredPosition = new Vector2(145f, -258f);
-            caRt.sizeDelta = new Vector2(160f, 44f);
+            caRt.anchoredPosition = new Vector2(164f, -292f);
+            caRt.sizeDelta = new Vector2(172f, 48f);
+            ApplyButtonTint(cancelBtn, new Color(0.56f, 0.20f, 0.24f));
+            AddOutline(cancelBtn.gameObject, new Color(0.96f, 0.52f, 0.54f), 1.5f);
+            var caLbl = CreateText("Label", caRt, "CANCEL", 17, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            StretchFull(caLbl.rectTransform, 4f);
+            AddTextShadow(caLbl.gameObject);
 
             _wagerModal.SetActive(false);
+        }
+
+        private void AttachWagerCardBadges(RectTransform slab, out Text levelBadgeText, out Text starsText)
+        {
+            var lvlBadge = CreateRoundedPanel("LevelBadge", slab, new Color(0.05f, 0.08f, 0.14f, 0.92f), new Vector2(40f, 18f));
+            lvlBadge.anchorMin = new Vector2(1f, 1f);
+            lvlBadge.anchorMax = new Vector2(1f, 1f);
+            lvlBadge.pivot = new Vector2(1f, 1f);
+            lvlBadge.anchoredPosition = new Vector2(-4f, -4f);
+            lvlBadge.GetComponent<Image>().raycastTarget = false;
+            AddOutline(lvlBadge.gameObject, new Color(1.0f, 0.84f, 0.24f), 1f);
+            levelBadgeText = CreateText("LvlTxt", lvlBadge, "Lv.1", 10, FontStyle.Bold, new Color(1.0f, 0.88f, 0.32f), TextAnchor.MiddleCenter);
+            StretchFull(levelBadgeText.rectTransform, 1f);
+
+            var starScrim = CreateRoundedPanel("StarScrim", slab, new Color(0.03f, 0.05f, 0.10f, 0.88f), Vector2.zero);
+            starScrim.anchorMin = new Vector2(0f, 0f);
+            starScrim.anchorMax = new Vector2(1f, 0f);
+            starScrim.offsetMin = new Vector2(3.5f, 3.5f);
+            starScrim.offsetMax = new Vector2(-3.5f, 21f);
+            starScrim.GetComponent<Image>().raycastTarget = false;
+            starsText = CreateText("StarsTxt", starScrim, "★☆☆☆☆", 11, FontStyle.Bold, new Color(1.0f, 0.86f, 0.24f), TextAnchor.MiddleCenter);
+            StretchFull(starsText.rectTransform, 1f);
+        }
+
+        private Text CreateWagerStatPill(string name, Transform parent, Color accentColor, string initialText)
+        {
+            var pill = CreateRoundedPanel(name, parent, new Color(0.05f, 0.09f, 0.16f, 0.98f), new Vector2(280f, 44f));
+            pill.GetComponent<Image>().raycastTarget = false;
+            AddOutline(pill.gameObject, new Color(accentColor.r, accentColor.g, accentColor.b, 0.72f), 1.4f);
+
+            var accent = CreateRoundedPanel("Accent", pill, accentColor, Vector2.zero);
+            accent.anchorMin = new Vector2(0f, 0f);
+            accent.anchorMax = new Vector2(0f, 1f);
+            accent.offsetMin = new Vector2(4f, 6f);
+            accent.offsetMax = new Vector2(8f, -6f);
+            accent.GetComponent<Image>().raycastTarget = false;
+
+            var txt = CreateText("StatTxt", pill, initialText, 13, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            txt.supportRichText = true;
+            txt.resizeTextForBestFit = true;
+            txt.resizeTextMinSize = 10;
+            txt.resizeTextMaxSize = 13;
+            txt.rectTransform.anchorMin = Vector2.zero;
+            txt.rectTransform.anchorMax = Vector2.one;
+            txt.rectTransform.offsetMin = new Vector2(14f, 2f);
+            txt.rectTransform.offsetMax = new Vector2(-8f, -2f);
+            AddTextShadow(txt.gameObject);
+            return txt;
         }
 
         private void CreateCardPickerModal()
@@ -2726,70 +2990,8 @@ namespace TeksMaster.UI
                 eqRt.sizeDelta = new Vector2(150f, 40f);
             }
 
-            // Section 1: Similar-Card Rarity Fusion (3 Same-Rarity Cards -> Next Rarity)
-            AddFusionSectionHeader("1. SIMILAR-CARD FUSION (Combine 3 Cards of Same Rarity -> Next Rarity!)");
-
-            var simRow = new GameObject("SimilarFusionRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
-            simRow.transform.SetParent(_fusionListContent, false);
-            simRow.GetComponent<LayoutElement>().preferredHeight = 112f;
-            var simHlg = simRow.GetComponent<HorizontalLayoutGroup>();
-            simHlg.spacing = 12f;
-            simHlg.childControlWidth = true;
-            simHlg.childControlHeight = true;
-            simHlg.childForceExpandWidth = true;
-            simHlg.childForceExpandHeight = true;
-
-            CardRarity[] sourceRarities = { CardRarity.Common, CardRarity.Uncommon, CardRarity.Rare, CardRarity.Epic };
-            foreach (var srcRarity in sourceRarities)
-            {
-                TeksDatabase.TryGetNextRarity(srcRarity, out var nextRarity);
-                bool canFuse = inv.CanFuseSimilarRarity(srcRarity, out int availDupes, out int coinCost, out string reason);
-                Color srcCol = TeksDatabase.GetRarityColor(srcRarity);
-                Color dstCol = TeksDatabase.GetRarityColor(nextRarity);
-
-                var cardObj = new GameObject("SimFuse_" + srcRarity, typeof(RectTransform), typeof(Image));
-                cardObj.transform.SetParent(simRow.transform, false);
-                var bgImg = cardObj.GetComponent<Image>();
-                bgImg.sprite = CardArtGenerator.GetRoundedPanelSprite();
-                bgImg.type = Image.Type.Sliced;
-                bgImg.color = new Color(0.12f, 0.17f, 0.27f, 1f);
-                AddOutline(cardObj, canFuse ? dstCol : srcCol, 2f);
-
-                var rt = cardObj.GetComponent<RectTransform>();
-                var topLbl = CreateText("Title", rt, $"3x {TeksDatabase.GetRarityName(srcRarity).ToUpper()} -> {TeksDatabase.GetRarityName(nextRarity).ToUpper()}", 13, FontStyle.Bold, dstCol, TextAnchor.MiddleCenter);
-                topLbl.rectTransform.anchorMin = new Vector2(0f, 0.64f);
-                topLbl.rectTransform.anchorMax = new Vector2(1f, 0.96f);
-                topLbl.rectTransform.offsetMin = Vector2.zero;
-                topLbl.rectTransform.offsetMax = Vector2.zero;
-
-                var countLbl = CreateText("Count", rt, $"Eligible Cards: {availDupes} / 3", 13, FontStyle.Normal, Color.white, TextAnchor.MiddleCenter);
-                countLbl.rectTransform.anchorMin = new Vector2(0f, 0.40f);
-                countLbl.rectTransform.anchorMax = new Vector2(1f, 0.66f);
-                countLbl.rectTransform.offsetMin = Vector2.zero;
-                countLbl.rectTransform.offsetMax = Vector2.zero;
-
-                var capturedRarity = srcRarity;
-                var fuseBtn = CreateButton("SimBtn", rt, canFuse ? $"FUSE ({coinCost}c)" : reason, canFuse ? new Color(0.18f, 0.72f, 0.32f) : new Color(0.25f, 0.28f, 0.35f), 12, () =>
-                {
-                    if (inv.TryFuseSimilarRarity(capturedRarity, out var forged, out string msg))
-                    {
-                        ShowToast(msg);
-                        PopulateFusionLab(forged);
-                    }
-                    else
-                    {
-                        ShowToast(msg);
-                    }
-                });
-                var fbRt = fuseBtn.GetComponent<RectTransform>();
-                fbRt.anchorMin = new Vector2(0.08f, 0.07f);
-                fbRt.anchorMax = new Vector2(0.92f, 0.37f);
-                fbRt.offsetMin = Vector2.zero;
-                fbRt.offsetMax = Vector2.zero;
-            }
-
-            // Section 2: Special Cross-Card Fusion Recipes
-            AddFusionSectionHeader("2. SPECIAL CARD FUSION RECIPES (Combine 2 Cards + Coins -> Exclusive Fusion Card!)");
+            // Special Cross-Card Fusion Recipes
+            AddFusionSectionHeader("SPECIAL CARD FUSION RECIPES (Combine 2 Cards + Coins -> Exclusive Fusion Card!)");
 
             foreach (var recipe in TeksDatabase.FusionRecipes)
             {
@@ -3163,6 +3365,40 @@ namespace TeksMaster.UI
             }
         }
 
+        private RectTransform CreateCollectibleCardSlab(
+            string name,
+            Transform parent,
+            TeksCardDefinition card,
+            int starRank,
+            Vector2 size,
+            out Image outerFrameImg,
+            out Image artImg)
+        {
+            Color rarityCol = card != null ? TeksDatabase.GetRarityColor(card.Rarity) : new Color(0.45f, 0.52f, 0.64f);
+            var slab = CreateRoundedPanel(name, parent, rarityCol, size);
+            slab.GetComponent<Image>().raycastTarget = false;
+            AddOutline(slab.gameObject, new Color(1f, 1f, 1f, 0.36f), 1.2f);
+            outerFrameImg = slab.GetComponent<Image>();
+
+            var innerMatte = CreateRoundedPanel("InnerMatte", slab, new Color(0.05f, 0.08f, 0.14f, 1f), Vector2.zero);
+            StretchFull(innerMatte, 3.5f);
+            innerMatte.GetComponent<Image>().raycastTarget = false;
+
+            Sprite sprite = card != null ? CardArtGenerator.GetCardPortraitSprite(card, starRank) : null;
+            artImg = CreateImage("Art", innerMatte, sprite);
+            artImg.preserveAspect = false;
+            StretchFull(artImg.rectTransform, 2f);
+
+            var gloss = CreateRoundedPanel("CardGloss", innerMatte, new Color(1f, 1f, 1f, 0.08f), Vector2.zero);
+            gloss.anchorMin = new Vector2(0.06f, 0.90f);
+            gloss.anchorMax = new Vector2(0.94f, 0.97f);
+            gloss.offsetMin = Vector2.zero;
+            gloss.offsetMax = Vector2.zero;
+            gloss.GetComponent<Image>().raycastTarget = false;
+
+            return slab;
+        }
+
         private void PopulateShopModal()
         {
             var shop = ShopManager.Instance;
@@ -3211,53 +3447,191 @@ namespace TeksMaster.UI
                 if (slot == null || slot.Card == null) continue;
 
                 Color rarityCol = TeksDatabase.GetRarityColor(slot.Card.Rarity);
-                Color bgCol = slot.IsSuperSlot ? new Color(0.20f, 0.16f, 0.09f, 1f) : new Color(0.13f, 0.18f, 0.28f, 1f);
+                Color cabinetBg = slot.IsSuperSlot
+                    ? new Color(0.17f, 0.13f, 0.08f, 1f)
+                    : Color.Lerp(new Color(0.08f, 0.11f, 0.19f, 1f), rarityCol, 0.14f);
+                Color borderCol = slot.IsFlashSale
+                    ? new Color(0.98f, 0.30f, 0.24f)
+                    : (slot.IsSuperSlot ? new Color(1.0f, 0.84f, 0.22f) : rarityCol);
 
                 var box = new GameObject("ShopSlot_" + i, typeof(RectTransform), typeof(Image));
                 box.transform.SetParent(_shopSlotsContainer, false);
                 var boxImg = box.GetComponent<Image>();
                 boxImg.sprite = CardArtGenerator.GetRoundedPanelSprite();
                 boxImg.type = Image.Type.Sliced;
-                boxImg.color = bgCol;
-                AddOutline(box, slot.IsFlashSale ? new Color(0.98f, 0.28f, 0.24f) : (slot.IsSuperSlot ? new Color(1.0f, 0.82f, 0.20f) : rarityCol), (slot.IsSuperSlot || slot.IsFlashSale) ? 3f : 2f);
+                boxImg.color = cabinetBg;
+                AddOutline(box, borderCol, (slot.IsSuperSlot || slot.IsFlashSale) ? 2.6f : 2.0f);
 
                 var boxRt = box.GetComponent<RectTransform>();
 
+                // Top Slot Ribbon Banner
+                Color ribbonBg = slot.IsFlashSale
+                    ? new Color(0.82f, 0.16f, 0.16f, 0.96f)
+                    : (slot.IsSuperSlot ? new Color(0.76f, 0.50f, 0.08f, 0.96f) : Color.Lerp(rarityCol, Color.black, 0.45f));
                 string slotTag = slot.IsFlashSale
                     ? "-30% SULIT SALE!"
-                    : (slot.IsSuperSlot ? "SLOT 4: SUPER (RARE+)" : $"SLOT {i + 1}");
-                Color tagCol = slot.IsFlashSale
-                    ? new Color(1.0f, 0.42f, 0.36f)
-                    : (slot.IsSuperSlot ? new Color(1.0f, 0.86f, 0.24f) : new Color(0.75f, 0.84f, 0.96f));
-                var slotTagTxt = CreateText("SlotTag", boxRt, slotTag, 13, FontStyle.Bold, tagCol, TextAnchor.MiddleCenter);
-                slotTagTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
-                slotTagTxt.rectTransform.anchorMax = new Vector2(1f, 1f);
-                slotTagTxt.rectTransform.offsetMin = new Vector2(4f, -26f);
-                slotTagTxt.rectTransform.offsetMax = new Vector2(-4f, -4f);
+                    : (slot.IsSuperSlot ? "★ SUPER SLOT (RARE+)" : $"ROTATING SLOT {i + 1}");
 
-                var artFrame = CreateRoundedPanel("CardPreview", boxRt, rarityCol, Vector2.zero);
-                artFrame.anchorMin = new Vector2(0.18f, 0.34f);
-                artFrame.anchorMax = new Vector2(0.82f, 0.88f);
-                artFrame.offsetMin = Vector2.zero;
-                artFrame.offsetMax = Vector2.zero;
-                var artImg = CreateImage("Art", artFrame, CardArtGenerator.GetCardPortraitSprite(slot.Card, slot.IsSuperSlot ? 3 : 1));
-                artImg.preserveAspect = true;
-                StretchFull(artImg.rectTransform, 4f);
+                var ribbonRt = CreateRoundedPanel("SlotRibbon", boxRt, ribbonBg, Vector2.zero);
+                ribbonRt.anchorMin = new Vector2(0f, 1f);
+                ribbonRt.anchorMax = new Vector2(1f, 1f);
+                ribbonRt.offsetMin = new Vector2(8f, -30f);
+                ribbonRt.offsetMax = new Vector2(-8f, -6f);
+                ribbonRt.GetComponent<Image>().raycastTarget = false;
+                AddOutline(ribbonRt.gameObject, new Color(borderCol.r, borderCol.g, borderCol.b, 0.72f), 1f);
 
-                var cardName = CreateText("Name", boxRt, $"{slot.Card.Name}\n[{TeksDatabase.GetRarityName(slot.Card.Rarity)} • {TeksDatabase.GetCategoryName(slot.Card.Category)}]", 12, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-                cardName.rectTransform.anchorMin = new Vector2(0f, 0.16f);
-                cardName.rectTransform.anchorMax = new Vector2(1f, 0.34f);
-                cardName.rectTransform.offsetMin = new Vector2(6f, 0f);
-                cardName.rectTransform.offsetMax = new Vector2(-6f, 0f);
+                var slotTagTxt = CreateText("SlotTag", ribbonRt, slotTag, 11, FontStyle.Bold, new Color(1.0f, 0.97f, 0.88f), TextAnchor.MiddleCenter);
+                slotTagTxt.resizeTextForBestFit = true;
+                slotTagTxt.resizeTextMinSize = 9;
+                slotTagTxt.resizeTextMaxSize = 11;
+                StretchFull(slotTagTxt.rectTransform, 2f);
+                AddTextShadow(slotTagTxt.gameObject);
 
+                // Left Framed Collectible 2:3 Card Slab (Zero sidebars!)
+                var slab = CreateCollectibleCardSlab("CardPreview", boxRt, slot.Card, 1, new Vector2(106f, 159f), out _, out _);
+                slab.anchorMin = new Vector2(0f, 1f);
+                slab.anchorMax = new Vector2(0f, 1f);
+                slab.pivot = new Vector2(0f, 1f);
+                slab.anchoredPosition = new Vector2(12f, -36f);
+
+                // Top-left Power Badge on card slab
+                var pwrBadge = CreateRoundedPanel("PowerBadge", slab, new Color(0.05f, 0.08f, 0.14f, 0.92f), new Vector2(40f, 18f));
+                pwrBadge.anchorMin = new Vector2(0f, 1f);
+                pwrBadge.anchorMax = new Vector2(0f, 1f);
+                pwrBadge.pivot = new Vector2(0f, 1f);
+                pwrBadge.anchoredPosition = new Vector2(4f, -4f);
+                pwrBadge.GetComponent<Image>().raycastTarget = false;
+                AddOutline(pwrBadge.gameObject, new Color(1.0f, 0.84f, 0.24f), 1f);
+                var pwrBadgeTxt = CreateText("PwrTxt", pwrBadge, $"★{slot.Card.BasePower}", 10, FontStyle.Bold, new Color(1.0f, 0.88f, 0.30f), TextAnchor.MiddleCenter);
+                StretchFull(pwrBadgeTxt.rectTransform, 1f);
+
+                // Optional Top-right Flash Sale Sticker
+                if (slot.IsFlashSale)
+                {
+                    var saleStick = CreateRoundedPanel("SaleSticker", slab, new Color(0.92f, 0.16f, 0.18f, 0.96f), new Vector2(38f, 18f));
+                    saleStick.anchorMin = new Vector2(1f, 1f);
+                    saleStick.anchorMax = new Vector2(1f, 1f);
+                    saleStick.pivot = new Vector2(1f, 1f);
+                    saleStick.anchoredPosition = new Vector2(-4f, -4f);
+                    saleStick.GetComponent<Image>().raycastTarget = false;
+                    AddOutline(saleStick.gameObject, Color.white, 1f);
+                    var ssTxt = CreateText("SaleTxt", saleStick, "-30%", 10, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                    StretchFull(ssTxt.rectTransform, 1f);
+                }
+
+                // Bottom miniature card footer scrim
+                var footerScrim = CreateRoundedPanel("CardFooterScrim", slab, new Color(0.03f, 0.05f, 0.10f, 0.88f), Vector2.zero);
+                footerScrim.anchorMin = new Vector2(0f, 0f);
+                footerScrim.anchorMax = new Vector2(1f, 0f);
+                footerScrim.offsetMin = new Vector2(3.5f, 3.5f);
+                footerScrim.offsetMax = new Vector2(-3.5f, 20f);
+                footerScrim.GetComponent<Image>().raycastTarget = false;
+                var scrimTxt = CreateText("ScrimTxt", footerScrim, slot.IsSuperSlot ? "SUPER RARE+" : "PAMATO TEKS", 9, FontStyle.Bold, slot.IsSuperSlot ? new Color(1.0f, 0.88f, 0.28f) : new Color(0.84f, 0.92f, 1.0f), TextAnchor.MiddleCenter);
+                scrimTxt.resizeTextForBestFit = true;
+                scrimTxt.resizeTextMinSize = 8;
+                scrimTxt.resizeTextMaxSize = 9;
+                StretchFull(scrimTxt.rectTransform, 1f);
+
+                if (slot.IsSoldOut)
+                {
+                    var soldOverlay = CreateRoundedPanel("SoldOverlay", slab, new Color(0.02f, 0.04f, 0.08f, 0.74f), Vector2.zero);
+                    StretchFull(soldOverlay, 2f);
+                    soldOverlay.GetComponent<Image>().raycastTarget = false;
+                    var soldTxt = CreateText("SoldTxt", soldOverlay, "SOLD\nOUT", 18, FontStyle.Bold, new Color(1.0f, 0.84f, 0.30f), TextAnchor.MiddleCenter);
+                    StretchFull(soldTxt.rectTransform, 4f);
+                    AddTextShadow(soldTxt.gameObject);
+                }
+
+                // Right Spec Column (Name, Compact Rarity Pill, Category, Combat Stats, Ownership)
+                var cardName = CreateText("Name", boxRt, slot.Card.Name, 14, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
+                cardName.resizeTextForBestFit = true;
+                cardName.resizeTextMinSize = 11;
+                cardName.resizeTextMaxSize = 14;
+                cardName.verticalOverflow = VerticalWrapMode.Truncate;
+                cardName.rectTransform.anchorMin = new Vector2(0f, 1f);
+                cardName.rectTransform.anchorMax = new Vector2(1f, 1f);
+                cardName.rectTransform.offsetMin = new Vector2(126f, -74f);
+                cardName.rectTransform.offsetMax = new Vector2(-10f, -36f);
+                AddTextShadow(cardName.gameObject);
+
+                var rarityPill = CreateRoundedPanel("RarityPill", boxRt, Color.Lerp(rarityCol, Color.black, 0.30f), new Vector2(96f, 20f));
+                rarityPill.anchorMin = new Vector2(0f, 1f);
+                rarityPill.anchorMax = new Vector2(0f, 1f);
+                rarityPill.pivot = new Vector2(0f, 1f);
+                rarityPill.anchoredPosition = new Vector2(126f, -78f);
+                rarityPill.GetComponent<Image>().raycastTarget = false;
+                AddOutline(rarityPill.gameObject, rarityCol, 1.2f);
+                var rarityTxt = CreateText("RarityTxt", rarityPill, TeksDatabase.GetRarityName(slot.Card.Rarity).ToUpper(), 10, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                rarityTxt.resizeTextForBestFit = true;
+                rarityTxt.resizeTextMinSize = 8;
+                rarityTxt.resizeTextMaxSize = 10;
+                StretchFull(rarityTxt.rectTransform, 2f);
+
+                var catTxt = CreateText("Category", boxRt, TeksDatabase.GetCategoryName(slot.Card.Category).ToUpper(), 11, FontStyle.Bold, new Color(0.56f, 0.83f, 1.0f), TextAnchor.MiddleLeft);
+                catTxt.resizeTextForBestFit = true;
+                catTxt.resizeTextMinSize = 9;
+                catTxt.resizeTextMaxSize = 11;
+                catTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
+                catTxt.rectTransform.anchorMax = new Vector2(1f, 1f);
+                catTxt.rectTransform.offsetMin = new Vector2(126f, -120f);
+                catTxt.rectTransform.offsetMax = new Vector2(-10f, -101f);
+
+                var statChip1 = CreateRoundedPanel("StatChip1", boxRt, new Color(0.05f, 0.08f, 0.14f, 0.92f), Vector2.zero);
+                statChip1.anchorMin = new Vector2(0f, 1f);
+                statChip1.anchorMax = new Vector2(1f, 1f);
+                statChip1.offsetMin = new Vector2(126f, -148f);
+                statChip1.offsetMax = new Vector2(-10f, -124f);
+                statChip1.GetComponent<Image>().raycastTarget = false;
+                AddOutline(statChip1.gameObject, new Color(0.24f, 0.34f, 0.50f), 1f);
+                var statTxt1 = CreateText("StatTxt1", statChip1, $"<color=#6FF29D>HP {slot.Card.BaseHP}</color>  •  <color=#FF9E70>ATK {slot.Card.BaseAtk}</color>", 11, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                statTxt1.supportRichText = true;
+                statTxt1.resizeTextForBestFit = true;
+                statTxt1.resizeTextMinSize = 9;
+                statTxt1.resizeTextMaxSize = 11;
+                StretchFull(statTxt1.rectTransform, 4f);
+
+                var ownedCard = inv != null ? inv.GetOwnedCard(slot.Card.Id) : null;
+                string ownTag = ownedCard == null
+                    ? "<color=#FFD94A>NEW!</color>"
+                    : $"<color=#8FC8FF>OWN x{ownedCard.Quantity}</color>";
+
+                var statChip2 = CreateRoundedPanel("StatChip2", boxRt, new Color(0.05f, 0.08f, 0.14f, 0.92f), Vector2.zero);
+                statChip2.anchorMin = new Vector2(0f, 1f);
+                statChip2.anchorMax = new Vector2(1f, 1f);
+                statChip2.offsetMin = new Vector2(126f, -176f);
+                statChip2.offsetMax = new Vector2(-10f, -152f);
+                statChip2.GetComponent<Image>().raycastTarget = false;
+                AddOutline(statChip2.gameObject, new Color(0.24f, 0.34f, 0.50f), 1f);
+                var statTxt2 = CreateText("StatTxt2", statChip2, $"PWR {slot.Card.BasePower}  •  {ownTag}", 11, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                statTxt2.supportRichText = true;
+                statTxt2.resizeTextForBestFit = true;
+                statTxt2.resizeTextMinSize = 9;
+                statTxt2.resizeTextMaxSize = 11;
+                StretchFull(statTxt2.rectTransform, 4f);
+
+                var tagLineTxt = CreateText("Tagline", boxRt, $"\"{slot.Card.Tagline}\"", 10, FontStyle.Italic, new Color(0.70f, 0.80f, 0.92f), TextAnchor.MiddleLeft);
+                tagLineTxt.resizeTextForBestFit = true;
+                tagLineTxt.resizeTextMinSize = 8;
+                tagLineTxt.resizeTextMaxSize = 10;
+                tagLineTxt.verticalOverflow = VerticalWrapMode.Truncate;
+                tagLineTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
+                tagLineTxt.rectTransform.anchorMax = new Vector2(1f, 1f);
+                tagLineTxt.rectTransform.offsetMin = new Vector2(126f, -198f);
+                tagLineTxt.rectTransform.offsetMax = new Vector2(-10f, -179f);
+
+                // Bottom Tactile Buy Button
                 int capturedIdx = i;
                 string btnLabel = slot.IsSoldOut
                     ? "SOLD OUT"
-                    : (slot.IsFlashSale ? $"SALE {slot.Price}c (Was {slot.OriginalPrice})" : $"BUY ({slot.Price} COINS)");
+                    : (slot.IsFlashSale ? $"SALE {slot.Price}c (Was {slot.OriginalPrice}c)" : $"BUY  •  {slot.Price} COINS");
                 Color btnCol = slot.IsSoldOut
-                    ? new Color(0.28f, 0.28f, 0.32f)
-                    : (slot.IsFlashSale ? new Color(0.90f, 0.26f, 0.22f) : new Color(0.18f, 0.72f, 0.32f));
-                var buyBtn = CreateButton("BuySlotBtn", boxRt, btnLabel, btnCol, 13, () =>
+                    ? new Color(0.24f, 0.26f, 0.32f)
+                    : (slot.IsFlashSale ? new Color(0.88f, 0.24f, 0.20f) : new Color(0.16f, 0.68f, 0.32f));
+                Color btnOutlineCol = slot.IsSoldOut
+                    ? new Color(0.36f, 0.38f, 0.44f)
+                    : (slot.IsFlashSale ? new Color(1.0f, 0.60f, 0.52f) : new Color(0.46f, 0.96f, 0.60f));
+
+                var buyBtn = CreateButton("BuySlotBtn", boxRt, "", btnCol, 13, () =>
                 {
                     if (ShopManager.Instance.TryBuySlot(capturedIdx, out string msg))
                     {
@@ -3271,10 +3645,39 @@ namespace TeksMaster.UI
                     }
                 });
                 var bRt = buyBtn.GetComponent<RectTransform>();
-                bRt.anchorMin = new Vector2(0.06f, 0.03f);
-                bRt.anchorMax = new Vector2(0.94f, 0.15f);
-                bRt.offsetMin = Vector2.zero;
-                bRt.offsetMax = Vector2.zero;
+                bRt.anchorMin = new Vector2(0f, 0f);
+                bRt.anchorMax = new Vector2(1f, 0f);
+                bRt.offsetMin = new Vector2(10f, 8f);
+                bRt.offsetMax = new Vector2(-10f, 44f);
+                ApplyButtonTint(buyBtn, btnCol);
+                AddOutline(buyBtn.gameObject, btnOutlineCol, 1.4f);
+
+                if (!slot.IsSoldOut)
+                {
+                    var buyGloss = CreateRoundedPanel("BuyGloss", bRt, new Color(1f, 1f, 1f, 0.14f), Vector2.zero);
+                    buyGloss.anchorMin = new Vector2(0.03f, 0.60f);
+                    buyGloss.anchorMax = new Vector2(0.97f, 0.94f);
+                    buyGloss.offsetMin = Vector2.zero;
+                    buyGloss.offsetMax = Vector2.zero;
+                    buyGloss.GetComponent<Image>().raycastTarget = false;
+
+                    var coinIc = CreateImage("CoinIc", bRt, CardArtGenerator.GetUIIconSprite("coin"));
+                    coinIc.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+                    coinIc.rectTransform.anchorMax = new Vector2(0f, 0.5f);
+                    coinIc.rectTransform.anchoredPosition = new Vector2(20f, 0f);
+                    coinIc.rectTransform.sizeDelta = new Vector2(17f, 17f);
+                }
+
+                var buyLbl = CreateText("Label", bRt, btnLabel, 13, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                buyLbl.resizeTextForBestFit = true;
+                buyLbl.resizeTextMinSize = 10;
+                buyLbl.resizeTextMaxSize = 13;
+                buyLbl.rectTransform.anchorMin = Vector2.zero;
+                buyLbl.rectTransform.anchorMax = Vector2.one;
+                buyLbl.rectTransform.offsetMin = new Vector2(slot.IsSoldOut ? 8f : 32f, 2f);
+                buyLbl.rectTransform.offsetMax = new Vector2(-8f, -2f);
+                AddTextShadow(buyLbl.gameObject);
+
                 buyBtn.interactable = !slot.IsSoldOut;
             }
         }
@@ -3350,12 +3753,15 @@ namespace TeksMaster.UI
             }
 
             float availableW = 1080f - Mathf.Max(0, count - 1) * spacing;
-            float tileW = Mathf.Clamp(availableW / Mathf.Max(1, count), 204f, 300f);
+            float tileW = Mathf.Clamp(availableW / Mathf.Max(1, count), 206f, 326f);
+            bool compactTile = tileW < 232f;
 
             foreach (var card in drawn)
             {
                 if (card == null) continue;
                 Color rarityCol = TeksDatabase.GetRarityColor(card.Rarity);
+                Color tileBg = Color.Lerp(new Color(0.08f, 0.11f, 0.19f, 1f), rarityCol, 0.16f);
+
                 var cardPill = new GameObject("Drawn_" + card.Id, typeof(RectTransform), typeof(Image), typeof(LayoutElement));
                 cardPill.transform.SetParent(_packRevealContainer, false);
 
@@ -3366,53 +3772,105 @@ namespace TeksMaster.UI
                 var pillImg = cardPill.GetComponent<Image>();
                 pillImg.sprite = CardArtGenerator.GetRoundedPanelSprite();
                 pillImg.type = Image.Type.Sliced;
-                pillImg.color = new Color(0.11f, 0.16f, 0.26f, 1f);
-                AddOutline(cardPill, rarityCol, 2f);
+                pillImg.color = tileBg;
+                AddOutline(cardPill, rarityCol, 2.2f);
 
                 var pillRt = cardPill.GetComponent<RectTransform>();
-                pillRt.sizeDelta = new Vector2(tileW, 124f);
+                pillRt.sizeDelta = new Vector2(tileW, 132f);
 
-                // Fixed-aspect Left Card Portrait Frame
-                var thumbFrame = CreateRoundedPanel("ThumbFrame", pillRt, rarityCol, new Vector2(66f, 94f));
+                // Left vertical rarity accent bar & top glass rim
+                var accentBar = CreateRoundedPanel("RarityAccentBar", pillRt, rarityCol, Vector2.zero);
+                accentBar.anchorMin = new Vector2(0f, 0f);
+                accentBar.anchorMax = new Vector2(0f, 1f);
+                accentBar.offsetMin = new Vector2(4f, 8f);
+                accentBar.offsetMax = new Vector2(8f, -8f);
+                accentBar.GetComponent<Image>().raycastTarget = false;
+
+                var topRim = CreateRoundedPanel("TopRim", pillRt, new Color(1f, 1f, 1f, 0.09f), Vector2.zero);
+                topRim.anchorMin = new Vector2(0.02f, 0.91f);
+                topRim.anchorMax = new Vector2(0.98f, 0.98f);
+                topRim.offsetMin = Vector2.zero;
+                topRim.offsetMax = Vector2.zero;
+                topRim.GetComponent<Image>().raycastTarget = false;
+
+                // Fixed 2:3 Collectible Card Portrait Slab (Zero sidebars!)
+                var thumbFrame = CreateCollectibleCardSlab("ThumbFrame", pillRt, card, 1, new Vector2(74f, 111f), out _, out _);
                 thumbFrame.anchorMin = new Vector2(0f, 0.5f);
                 thumbFrame.anchorMax = new Vector2(0f, 0.5f);
-                thumbFrame.anchoredPosition = new Vector2(42f, 0f);
-                thumbFrame.GetComponent<Image>().raycastTarget = false;
+                thumbFrame.anchoredPosition = new Vector2(50f, 0f);
 
-                var thumb = CreateImage("Thumb", thumbFrame, CardArtGenerator.GetCardPortraitSprite(card, 1));
-                thumb.preserveAspect = true;
-                StretchFull(thumb.rectTransform, 3f);
+                var miniScrim = CreateRoundedPanel("MiniScrim", thumbFrame, new Color(0.03f, 0.05f, 0.10f, 0.86f), Vector2.zero);
+                miniScrim.anchorMin = new Vector2(0f, 0f);
+                miniScrim.anchorMax = new Vector2(1f, 0f);
+                miniScrim.offsetMin = new Vector2(3.5f, 3.5f);
+                miniScrim.offsetMax = new Vector2(-3.5f, 16f);
+                miniScrim.GetComponent<Image>().raycastTarget = false;
+                var miniLvlTxt = CreateText("MiniLvl", miniScrim, "LV.1 CARD", 8, FontStyle.Bold, new Color(1.0f, 0.88f, 0.34f), TextAnchor.MiddleCenter);
+                miniLvlTxt.resizeTextForBestFit = true;
+                miniLvlTxt.resizeTextMinSize = 7;
+                miniLvlTxt.resizeTextMaxSize = 8;
+                StretchFull(miniLvlTxt.rectTransform, 1f);
 
-                // Right Column: Name, Rarity Pill, Category & Base Power
-                var nameTxt = CreateText("CardName", pillRt, card.Name, 13, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
+                // Right Column: Name, Compact Rarity Tag + Power Chip, Category & Stats
+                var nameTxt = CreateText("CardName", pillRt, card.Name, 14, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
                 nameTxt.resizeTextForBestFit = true;
                 nameTxt.resizeTextMinSize = 10;
-                nameTxt.resizeTextMaxSize = 13;
-                nameTxt.rectTransform.anchorMin = new Vector2(0f, 0.58f);
-                nameTxt.rectTransform.anchorMax = new Vector2(1f, 0.94f);
-                nameTxt.rectTransform.offsetMin = new Vector2(84f, 0f);
+                nameTxt.resizeTextMaxSize = 14;
+                nameTxt.verticalOverflow = VerticalWrapMode.Truncate;
+                nameTxt.rectTransform.anchorMin = new Vector2(0f, 0.65f);
+                nameTxt.rectTransform.anchorMax = new Vector2(1f, 0.95f);
+                nameTxt.rectTransform.offsetMin = new Vector2(95f, 0f);
                 nameTxt.rectTransform.offsetMax = new Vector2(-8f, -4f);
                 AddTextShadow(nameTxt.gameObject);
 
-                var rarityPill = CreateRoundedPanel("RarityPill", pillRt, Color.Lerp(rarityCol, Color.black, 0.36f), Vector2.zero);
-                rarityPill.anchorMin = new Vector2(0f, 0.30f);
-                rarityPill.anchorMax = new Vector2(1f, 0.54f);
-                rarityPill.offsetMin = new Vector2(84f, 0f);
-                rarityPill.offsetMax = new Vector2(-12f, 0f);
+                float rarityPillW = compactTile ? 58f : 74f;
+                var rarityPill = CreateRoundedPanel("RarityPill", pillRt, Color.Lerp(rarityCol, Color.black, 0.30f), new Vector2(rarityPillW, 20f));
+                rarityPill.anchorMin = new Vector2(0f, 0.50f);
+                rarityPill.anchorMax = new Vector2(0f, 0.50f);
+                rarityPill.pivot = new Vector2(0f, 0.5f);
+                rarityPill.anchoredPosition = new Vector2(95f, -3f);
                 rarityPill.GetComponent<Image>().raycastTarget = false;
-                AddOutline(rarityPill.gameObject, rarityCol, 1f);
+                AddOutline(rarityPill.gameObject, rarityCol, 1.2f);
 
                 var rarityTxt = CreateText("RarityTxt", rarityPill, TeksDatabase.GetRarityName(card.Rarity).ToUpper(), 10, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+                rarityTxt.resizeTextForBestFit = true;
+                rarityTxt.resizeTextMinSize = 8;
+                rarityTxt.resizeTextMaxSize = 10;
                 StretchFull(rarityTxt.rectTransform, 2f);
 
-                var infoTxt = CreateText("CatTxt", pillRt, $"{TeksDatabase.GetCategoryName(card.Category)} • ★{card.BasePower}", 11, FontStyle.Bold, new Color(0.80f, 0.90f, 1.0f), TextAnchor.MiddleLeft);
-                infoTxt.resizeTextForBestFit = true;
-                infoTxt.resizeTextMinSize = 9;
-                infoTxt.resizeTextMaxSize = 11;
-                infoTxt.rectTransform.anchorMin = new Vector2(0f, 0.06f);
-                infoTxt.rectTransform.anchorMax = new Vector2(1f, 0.28f);
-                infoTxt.rectTransform.offsetMin = new Vector2(84f, 2f);
-                infoTxt.rectTransform.offsetMax = new Vector2(-8f, 0f);
+                float pwrChipW = compactTile ? 38f : 44f;
+                var pwrChip = CreateRoundedPanel("PowerChip", pillRt, new Color(0.22f, 0.16f, 0.05f, 1f), new Vector2(pwrChipW, 20f));
+                pwrChip.anchorMin = new Vector2(0f, 0.50f);
+                pwrChip.anchorMax = new Vector2(0f, 0.50f);
+                pwrChip.pivot = new Vector2(0f, 0.5f);
+                pwrChip.anchoredPosition = new Vector2(95f + rarityPillW + 4f, -3f);
+                pwrChip.GetComponent<Image>().raycastTarget = false;
+                AddOutline(pwrChip.gameObject, new Color(1.0f, 0.82f, 0.24f), 1.1f);
+
+                var pwrTxt = CreateText("PwrTxt", pwrChip, $"★{card.BasePower}", 10, FontStyle.Bold, new Color(1.0f, 0.88f, 0.30f), TextAnchor.MiddleCenter);
+                pwrTxt.resizeTextForBestFit = true;
+                pwrTxt.resizeTextMinSize = 8;
+                pwrTxt.resizeTextMaxSize = 10;
+                StretchFull(pwrTxt.rectTransform, 2f);
+
+                var catTxt = CreateText("CatTxt", pillRt, TeksDatabase.GetCategoryName(card.Category).ToUpper(), 11, FontStyle.Bold, new Color(0.56f, 0.83f, 1.0f), TextAnchor.MiddleLeft);
+                catTxt.resizeTextForBestFit = true;
+                catTxt.resizeTextMinSize = 9;
+                catTxt.resizeTextMaxSize = 11;
+                catTxt.rectTransform.anchorMin = new Vector2(0f, 0.21f);
+                catTxt.rectTransform.anchorMax = new Vector2(1f, 0.37f);
+                catTxt.rectTransform.offsetMin = new Vector2(95f, 0f);
+                catTxt.rectTransform.offsetMax = new Vector2(-8f, 0f);
+
+                var statsTxt = CreateText("StatsTxt", pillRt, $"<color=#6FF29D>HP {card.BaseHP}</color>  •  <color=#FF9E70>ATK {card.BaseAtk}</color>", 11, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
+                statsTxt.supportRichText = true;
+                statsTxt.resizeTextForBestFit = true;
+                statsTxt.resizeTextMinSize = 9;
+                statsTxt.resizeTextMaxSize = 11;
+                statsTxt.rectTransform.anchorMin = new Vector2(0f, 0.04f);
+                statsTxt.rectTransform.anchorMax = new Vector2(1f, 0.21f);
+                statsTxt.rectTransform.offsetMin = new Vector2(95f, 2f);
+                statsTxt.rectTransform.offsetMax = new Vector2(-8f, 0f);
             }
 
             var rowRt = _packRevealContainer as RectTransform;
@@ -3434,25 +3892,35 @@ namespace TeksMaster.UI
                 ? Mathf.RoundToInt(TeksMatchManager.CalculatePlayerChubProbability(pDef.Rarity, equipped.StarRank) * 100f)
                 : 50;
 
-            if (_wagerPlayerName != null)
-            {
-                _wagerPlayerName.text = $"{playerName.ToUpper()} ({pChubPct}% CHUB)";
-            }
+            if (_wagerPlayerName != null) _wagerPlayerName.text = playerName.ToUpper();
+            if (_wagerPlayerOddsPillText != null) _wagerPlayerOddsPillText.text = $"{pChubPct}% CHUB";
             if (_wagerPlayerAvatarImg != null)
             {
                 _wagerPlayerAvatarImg.sprite = CharacterResourceGenerator.GetCharacterPortraitSprite(inv.SelectedCharacterType);
             }
             if (_wagerPlayerBadgeText != null)
             {
-                string streakStr = inv.WinStreak >= 2 ? $"HOT x{inv.WinStreak}" : $"Wins: {inv.MatchesWon}";
+                string streakStr = inv.WinStreak >= 2 ? $"HOT STREAK x{inv.WinStreak}" : $"Wins: {inv.MatchesWon}";
                 _wagerPlayerBadgeText.text = $"{inv.GetBarangayRankTitle()}\n{streakStr}";
             }
 
             int pPwr = 0, pHp = 0, pAtk = 0;
             if (equipped != null && pDef != null)
             {
-                _wagerPlayerCardImg.sprite = CardArtGenerator.GetCardPortraitSprite(pDef, equipped.StarRank);
-                _wagerPlayerCardText.text = $"{pDef.Name} (Lv.{equipped.Level})\n[{TeksDatabase.GetRarityName(pDef.Rarity)} • {TeksDatabase.GetCategoryName(pDef.Category)}]";
+                Color pRarityCol = TeksDatabase.GetRarityColor(pDef.Rarity);
+                if (_wagerPlayerCardFrame != null) _wagerPlayerCardFrame.color = pRarityCol;
+                if (_wagerPlayerCardImg != null) _wagerPlayerCardImg.sprite = CardArtGenerator.GetCardPortraitSprite(pDef, equipped.StarRank);
+                if (_wagerPlayerCardLevelBadge != null) _wagerPlayerCardLevelBadge.text = $"Lv.{equipped.Level}";
+                if (_wagerPlayerCardStarsText != null)
+                {
+                    int pStars = Mathf.Clamp(equipped.StarRank, 1, 5);
+                    _wagerPlayerCardStarsText.text = new string('★', pStars) + new string('☆', 5 - pStars);
+                }
+                if (_wagerPlayerCardText != null)
+                {
+                    string pRarHex = ColorUtility.ToHtmlStringRGB(pRarityCol);
+                    _wagerPlayerCardText.text = $"{pDef.Name}\n<color=#{pRarHex}>{TeksDatabase.GetRarityName(pDef.Rarity)} • {TeksDatabase.GetCategoryName(pDef.Category)}</color>";
+                }
                 pPwr = equipped.GetPower(pDef);
                 pHp = equipped.GetHP(pDef);
                 pAtk = equipped.GetAtk(pDef);
@@ -3460,7 +3928,8 @@ namespace TeksMaster.UI
 
             var opp = mm.ActiveOpponent;
             int npcFrontPct = Mathf.RoundToInt(opp.GetAiChubProbability() * 100f);
-            _wagerOppName.text = $"{opp.NpcName.ToUpper()} ({npcFrontPct}% CHUB)";
+            if (_wagerOppName != null) _wagerOppName.text = opp.NpcName.ToUpper();
+            if (_wagerOppOddsPillText != null) _wagerOppOddsPillText.text = $"{npcFrontPct}% CHUB";
             if (_wagerOppAvatarImg != null)
             {
                 _wagerOppAvatarImg.sprite = CharacterResourceGenerator.GetNpcPortraitSprite(opp.NpcName, opp.Difficulty, opp.IsChampion, opp.CharacterPrefabNumber);
@@ -3485,31 +3954,48 @@ namespace TeksMaster.UI
             {
                 int oStars = Mathf.Clamp(opp.CardStarRank, 1, 5);
                 var oppVirtualCard = new OwnedTeksCard(oDef.Id, oStars, 1, 0);
-                _wagerOppCardImg.sprite = CardArtGenerator.GetCardPortraitSprite(oDef, oStars);
-                _wagerOppCardText.text = $"{oDef.Name} (Lv.{oStars})\n[{TeksDatabase.GetRarityName(oDef.Rarity)} • {TeksDatabase.GetCategoryName(oDef.Category)}]";
+                Color oRarityCol = TeksDatabase.GetRarityColor(oDef.Rarity);
+                if (_wagerOppCardFrame != null) _wagerOppCardFrame.color = oRarityCol;
+                if (_wagerOppCardImg != null) _wagerOppCardImg.sprite = CardArtGenerator.GetCardPortraitSprite(oDef, oStars);
+                if (_wagerOppCardLevelBadge != null) _wagerOppCardLevelBadge.text = $"Lv.{oStars}";
+                if (_wagerOppCardStarsText != null) _wagerOppCardStarsText.text = new string('★', oStars) + new string('☆', 5 - oStars);
+                if (_wagerOppCardText != null)
+                {
+                    string oRarHex = ColorUtility.ToHtmlStringRGB(oRarityCol);
+                    _wagerOppCardText.text = $"{oDef.Name}\n<color=#{oRarHex}>{TeksDatabase.GetRarityName(oDef.Rarity)} • {TeksDatabase.GetCategoryName(oDef.Category)}</color>";
+                }
                 oPwr = oppVirtualCard.GetPower(oDef);
                 oHp = oppVirtualCard.GetHP(oDef);
                 oAtk = oppVirtualCard.GetAtk(oDef);
             }
 
-            if (_wagerStatCompareText != null)
-            {
-                _wagerStatCompareText.text = $"CARD STATS:   PWR {pPwr} vs {oPwr}   |   HP {pHp} vs {oHp}   |   ATK {pAtk} vs {oAtk}";
-            }
+            UpdateStatCompareLabel(_wagerPwrCompareText, "POWER", pPwr, oPwr);
+            UpdateStatCompareLabel(_wagerHpCompareText, "HP", pHp, oHp);
+            UpdateStatCompareLabel(_wagerAtkCompareText, "ATTACK", pAtk, oAtk);
 
             int maxCoins = inv.Coins;
             _selectedWagerAmount = Mathf.Clamp(_selectedWagerAmount, 0, Mathf.Max(0, maxCoins));
             RefreshWagerText();
         }
 
+        private static void UpdateStatCompareLabel(Text label, string statName, int playerVal, int oppVal)
+        {
+            if (label == null) return;
+            string pCol = playerVal > oppVal ? "#6FF29D" : (playerVal == oppVal ? "#FFD94A" : "#B8C8DC");
+            string oCol = oppVal > playerVal ? "#FF9E70" : (oppVal == playerVal ? "#FFD94A" : "#B8C8DC");
+            label.text = $"{statName}:  <color={pCol}>{playerVal}</color>  <color=#7892B2>vs</color>  <color={oCol}>{oppVal}</color>";
+        }
+
         private void RefreshWagerText()
         {
             var mm = TeksMatchManager.Instance;
+            var inv = PlayerInventory.Instance;
             var opp = mm != null ? mm.ActiveOpponent : null;
             int npcFrontPct = opp != null ? Mathf.RoundToInt(opp.GetAiChubProbability() * 100f) : 50;
             int pChubPct = GetCurrentPlayerChubPercent();
             int pChaPct = 100 - pChubPct;
             string playerName = GetDisplayPlayerName();
+            int maxCoins = inv != null ? inv.Coins : 0;
 
             string ruleTag = (mm != null && mm.HasCardRestriction && !string.IsNullOrEmpty(mm.CardRestrictionLabel))
                 ? $"[{mm.CardRestrictionLabel}]  •  "
@@ -3525,6 +4011,34 @@ namespace TeksMaster.UI
                 {
                     int freeWin = TeksMatchManager.GetBaseCoinReward(opp);
                     _wagerAmountText.text = $"{ruleTag}FREE MATCH  (WIN +{freeWin:N0}c  |  LOSE 0c)";
+                }
+            }
+
+            for (int i = 0; i < WagerChipValues.Length; i++)
+            {
+                int val = WagerChipValues[i];
+                bool isSelected = _selectedWagerAmount == val;
+                bool affordable = val == 0 || val <= maxCoins;
+
+                if (_wagerChipImgs[i] != null)
+                {
+                    _wagerChipImgs[i].color = isSelected
+                        ? new Color(0.84f, 0.56f, 0.10f, 1f)
+                        : (affordable ? new Color(0.16f, 0.25f, 0.40f, 1f) : new Color(0.11f, 0.14f, 0.21f, 0.90f));
+                }
+                if (_wagerChipOutlines[i] != null)
+                {
+                    _wagerChipOutlines[i].effectColor = isSelected
+                        ? new Color(1.0f, 0.88f, 0.30f)
+                        : (affordable ? new Color(0.36f, 0.56f, 0.84f) : new Color(0.24f, 0.28f, 0.36f));
+                    float dist = isSelected ? 2.2f : 1.2f;
+                    _wagerChipOutlines[i].effectDistance = new Vector2(dist, dist);
+                }
+                if (_wagerChipTexts[i] != null)
+                {
+                    _wagerChipTexts[i].color = isSelected
+                        ? Color.white
+                        : (affordable ? new Color(0.86f, 0.94f, 1.0f) : new Color(0.50f, 0.56f, 0.66f));
                 }
             }
 

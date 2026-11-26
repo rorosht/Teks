@@ -97,7 +97,6 @@ namespace TeksMaster.UI
 
         private void BuildExtendedUI()
         {
-            CreateCurrentMissionTrackerHud();
             CreateModesModal();
             CreatePauseModal();
             CreateSettingsModal();
@@ -2511,9 +2510,16 @@ namespace TeksMaster.UI
 
         private void SyncPlayerMovementLock()
         {
-            if (PlayerController.Instance == null) return;
             bool inMatch = TeksMatchManager.Instance != null && TeksMatchManager.Instance.State != MatchState.Idle;
-            PlayerController.Instance.MovementLocked = inMatch || IsAnyModalOpen();
+            bool modalOpen = IsAnyModalOpen();
+            if (_missionTrackerPanel != null)
+            {
+                _missionTrackerPanel.SetActive(!inMatch && !modalOpen);
+            }
+            if (PlayerController.Instance != null)
+            {
+                PlayerController.Instance.MovementLocked = inMatch || modalOpen;
+            }
         }
     }
 }
