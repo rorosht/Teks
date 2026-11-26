@@ -24,6 +24,7 @@ namespace TeksMaster.Editor
         public void OnPreprocessBuild(BuildReport report)
         {
             TeksMasterEditorSetup.EnsureCharacterCatalogAsset();
+            TeksMasterEditorSetup.EnsureHouseCatalogAsset();
         }
     }
 
@@ -92,6 +93,7 @@ namespace TeksMaster.Editor
             if (!activeScene.IsValid() || !activeScene.isLoaded) return;
 
             EnsureCharacterCatalogAsset();
+            EnsureHouseCatalogAsset();
 
             var bootstrapper = Object.FindAnyObjectByType<TeksGameBootstrapper>();
             if (bootstrapper == null)
@@ -191,6 +193,51 @@ namespace TeksMaster.Editor
             return catalog;
         }
 
+        public static TeksHouseCatalog EnsureHouseCatalogAsset()
+        {
+            var catalog = AssetDatabase.LoadAssetAtPath<TeksHouseCatalog>(TeksHouseCatalog.AssetPath);
+            bool dirty = false;
+
+            if (catalog == null)
+            {
+                string resDir = Path.GetDirectoryName(TeksHouseCatalog.AssetPath);
+                if (!string.IsNullOrEmpty(resDir) && !Directory.Exists(resDir))
+                {
+                    Directory.CreateDirectory(resDir);
+                    AssetDatabase.Refresh();
+                }
+
+                catalog = ScriptableObject.CreateInstance<TeksHouseCatalog>();
+                AssetDatabase.CreateAsset(catalog, TeksHouseCatalog.AssetPath);
+                dirty = true;
+            }
+
+            int expectedCount = TeksHouseCatalog.PrefabPaths.Length;
+            if (catalog.HousePrefabs == null || catalog.HousePrefabs.Length != expectedCount)
+            {
+                catalog.HousePrefabs = new GameObject[expectedCount];
+                dirty = true;
+            }
+
+            for (int i = 0; i < expectedCount; i++)
+            {
+                var loaded = AssetDatabase.LoadAssetAtPath<GameObject>(TeksHouseCatalog.PrefabPaths[i]);
+                if (loaded != null && catalog.HousePrefabs[i] != loaded)
+                {
+                    catalog.HousePrefabs[i] = loaded;
+                    dirty = true;
+                }
+            }
+
+            if (dirty)
+            {
+                EditorUtility.SetDirty(catalog);
+                AssetDatabase.SaveAssets();
+            }
+
+            return catalog;
+        }
+
         private static void MarkPreviewDontSave(GameObject root)
         {
             if (root == null) return;
@@ -267,6 +314,25 @@ namespace TeksMaster.Editor
             }
         }
 
+        [MenuItem("Teks Master/Rebuild Barangay House Catalog")]
+        public static void RebuildHouseCatalogMenu()
+        {
+            var catalog = EnsureHouseCatalogAsset();
+            int count = 0;
+            if (catalog != null && catalog.HousePrefabs != null)
+            {
+                for (int i = 0; i < catalog.HousePrefabs.Length; i++)
+                {
+                    if (catalog.HousePrefabs[i] != null) count++;
+                }
+            }
+            Debug.Log($"[Teks Master] House catalog ready ({count}/{TeksHouseCatalog.PrefabPaths.Length} prefabs) at {TeksHouseCatalog.AssetPath}.");
+            if (!Application.isPlaying)
+            {
+                RefreshSceneViewPreview();
+            }
+        }
+
         [MenuItem("Teks Master/Refresh Scene View Preview")]
         public static void RefreshSceneViewPreview()
         {
@@ -277,6 +343,7 @@ namespace TeksMaster.Editor
             }
 
             EnsureCharacterCatalogAsset();
+            EnsureHouseCatalogAsset();
 
             var scene = EditorSceneManager.GetActiveScene();
             if (!scene.IsValid()) return;
@@ -304,6 +371,7 @@ namespace TeksMaster.Editor
             }
 
             EnsureCharacterCatalogAsset();
+            EnsureHouseCatalogAsset();
 
             var scene = EditorSceneManager.GetActiveScene();
             if (scene.IsValid())

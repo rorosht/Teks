@@ -512,7 +512,10 @@ namespace TeksMaster.Core
                     break;
 
                 case ShopPackType.DailyFree:
-                    drawn.Add(RollCardBySpecRates());
+                    for (int i = 0; i < 3; i++)
+                    {
+                        drawn.Add(RollCardBySpecRates());
+                    }
                     break;
 
                 default:

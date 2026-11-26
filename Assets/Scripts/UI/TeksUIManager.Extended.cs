@@ -16,8 +16,15 @@ namespace TeksMaster.UI
     {
         // In-Game HUD Current Mission Tracker
         private GameObject _missionTrackerPanel;
+        private Outline _missionTrackerOutline;
+        private Image _missionTrackerAccentBar;
+        private Image _missionTrackerCategoryBg;
+        private Text _missionTrackerCategoryText;
+        private Image _missionTrackerStatusPillBg;
+        private Text _missionTrackerStatusText;
         private Text _missionTrackerHeaderText;
         private Text _missionTrackerBodyText;
+        private Text _missionTrackerRewardText;
         private Image _missionTrackerFillBar;
 
         // Navigation State
@@ -40,6 +47,8 @@ namespace TeksMaster.UI
         private Image _settingsMuteBtnImg;
         private Text _settingsFullscreenBtnText;
         private Image _settingsFullscreenBtnImg;
+        private GameObject _settingsGameMenuBtn;
+        private RectTransform _settingsDoneBtnRt;
 
         // Exit Confirmation Modal
         private GameObject _exitConfirmModal;
@@ -460,34 +469,78 @@ namespace TeksMaster.UI
 
         private void CreateCurrentMissionTrackerHud()
         {
-            var panel = CreateRoundedPanel("CurrentMissionTrackerHUD", _canvas.transform, new Color(0.09f, 0.14f, 0.22f, 0.92f), new Vector2(455f, 70f));
+            var panel = CreateRoundedPanel("CurrentMissionTrackerHUD", _canvas.transform, new Color(0.07f, 0.11f, 0.19f, 0.94f), new Vector2(436f, 124f));
             panel.anchorMin = new Vector2(0f, 1f);
             panel.anchorMax = new Vector2(0f, 1f);
             panel.pivot = new Vector2(0f, 1f);
-            panel.anchoredPosition = new Vector2(22f, -206f);
-            AddOutline(panel.gameObject, new Color(0.92f, 0.72f, 0.20f), 1.5f);
+            panel.anchoredPosition = new Vector2(22f, -214f);
+            AddOutline(panel.gameObject, new Color(0.92f, 0.72f, 0.20f), 1.6f);
+            _missionTrackerOutline = panel.GetComponent<Outline>();
             _missionTrackerPanel = panel.gameObject;
 
             var btn = panel.gameObject.AddComponent<Button>();
+            ApplyButtonTint(btn, new Color(0.07f, 0.11f, 0.19f, 0.94f));
             btn.onClick.AddListener(ToggleQuestsModal);
 
-            _missionTrackerHeaderText = CreateText("TrackerHeader", panel, "ACTIVE MISSION [Q]: First Barangay Win", 14, FontStyle.Bold, new Color(1.0f, 0.88f, 0.32f), TextAnchor.MiddleLeft);
+            // Left vertical category accent bar
+            var accentRt = CreateRoundedPanel("TrackerAccentBar", panel, new Color(0.96f, 0.68f, 0.18f), Vector2.zero);
+            accentRt.anchorMin = new Vector2(0f, 0f);
+            accentRt.anchorMax = new Vector2(0f, 1f);
+            accentRt.offsetMin = new Vector2(4f, 8f);
+            accentRt.offsetMax = new Vector2(9f, -8f);
+            _missionTrackerAccentBar = accentRt.GetComponent<Image>();
+            _missionTrackerAccentBar.raycastTarget = false;
+
+            // Band 1 Left: Category badge pill
+            var catPill = CreateRoundedPanel("TrackerCategoryPill", panel, new Color(0.42f, 0.26f, 0.08f), new Vector2(132f, 22f));
+            catPill.anchorMin = new Vector2(0f, 1f);
+            catPill.anchorMax = new Vector2(0f, 1f);
+            catPill.pivot = new Vector2(0f, 1f);
+            catPill.anchoredPosition = new Vector2(18f, -10f);
+            _missionTrackerCategoryBg = catPill.GetComponent<Image>();
+            _missionTrackerCategoryBg.raycastTarget = false;
+            _missionTrackerCategoryText = CreateText("CategoryTxt", catPill, "MAIN STORY", 11, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            StretchFull(_missionTrackerCategoryText.rectTransform, 2f);
+
+            // Band 1 Right: Progress / Ready status badge
+            var statusPill = CreateRoundedPanel("TrackerStatusPill", panel, new Color(0.14f, 0.20f, 0.32f), new Vector2(134f, 22f));
+            statusPill.anchorMin = new Vector2(1f, 1f);
+            statusPill.anchorMax = new Vector2(1f, 1f);
+            statusPill.pivot = new Vector2(1f, 1f);
+            statusPill.anchoredPosition = new Vector2(-14f, -10f);
+            _missionTrackerStatusPillBg = statusPill.GetComponent<Image>();
+            _missionTrackerStatusPillBg.raycastTarget = false;
+            _missionTrackerStatusText = CreateText("StatusTxt", statusPill, "0 / 1  •  [Q]", 11, FontStyle.Bold, new Color(0.90f, 0.96f, 1.0f), TextAnchor.MiddleCenter);
+            StretchFull(_missionTrackerStatusText.rectTransform, 2f);
+
+            // Band 2: Quest title (generous separation below pills)
+            _missionTrackerHeaderText = CreateText("TrackerHeader", panel, "First Barangay Win", 15, FontStyle.Bold, new Color(1.0f, 0.90f, 0.36f), TextAnchor.MiddleLeft);
+            _missionTrackerHeaderText.resizeTextForBestFit = true;
+            _missionTrackerHeaderText.resizeTextMinSize = 12;
+            _missionTrackerHeaderText.resizeTextMaxSize = 15;
+            _missionTrackerHeaderText.verticalOverflow = VerticalWrapMode.Truncate;
             _missionTrackerHeaderText.rectTransform.anchorMin = new Vector2(0f, 1f);
             _missionTrackerHeaderText.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _missionTrackerHeaderText.rectTransform.offsetMin = new Vector2(12f, -26f);
-            _missionTrackerHeaderText.rectTransform.offsetMax = new Vector2(-12f, -4f);
+            _missionTrackerHeaderText.rectTransform.offsetMin = new Vector2(18f, -60f);
+            _missionTrackerHeaderText.rectTransform.offsetMax = new Vector2(-14f, -38f);
+            AddTextShadow(_missionTrackerHeaderText.gameObject);
 
-            _missionTrackerBodyText = CreateText("TrackerBody", panel, "Defeat Dodong in Player's Neighborhood  |  0/1  (+120c +5 Gems)", 12, FontStyle.Normal, new Color(0.84f, 0.92f, 1.0f), TextAnchor.MiddleLeft);
+            // Band 3: Quest description only (clean vertical spacing)
+            _missionTrackerBodyText = CreateText("TrackerBody", panel, "Challenge and defeat Dodong in Player's Neighborhood.", 12, FontStyle.Normal, new Color(0.84f, 0.92f, 1.0f), TextAnchor.UpperLeft);
+            _missionTrackerBodyText.lineSpacing = 1.22f;
+            _missionTrackerBodyText.verticalOverflow = VerticalWrapMode.Truncate;
             _missionTrackerBodyText.rectTransform.anchorMin = new Vector2(0f, 1f);
             _missionTrackerBodyText.rectTransform.anchorMax = new Vector2(1f, 1f);
-            _missionTrackerBodyText.rectTransform.offsetMin = new Vector2(12f, -48f);
-            _missionTrackerBodyText.rectTransform.offsetMax = new Vector2(-12f, -26f);
+            _missionTrackerBodyText.rectTransform.offsetMin = new Vector2(18f, -96f);
+            _missionTrackerBodyText.rectTransform.offsetMax = new Vector2(-14f, -64f);
 
-            var barBg = CreateRoundedPanel("TrackerBarBg", panel, new Color(0.05f, 0.08f, 0.14f, 0.96f), Vector2.zero);
+            // Band 4 Left: Progress bar track
+            var barBg = CreateRoundedPanel("TrackerBarBg", panel, new Color(0.04f, 0.07f, 0.13f, 0.96f), new Vector2(212f, 10f));
             barBg.anchorMin = new Vector2(0f, 0f);
-            barBg.anchorMax = new Vector2(1f, 0f);
-            barBg.offsetMin = new Vector2(12f, 7f);
-            barBg.offsetMax = new Vector2(-12f, 17f);
+            barBg.anchorMax = new Vector2(0f, 0f);
+            barBg.pivot = new Vector2(0f, 0f);
+            barBg.anchoredPosition = new Vector2(18f, 11f);
+            barBg.GetComponent<Image>().raycastTarget = false;
 
             var fillGo = new GameObject("Fill", typeof(RectTransform), typeof(Image));
             fillGo.transform.SetParent(barBg, false);
@@ -498,6 +551,17 @@ namespace TeksMaster.UI
             fillRt.offsetMax = new Vector2(-1f, -1f);
             _missionTrackerFillBar = fillGo.GetComponent<Image>();
             _missionTrackerFillBar.color = new Color(0.24f, 0.86f, 0.44f);
+            _missionTrackerFillBar.raycastTarget = false;
+
+            // Band 4 Right: Dedicated Rewards callout
+            _missionTrackerRewardText = CreateText("TrackerReward", panel, "+100 Coins  +5 Gems", 12, FontStyle.Bold, new Color(1.0f, 0.86f, 0.34f), TextAnchor.MiddleRight);
+            _missionTrackerRewardText.resizeTextForBestFit = true;
+            _missionTrackerRewardText.resizeTextMinSize = 10;
+            _missionTrackerRewardText.resizeTextMaxSize = 12;
+            _missionTrackerRewardText.rectTransform.anchorMin = new Vector2(0f, 0f);
+            _missionTrackerRewardText.rectTransform.anchorMax = new Vector2(1f, 0f);
+            _missionTrackerRewardText.rectTransform.offsetMin = new Vector2(238f, 6f);
+            _missionTrackerRewardText.rectTransform.offsetMax = new Vector2(-14f, 26f);
         }
 
         private void RefreshMissionTrackerHud()
@@ -508,33 +572,63 @@ namespace TeksMaster.UI
             var q = inv.GetActiveTrackerMission();
             if (q == null)
             {
-                _missionTrackerHeaderText.text = "ALL MISSIONS COMPLETE! [Q]";
-                _missionTrackerHeaderText.color = new Color(0.38f, 0.98f, 0.54f);
+                Color doneCol = new Color(0.24f, 0.86f, 0.46f);
+                if (_missionTrackerOutline != null) _missionTrackerOutline.effectColor = doneCol;
+                if (_missionTrackerAccentBar != null) _missionTrackerAccentBar.color = doneCol;
+                if (_missionTrackerCategoryBg != null) _missionTrackerCategoryBg.color = new Color(0.14f, 0.44f, 0.24f);
+                if (_missionTrackerCategoryText != null) _missionTrackerCategoryText.text = "BARANGAY LOG";
+                if (_missionTrackerStatusPillBg != null) _missionTrackerStatusPillBg.color = new Color(0.14f, 0.46f, 0.26f);
+                if (_missionTrackerStatusText != null) _missionTrackerStatusText.text = "COMPLETE ✓";
+
+                _missionTrackerHeaderText.text = "ALL MISSIONS COMPLETE!";
+                _missionTrackerHeaderText.color = new Color(0.42f, 0.98f, 0.56f);
                 _missionTrackerBodyText.text = "You have completed every Barangay mission and achievement!";
+                if (_missionTrackerRewardText != null) _missionTrackerRewardText.text = "VIEW LOG [Q]";
+
                 if (_missionTrackerFillBar != null)
                 {
                     _missionTrackerFillBar.rectTransform.anchorMax = new Vector2(1f, 1f);
-                    _missionTrackerFillBar.color = new Color(0.32f, 0.94f, 0.48f);
+                    _missionTrackerFillBar.color = doneCol;
                 }
                 return;
             }
 
             string catName = GetMissionCategoryShortName(q.Category);
+            Color catCol = GetMissionCategoryColor(q.Category);
             bool readyToClaim = q.IsCompleted && !q.IsClaimed;
             int claimableTotal = inv.GetUnclaimedCompletedQuestCount();
 
             if (readyToClaim)
             {
-                _missionTrackerHeaderText.text = $"[{catName}] {q.Title}  •  CLAIM READY! ({claimableTotal}!)";
-                _missionTrackerHeaderText.color = new Color(0.38f, 1.0f, 0.52f);
+                Color readyCol = new Color(1.0f, 0.84f, 0.22f);
+                if (_missionTrackerOutline != null) _missionTrackerOutline.effectColor = readyCol;
+                if (_missionTrackerAccentBar != null) _missionTrackerAccentBar.color = readyCol;
+                if (_missionTrackerCategoryBg != null) _missionTrackerCategoryBg.color = new Color(0.16f, 0.54f, 0.26f);
+                if (_missionTrackerCategoryText != null) _missionTrackerCategoryText.text = $"{catName} ✓";
+                if (_missionTrackerStatusPillBg != null) _missionTrackerStatusPillBg.color = new Color(0.76f, 0.48f, 0.08f);
+                if (_missionTrackerStatusText != null) _missionTrackerStatusText.text = $"CLAIM NOW! ({claimableTotal})";
+
+                _missionTrackerHeaderText.text = q.Title;
+                _missionTrackerHeaderText.color = readyCol;
             }
             else
             {
-                _missionTrackerHeaderText.text = $"[{catName}] {q.Title}  ({q.CurrentProgress}/{q.TargetCount})";
-                _missionTrackerHeaderText.color = new Color(1.0f, 0.88f, 0.32f);
+                if (_missionTrackerOutline != null) _missionTrackerOutline.effectColor = catCol;
+                if (_missionTrackerAccentBar != null) _missionTrackerAccentBar.color = catCol;
+                if (_missionTrackerCategoryBg != null) _missionTrackerCategoryBg.color = Color.Lerp(catCol, Color.black, 0.42f);
+                if (_missionTrackerCategoryText != null) _missionTrackerCategoryText.text = catName;
+                if (_missionTrackerStatusPillBg != null) _missionTrackerStatusPillBg.color = new Color(0.14f, 0.20f, 0.32f);
+                if (_missionTrackerStatusText != null) _missionTrackerStatusText.text = $"{q.CurrentProgress} / {q.TargetCount}  •  [Q]";
+
+                _missionTrackerHeaderText.text = q.Title;
+                _missionTrackerHeaderText.color = Color.white;
             }
 
-            _missionTrackerBodyText.text = $"{q.Description}  •  {FormatQuestRewardSummary(q)}";
+            _missionTrackerBodyText.text = q.Description;
+            if (_missionTrackerRewardText != null)
+            {
+                _missionTrackerRewardText.text = FormatQuestRewardSummary(q);
+            }
 
             if (_missionTrackerFillBar != null)
             {
@@ -675,10 +769,17 @@ namespace TeksMaster.UI
                     ? new Color(1.0f, 0.84f, 0.22f)
                     : (q.IsClaimed ? new Color(0.24f, 0.30f, 0.40f) : GetMissionCategoryColor(q.Category));
 
-                var row = CreateRoundedPanel("QuestRow_" + q.Id, _questsListContent, rowBg, new Vector2(860f, 98f));
+                var row = CreateRoundedPanel("QuestRow_" + q.Id, _questsListContent, rowBg, new Vector2(860f, 108f));
                 var le = row.gameObject.AddComponent<LayoutElement>();
-                le.preferredHeight = 98f;
+                le.preferredHeight = 108f;
                 AddOutline(row.gameObject, borderCol, canClaim ? 2.5f : 1.5f);
+
+                var rowAccent = CreateRoundedPanel("RowAccent", row, borderCol, Vector2.zero);
+                rowAccent.anchorMin = new Vector2(0f, 0f);
+                rowAccent.anchorMax = new Vector2(0f, 1f);
+                rowAccent.offsetMin = new Vector2(4f, 8f);
+                rowAccent.offsetMax = new Vector2(9f, -8f);
+                rowAccent.GetComponent<Image>().raycastTarget = false;
 
                 string catTag = GetMissionCategoryShortName(q.Category);
                 string dailyTag = q.IsDaily ? " • DAILY RESET" : string.Empty;
@@ -692,9 +793,9 @@ namespace TeksMaster.UI
                     TextAnchor.MiddleLeft
                 );
                 titleTxt.rectTransform.anchorMin = new Vector2(0f, 1f);
-                titleTxt.rectTransform.anchorMax = new Vector2(0.75f, 1f);
-                titleTxt.rectTransform.offsetMin = new Vector2(18f, -32f);
-                titleTxt.rectTransform.offsetMax = new Vector2(-8f, -6f);
+                titleTxt.rectTransform.anchorMax = new Vector2(0.74f, 1f);
+                titleTxt.rectTransform.offsetMin = new Vector2(20f, -34f);
+                titleTxt.rectTransform.offsetMax = new Vector2(-10f, -8f);
 
                 var descTxt = CreateText(
                     "Desc",
@@ -703,12 +804,14 @@ namespace TeksMaster.UI
                     13,
                     FontStyle.Normal,
                     new Color(0.84f, 0.92f, 1.0f),
-                    TextAnchor.MiddleLeft
+                    TextAnchor.UpperLeft
                 );
+                descTxt.lineSpacing = 1.28f;
+                descTxt.verticalOverflow = VerticalWrapMode.Truncate;
                 descTxt.rectTransform.anchorMin = new Vector2(0f, 0f);
-                descTxt.rectTransform.anchorMax = new Vector2(0.75f, 1f);
-                descTxt.rectTransform.offsetMin = new Vector2(18f, 8f);
-                descTxt.rectTransform.offsetMax = new Vector2(-8f, -32f);
+                descTxt.rectTransform.anchorMax = new Vector2(0.74f, 1f);
+                descTxt.rectTransform.offsetMin = new Vector2(20f, 10f);
+                descTxt.rectTransform.offsetMax = new Vector2(-10f, -38f);
 
                 string capturedId = q.Id;
                 string btnLbl = q.IsClaimed ? "CLAIMED ✓" : (canClaim ? "CLAIM REWARD!" : $"{q.CurrentProgress} / {q.TargetCount}");
@@ -1922,12 +2025,37 @@ namespace TeksMaster.UI
             _settingsFullscreenBtnImg = fsBtn.GetComponent<Image>();
             _settingsFullscreenBtnText = fsBtn.GetComponentInChildren<Text>();
 
-            var doneBtn = CreateButton("DoneSettingsBtn", window, "SAVE & DONE", new Color(0.18f, 0.74f, 0.34f), 18, CloseSettingsModal);
-            var dRt = doneBtn.GetComponent<RectTransform>();
-            dRt.anchoredPosition = new Vector2(0f, -196f);
-            dRt.sizeDelta = new Vector2(280f, 50f);
+            var gameMenuBtn = CreateButton("SettingsGameMenuBtn", window, "GAME MENU [ESC]", new Color(0.28f, 0.36f, 0.50f), 16, () =>
+            {
+                _openedSettingsFromPause = false;
+                if (_settingsModal != null) _settingsModal.SetActive(false);
+                TogglePauseModal();
+            });
+            var gmRt = gameMenuBtn.GetComponent<RectTransform>();
+            gmRt.anchoredPosition = new Vector2(-128f, -196f);
+            gmRt.sizeDelta = new Vector2(228f, 48f);
+            _settingsGameMenuBtn = gameMenuBtn.gameObject;
+
+            var doneBtn = CreateButton("DoneSettingsBtn", window, "SAVE & DONE", new Color(0.18f, 0.74f, 0.34f), 17, CloseSettingsModal);
+            _settingsDoneBtnRt = doneBtn.GetComponent<RectTransform>();
+            _settingsDoneBtnRt.anchoredPosition = new Vector2(128f, -196f);
+            _settingsDoneBtnRt.sizeDelta = new Vector2(228f, 48f);
 
             _settingsModal.SetActive(false);
+        }
+
+        public void ToggleSettingsModal()
+        {
+            if (TeksMatchManager.Instance != null && TeksMatchManager.Instance.State != MatchState.Idle) return;
+            bool next = _settingsModal != null && !_settingsModal.activeSelf;
+            CloseAllModals();
+            if (next)
+            {
+                _openedSettingsFromPause = false;
+                RefreshSettingsModal();
+                _settingsModal.SetActive(true);
+                SyncPlayerMovementLock();
+            }
         }
 
         private void BuildVolumeControlRow(
@@ -2111,6 +2239,16 @@ namespace TeksMaster.UI
             if (_settingsFullscreenBtnImg != null)
             {
                 _settingsFullscreenBtnImg.color = s.IsFullscreen ? new Color(0.20f, 0.50f, 0.84f) : new Color(0.32f, 0.38f, 0.52f);
+            }
+
+            bool showGameMenu = !_openedSubModalFromStartScreen && (_startScreenRoot == null || !_startScreenRoot.activeSelf);
+            if (_settingsGameMenuBtn != null)
+            {
+                _settingsGameMenuBtn.SetActive(showGameMenu);
+            }
+            if (_settingsDoneBtnRt != null)
+            {
+                _settingsDoneBtnRt.anchoredPosition = new Vector2(showGameMenu ? 128f : 0f, -196f);
             }
         }
 

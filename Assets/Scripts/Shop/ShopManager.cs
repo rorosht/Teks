@@ -122,9 +122,9 @@ namespace TeksMaster.Shop
             new ShopPackInfo(
                 ShopPackType.DailyFree,
                 "Daily Free Draw",
-                "1 free Teks card + 200 Barya Coins once every day!",
-                "1 Classic SPEC Card + 200 Barya Coins",
-                1,
+                "3 free Teks cards + 200 Barya Coins once every day!",
+                "3 Classic SPEC Cards + 200 Barya Coins",
+                3,
                 0,
                 usesGems: false,
                 isDailyFree: true,
@@ -419,12 +419,28 @@ namespace TeksMaster.Shop
             inv.ReportPackOpened(ShopPackType.DailyFree, drawnCards.Count);
             inv.SaveToDisk();
 
-            string cardLabel = (drawnCards.Count > 0 && drawnCards[0] != null)
-                ? $"{drawnCards[0].Name} ({TeksDatabase.GetRarityName(drawnCards[0].Rarity)})"
-                : "1 Teks Card";
+            string cardsSummary;
+            if (drawnCards.Count > 0)
+            {
+                var names = new List<string>(drawnCards.Count);
+                for (int i = 0; i < drawnCards.Count; i++)
+                {
+                    if (drawnCards[i] != null)
+                    {
+                        names.Add(drawnCards[i].Name);
+                    }
+                }
+                cardsSummary = names.Count > 0
+                    ? $"{names.Count} Free Cards ({string.Join(", ", names)})"
+                    : $"{drawnCards.Count} Free Cards";
+            }
+            else
+            {
+                cardsSummary = "3 Teks Cards";
+            }
 
-            LastVendorMessage = $"Aling Nena: \"Regalo sa'yo today, {inv.PlayerNickname}! {cardLabel} + {baryaBonus} Barya Coins!\"";
-            message = $"Daily Free Draw claimed! Got {cardLabel} + {baryaBonus} Barya Coins!";
+            LastVendorMessage = $"Aling Nena: \"Regalo sa'yo today, {inv.PlayerNickname}! {cardsSummary} + {baryaBonus} Barya Coins!\"";
+            message = $"Daily Free Draw claimed! Got {cardsSummary} + {baryaBonus} Barya Coins!";
 
             OnPurchaseSucceeded?.Invoke();
             OnPackOpened?.Invoke(ShopPackType.DailyFree, drawnCards);

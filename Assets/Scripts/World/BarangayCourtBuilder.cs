@@ -25,6 +25,7 @@ namespace TeksMaster.World
 
         private readonly List<TextMesh> _storeTimerMeshes = new List<TextMesh>();
         private readonly List<Renderer> _storeRackCardRenderers = new List<Renderer>();
+        private static readonly Dictionary<string, Material> _houseUrpMatCache = new Dictionary<string, Material>();
         private bool _built;
         private ShopManager _subscribedShop;
         private PlayerInventory _subscribedInventory;
@@ -33,6 +34,7 @@ namespace TeksMaster.World
         private static void ResetStaticState()
         {
             Instance = null;
+            _houseUrpMatCache.Clear();
         }
 
         private void Awake()
@@ -245,7 +247,7 @@ namespace TeksMaster.World
 
         public void BuildWorldIfNeeded()
         {
-            const string versionMarker = "WorldVersion_V7";
+            const string versionMarker = "WorldVersion_V8";
             if (_built && CourtRoot != null && CourtRoot.Find(versionMarker) != null)
             {
                 // Verify materials aren't stale/missing shaders (prevents magenta screen when Reload Domain is disabled)
@@ -872,21 +874,35 @@ namespace TeksMaster.World
             var playerHouse = new GameObject("PlayersHouse").transform;
             playerHouse.SetParent(zones, false);
             playerHouse.position = new Vector3(27.5f, 0f, 6.2f);
-            Material homeWallMat = CardArtGenerator.CreateLitMaterial(new Color(0.95f, 0.89f, 0.76f), 0.16f);
-            Material homeTrimMat = CardArtGenerator.CreateLitMaterial(new Color(0.20f, 0.48f, 0.66f), 0.22f);
-            Material homeDoorMat = CardArtGenerator.CreateLitMaterial(new Color(0.46f, 0.26f, 0.14f), 0.20f);
-            Material porchGlowMat = CardArtGenerator.CreateUnlitEmissiveMaterial(new Color(1.0f, 0.90f, 0.58f), 1.45f);
-            CreateBox("HomeBody", playerHouse, new Vector3(0f, 1.70f, 0f), new Vector3(3.4f, 3.4f, 3.4f), homeWallMat, true);
-            CreateBox("HomePorchStep", playerHouse, new Vector3(-1.90f, 0.12f, 0f), new Vector3(0.55f, 0.24f, 1.85f), plazaTileMat, true);
-            CreateBox("HomeDoor", playerHouse, new Vector3(-1.72f, 1.12f, 0f), new Vector3(0.08f, 1.95f, 1.05f), homeDoorMat, false);
-            CreateBox("HomeWindowFront", playerHouse, new Vector3(-1.72f, 2.25f, 1.05f), new Vector3(0.08f, 0.75f, 0.75f), homeTrimMat, false);
-            CreateBox("HomeWindowSouth", playerHouse, new Vector3(0f, 1.85f, -1.72f), new Vector3(1.15f, 0.85f, 0.08f), homeTrimMat, false);
-            CreateBox("HomeRoof", playerHouse, new Vector3(-0.12f, 3.56f, 0f), new Vector3(4.35f, 0.24f, 4.10f), roofMat, false);
-            CreateBox("HomeRoofPeak", playerHouse, new Vector3(0f, 3.92f, 0f), new Vector3(2.80f, 0.46f, 2.90f), roofMat, false);
-            CreateBox("HomePorchLamp", playerHouse, new Vector3(-1.82f, 2.42f, 0f), new Vector3(0.18f, 0.18f, 0.18f), porchGlowMat, false);
-            CreateBox("HomeSignBg", playerHouse, new Vector3(-1.76f, 2.95f, 0f), new Vector3(0.10f, 0.52f, 2.15f), homeTrimMat, false);
-            var homeLabel = CreateWorldText("HomeSignText", playerHouse, new Vector3(-1.83f, 2.95f, 0f), "MY HOUSE", 52, new Color(1.0f, 0.94f, 0.40f), 0.20f, 0.13f);
-            homeLabel.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+            if (SpawnHousePackModel(playerHouse, variantIndex: 2, targetWidth: 3.6f, targetDepth: 3.6f, targetMinHeight: 3.6f, targetMaxHeight: 4.4f, localYawOffset: -90f, addCollider: true))
+            {
+                Material homeTrimMat = CardArtGenerator.CreateLitMaterial(new Color(0.20f, 0.48f, 0.66f), 0.22f);
+                var yardSign = new GameObject("PlayersHouseSign").transform;
+                yardSign.SetParent(playerHouse, false);
+                yardSign.localPosition = new Vector3(-2.05f, 0f, -1.35f);
+                CreateCylinder("HomeSignPost", yardSign, new Vector3(0f, 0.85f, 0f), new Vector3(0.06f, 0.85f, 0.06f), woodMat, false);
+                CreateBox("HomeSignBg", yardSign, new Vector3(0f, 1.58f, 0f), new Vector3(0.08f, 0.46f, 1.48f), homeTrimMat, false);
+                var homeLabel = CreateWorldText("HomeSignText", yardSign, new Vector3(-0.06f, 1.58f, 0f), "MY HOUSE", 52, new Color(1.0f, 0.94f, 0.40f), 0.20f, 0.12f);
+                homeLabel.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+            }
+            else
+            {
+                Material homeWallMat = CardArtGenerator.CreateLitMaterial(new Color(0.95f, 0.89f, 0.76f), 0.16f);
+                Material homeTrimMat = CardArtGenerator.CreateLitMaterial(new Color(0.20f, 0.48f, 0.66f), 0.22f);
+                Material homeDoorMat = CardArtGenerator.CreateLitMaterial(new Color(0.46f, 0.26f, 0.14f), 0.20f);
+                Material porchGlowMat = CardArtGenerator.CreateUnlitEmissiveMaterial(new Color(1.0f, 0.90f, 0.58f), 1.45f);
+                CreateBox("HomeBody", playerHouse, new Vector3(0f, 1.70f, 0f), new Vector3(3.4f, 3.4f, 3.4f), homeWallMat, true);
+                CreateBox("HomePorchStep", playerHouse, new Vector3(-1.90f, 0.12f, 0f), new Vector3(0.55f, 0.24f, 1.85f), plazaTileMat, true);
+                CreateBox("HomeDoor", playerHouse, new Vector3(-1.72f, 1.12f, 0f), new Vector3(0.08f, 1.95f, 1.05f), homeDoorMat, false);
+                CreateBox("HomeWindowFront", playerHouse, new Vector3(-1.72f, 2.25f, 1.05f), new Vector3(0.08f, 0.75f, 0.75f), homeTrimMat, false);
+                CreateBox("HomeWindowSouth", playerHouse, new Vector3(0f, 1.85f, -1.72f), new Vector3(1.15f, 0.85f, 0.08f), homeTrimMat, false);
+                CreateBox("HomeRoof", playerHouse, new Vector3(-0.12f, 3.56f, 0f), new Vector3(4.35f, 0.24f, 4.10f), roofMat, false);
+                CreateBox("HomeRoofPeak", playerHouse, new Vector3(0f, 3.92f, 0f), new Vector3(2.80f, 0.46f, 2.90f), roofMat, false);
+                CreateBox("HomePorchLamp", playerHouse, new Vector3(-1.82f, 2.42f, 0f), new Vector3(0.18f, 0.18f, 0.18f), porchGlowMat, false);
+                CreateBox("HomeSignBg", playerHouse, new Vector3(-1.76f, 2.95f, 0f), new Vector3(0.10f, 0.52f, 2.15f), homeTrimMat, false);
+                var homeLabel = CreateWorldText("HomeSignText", playerHouse, new Vector3(-1.83f, 2.95f, 0f), "MY HOUSE", 52, new Color(1.0f, 0.94f, 0.40f), 0.20f, 0.13f);
+                homeLabel.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+            }
 
             // Plaza Bench (for bench sitter Ate Lorna)
             var plazaBench = new GameObject("PlazaBench").transform;
@@ -1079,46 +1095,27 @@ namespace TeksMaster.World
             var backdrop = new GameObject("BarangayBackdrop").transform;
             backdrop.SetParent(CourtRoot, false);
 
-            Material[] houseWalls = {
-                CardArtGenerator.CreateLitMaterial(new Color(0.84f, 0.72f, 0.54f), 0.1f),
-                CardArtGenerator.CreateLitMaterial(new Color(0.78f, 0.64f, 0.50f), 0.1f),
-                CardArtGenerator.CreateLitMaterial(new Color(0.68f, 0.76f, 0.72f), 0.1f),
-                CardArtGenerator.CreateLitMaterial(new Color(0.82f, 0.62f, 0.56f), 0.1f),
-                CardArtGenerator.CreateLitMaterial(new Color(0.88f, 0.80f, 0.62f), 0.1f)
-            };
-            Material tinRoofMat = CardArtGenerator.CreateLitMaterial(new Color(0.56f, 0.38f, 0.30f), 0.25f, 0.25f);
-            Material windowMat = CardArtGenerator.CreateLitMaterial(new Color(0.18f, 0.22f, 0.28f), 0.4f);
-            Material doorMat = CardArtGenerator.CreateLitMaterial(new Color(0.42f, 0.24f, 0.14f), 0.2f);
-            Material porchMat = CardArtGenerator.CreateLitMaterial(new Color(0.64f, 0.60f, 0.54f), 0.15f);
-            Material lampGlowMat = CardArtGenerator.CreateUnlitEmissiveMaterial(new Color(1.0f, 0.88f, 0.52f), 1.35f);
-
             int houseIndex = 0;
 
-            // Existing North & Side Perimeter Houses
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-16f, 0f, 14f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-9.5f, 0f, 15.2f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-2.5f, 0f, 14.8f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(3.2f, 0f, 15.8f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(16.8f, 0f, 14.5f), 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-33.5f, 0f, 4.5f), -90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-33.2f, 0f, -5.5f), -90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(34.5f, 0f, 3.0f), 90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(34.5f, 0f, -7.0f), 90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            // North Perimeter Houses (yaw = 0 -> front faces South toward court, positioned cleanly north of BoundaryNorth z = 12.2)
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-29.2f, 0f, 15.0f), 0f, false, variantOverride: 1, targetWidth: 5.8f, targetDepth: 3.8f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-23.0f, 0f, 15.0f), 0f, false, variantOverride: 0, targetWidth: 4.8f, targetDepth: 4.4f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-16.0f, 0f, 15.0f), 0f, false, variantOverride: 2, targetWidth: 4.4f, targetDepth: 4.4f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-9.5f, 0f, 15.2f), 0f, false, variantOverride: 0, targetWidth: 4.8f, targetDepth: 4.4f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-2.5f, 0f, 15.0f), 0f, false, variantOverride: 2, targetWidth: 4.4f, targetDepth: 4.4f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(3.2f, 0f, 15.8f), 0f, false, variantOverride: 0, targetWidth: 4.8f, targetDepth: 4.4f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(9.8f, 0f, 15.0f), 0f, false, variantOverride: 2, targetWidth: 4.4f, targetDepth: 4.4f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(16.8f, 0f, 15.0f), 0f, false, variantOverride: 0, targetWidth: 4.8f, targetDepth: 4.4f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(23.4f, 0f, 15.0f), 0f, false, variantOverride: 2, targetWidth: 4.4f, targetDepth: 4.4f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(29.8f, 0f, 15.0f), 0f, false, variantOverride: 1, targetWidth: 5.8f, targetDepth: 3.8f);
 
-            // North Perimeter Fill (yaw = 0)
-            Vector3[] northFill = {
-                new Vector3(9.8f, 0f, 14.8f),
-                new Vector3(23.4f, 0f, 15.0f),
-                new Vector3(29.8f, 0f, 14.6f),
-                new Vector3(-23.0f, 0f, 14.6f),
-                new Vector3(-29.2f, 0f, 14.8f)
-            };
-            for (int i = 0; i < northFill.Length; i++)
-            {
-                BuildBarangayHouse(backdrop, houseIndex++, northFill[i], 0f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            }
+            // West & East Side Perimeter Houses (cleanly outside BoundaryWest = -31.5 and BoundaryEast = 32.5)
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, 4.5f), -90f, false, variantOverride: 1, targetWidth: 6.8f, targetDepth: 4.0f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -5.5f), -90f, false, variantOverride: 0, targetWidth: 5.2f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.0f, 0f, 3.0f), 90f, false, variantOverride: 0, targetWidth: 5.2f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.0f, 0f, -7.0f), 90f, false, variantOverride: 1, targetWidth: 6.8f, targetDepth: 4.0f);
 
-            // South Highway Residential Row (yaw = 180, solid colliders & porch details facing highway)
+            // South Highway Residential Row (yaw = 180 -> front doors face North toward Kalye Highway, solid BoxColliders)
             Vector3[] southHighwayRow = {
                 new Vector3(-11.2f, 0f, -23.6f),
                 new Vector3(-5.2f, 0f, -24.0f),
@@ -1128,26 +1125,31 @@ namespace TeksMaster.World
             };
             for (int i = 0; i < southHighwayRow.Length; i++)
             {
-                BuildBarangayHouse(backdrop, houseIndex++, southHighwayRow[i], 180f, true, true, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+                int variant = (i % 2 == 0) ? 0 : 2;
+                float w = (variant == 0) ? 4.5f : 4.2f;
+                BuildBarangayHouse(backdrop, houseIndex++, southHighwayRow[i], 180f, true, variantOverride: variant, targetWidth: w, targetDepth: 4.3f);
             }
 
-            // South Backdrop Row (yaw = 180, non-colliding depth skyline)
+            // South Backdrop Row (yaw = 180, non-colliding depth skyline showcasing all 3 house models)
             Vector3[] southBackdropRow = {
                 new Vector3(-9.5f, 0f, -31.8f),
                 new Vector3(-2.5f, 0f, -32.2f),
                 new Vector3(4.5f, 0f, -31.8f),
                 new Vector3(10.5f, 0f, -32.2f)
             };
+            int[] southBackVariants = { 1, 0, 2, 1 };
             for (int i = 0; i < southBackdropRow.Length; i++)
             {
-                BuildBarangayHouse(backdrop, houseIndex++, southBackdropRow[i], 180f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+                int v = southBackVariants[i % southBackVariants.Length];
+                float w = (v == 1) ? 5.6f : 4.6f;
+                BuildBarangayHouse(backdrop, houseIndex++, southBackdropRow[i], 180f, false, variantOverride: v, targetWidth: w, targetDepth: 4.2f);
             }
 
-            // West & East Perimeter Extensions
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -23.5f), -90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -31.5f), -90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -23.5f), 90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
-            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -31.5f), 90f, false, false, houseWalls, tinRoofMat, windowMat, doorMat, porchMat, lampGlowMat);
+            // West & East South Perimeter Extensions
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -23.5f), -90f, false, variantOverride: 2, targetWidth: 4.6f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(-34.2f, 0f, -31.5f), -90f, false, variantOverride: 0, targetWidth: 5.2f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -23.5f), 90f, false, variantOverride: 2, targetWidth: 4.6f, targetDepth: 4.2f);
+            BuildBarangayHouse(backdrop, houseIndex++, new Vector3(35.2f, 0f, -31.5f), 90f, false, variantOverride: 1, targetWidth: 6.4f, targetDepth: 4.0f);
 
             // Wooden Meralco Utility Poles & Overhead Power Lines
             Material poleMat = CardArtGenerator.CreateLitMaterial(new Color(0.36f, 0.25f, 0.16f), 0.15f);
@@ -1197,37 +1199,179 @@ namespace TeksMaster.World
             Vector3 pos,
             float yaw,
             bool keepCollider,
-            bool addPorchDetail,
-            Material[] houseWalls,
-            Material tinRoofMat,
-            Material windowMat,
-            Material doorMat,
-            Material porchMat,
-            Material lampGlowMat)
+            int? variantOverride = null,
+            float targetWidth = 4.8f,
+            float targetDepth = 4.4f)
         {
-            float hHeight = 4.2f + (index % 3) * 1.2f;
-            float hWidth = 4.6f + (index % 2) * 0.9f;
-
             var house = new GameObject("BarangayHouse_" + index).transform;
             house.SetParent(parent, false);
             house.position = pos;
             house.rotation = Quaternion.Euler(0f, yaw, 0f);
 
-            CreateBox("Walls", house, new Vector3(0f, hHeight * 0.5f, 0f), new Vector3(hWidth, hHeight, 4.4f), houseWalls[index % houseWalls.Length], keepCollider);
+            int variant = variantOverride ?? (index % 3);
+            if (SpawnHousePackModel(house, variant, targetWidth, targetDepth, targetMinHeight: 3.6f, targetMaxHeight: 5.4f, localYawOffset: 180f, addCollider: keepCollider))
+            {
+                return;
+            }
+
+            // Defensive procedural fallback if house catalog asset has not been imported yet
+            float hHeight = 4.2f + (index % 3) * 1.2f;
+            float hWidth = 4.6f + (index % 2) * 0.9f;
+            Material wallMat = CardArtGenerator.CreateLitMaterial(new Color(0.84f, 0.72f, 0.54f), 0.1f);
+            Material tinRoofMat = CardArtGenerator.CreateLitMaterial(new Color(0.56f, 0.38f, 0.30f), 0.25f, 0.25f);
+            Material windowMat = CardArtGenerator.CreateLitMaterial(new Color(0.18f, 0.22f, 0.28f), 0.4f);
+
+            CreateBox("Walls", house, new Vector3(0f, hHeight * 0.5f, 0f), new Vector3(hWidth, hHeight, 4.4f), wallMat, keepCollider);
             var roof = CreateBox("Roof", house, new Vector3(0f, hHeight + 0.3f, 0f), new Vector3(hWidth + 0.7f, 0.25f, 5.1f), tinRoofMat, false);
             roof.transform.localRotation = Quaternion.Euler(8f, 0f, 0f);
-
             CreateBox("Win1", house, new Vector3(-1.1f, hHeight * 0.65f, -2.23f), new Vector3(0.95f, 0.85f, 0.08f), windowMat, false);
             CreateBox("Win2", house, new Vector3(1.1f, hHeight * 0.65f, -2.23f), new Vector3(0.95f, 0.85f, 0.08f), windowMat, false);
+        }
 
-            if (addPorchDetail)
+        private bool SpawnHousePackModel(
+            Transform parent,
+            int variantIndex,
+            float targetWidth,
+            float targetDepth,
+            float targetMinHeight,
+            float targetMaxHeight,
+            float localYawOffset,
+            bool addCollider)
+        {
+            GameObject prefab = TeksHouseCatalog.LoadPrefab(variantIndex);
+            if (prefab == null) return false;
+
+            var inst = Instantiate(prefab, parent, false);
+            inst.name = prefab.name + "_Model";
+
+            var colliders = inst.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < colliders.Length; i++)
             {
-                CreateBox("FrontDoor", house, new Vector3(0f, 1.05f, -2.23f), new Vector3(1.05f, 2.05f, 0.08f), doorMat, false);
-                CreateBox("PorchStep", house, new Vector3(0f, 0.14f, -2.55f), new Vector3(2.4f, 0.28f, 0.75f), porchMat, keepCollider);
-                var awning = CreateBox("PorchAwning", house, new Vector3(0f, 2.55f, -2.65f), new Vector3(2.8f, 0.12f, 1.1f), tinRoofMat, false);
-                awning.transform.localRotation = Quaternion.Euler(14f, 0f, 0f);
-                CreateBox("PorchLamp", house, new Vector3(0.75f, 2.15f, -2.28f), new Vector3(0.18f, 0.18f, 0.14f), lampGlowMat, false);
+                SafeDestroy(colliders[i]);
             }
+
+            ConvertHouseMaterialsToUrp(inst);
+
+            var mf = inst.GetComponentInChildren<MeshFilter>(true);
+            if (mf != null && mf.sharedMesh != null)
+            {
+                Bounds rawBounds = mf.sharedMesh.bounds;
+                Vector3 rawSize = rawBounds.size;
+
+                bool rotatedSideways = Mathf.Abs(Mathf.Sin(localYawOffset * Mathf.Deg2Rad)) > 0.5f;
+                float rawHorizForWidth = Mathf.Max(0.1f, rotatedSideways ? rawSize.z : rawSize.x);
+                float rawHorizForDepth = Mathf.Max(0.1f, rotatedSideways ? rawSize.x : rawSize.z);
+                float uniformHoriz = Mathf.Min(targetWidth / rawHorizForWidth, targetDepth / rawHorizForDepth);
+
+                float rawHeight = Mathf.Max(0.1f, rawSize.y);
+                float desiredHeight = Mathf.Clamp(rawHeight * uniformHoriz, targetMinHeight, targetMaxHeight);
+                float sy = Mathf.Clamp(desiredHeight / rawHeight, uniformHoriz * 0.78f, uniformHoriz * 1.32f);
+
+                Vector3 scaleVec = new Vector3(uniformHoriz, sy, uniformHoriz);
+                Quaternion rot = Quaternion.Euler(0f, localYawOffset, 0f);
+                inst.transform.localScale = scaleVec;
+                inst.transform.localRotation = rot;
+
+                Vector3 rawBottomCenter = new Vector3(rawBounds.center.x, rawBounds.min.y, rawBounds.center.z);
+                Vector3 scaledOffset = Vector3.Scale(rawBottomCenter, scaleVec);
+                inst.transform.localPosition = -(rot * scaledOffset);
+
+                if (addCollider)
+                {
+                    Vector3 scaledSize = Vector3.Scale(rawSize, scaleVec);
+                    float rad = localYawOffset * Mathf.Deg2Rad;
+                    float absCos = Mathf.Abs(Mathf.Cos(rad));
+                    float absSin = Mathf.Abs(Mathf.Sin(rad));
+                    float colX = scaledSize.x * absCos + scaledSize.z * absSin;
+                    float colZ = scaledSize.x * absSin + scaledSize.z * absCos;
+
+                    var box = parent.gameObject.AddComponent<BoxCollider>();
+                    box.center = new Vector3(0f, scaledSize.y * 0.5f, 0f);
+                    box.size = new Vector3(colX, scaledSize.y, colZ);
+                }
+            }
+
+            return true;
+        }
+
+        private static void ConvertHouseMaterialsToUrp(GameObject houseInstance)
+        {
+            if (houseInstance == null) return;
+            var renderers = houseInstance.GetComponentsInChildren<Renderer>(true);
+            for (int r = 0; r < renderers.Length; r++)
+            {
+                var rend = renderers[r];
+                if (rend == null) continue;
+                var srcMats = rend.sharedMaterials;
+                if (srcMats == null || srcMats.Length == 0) continue;
+
+                var dstMats = new Material[srcMats.Length];
+                for (int m = 0; m < srcMats.Length; m++)
+                {
+                    dstMats[m] = GetOrCreateUrpHouseMaterial(srcMats[m]);
+                }
+                rend.sharedMaterials = dstMats;
+            }
+        }
+
+        private static Material GetOrCreateUrpHouseMaterial(Material srcMat)
+        {
+            string cleanName = srcMat != null
+                ? srcMat.name.Replace(" (Instance)", string.Empty).Trim()
+                : "Default";
+
+            if (_houseUrpMatCache.TryGetValue(cleanName, out var cached) &&
+                cached != null &&
+                cached.shader != null &&
+                cached.shader.name != "Hidden/InternalErrorShader" &&
+                (!Application.isPlaying || (cached.hideFlags & HideFlags.DontSaveInBuild) == 0))
+            {
+                return cached;
+            }
+
+            bool isMirror = string.Equals(cleanName, "Mirror", System.StringComparison.OrdinalIgnoreCase);
+            Color baseColor = ResolveHousePaletteColor(cleanName, srcMat, isMirror);
+            float smoothness = isMirror ? 0.78f : 0.16f;
+            float metallic = isMirror ? 0.25f : 0.0f;
+
+            var urpMat = CardArtGenerator.CreateLitMaterial(baseColor, smoothness, metallic);
+            urpMat.name = "URP_House_" + cleanName;
+            _houseUrpMatCache[cleanName] = urpMat;
+            return urpMat;
+        }
+
+        private static Color ResolveHousePaletteColor(string cleanName, Material srcMat, bool isMirror)
+        {
+            if (isMirror)
+            {
+                // Reflective architectural window glass instead of opaque flat black
+                return new Color(0.16f, 0.30f, 0.46f, 1f);
+            }
+
+            if (srcMat != null)
+            {
+                if (srcMat.HasProperty("_BaseColor")) return srcMat.GetColor("_BaseColor");
+                if (srcMat.HasProperty("_Color")) return srcMat.GetColor("_Color");
+            }
+
+            return cleanName switch
+            {
+                "Black" => new Color(0.05f, 0.05f, 0.06f, 1f),
+                "Blue" => new Color(0.0f, 0.18f, 0.96f, 1f),
+                "Brown" => new Color(0.38f, 0.08f, 0.06f, 1f),
+                "Gray" => new Color(0.24f, 0.24f, 0.26f, 1f),
+                "Light_black" => new Color(0.11f, 0.12f, 0.14f, 1f),
+                "Light_brown" => new Color(0.45f, 0.28f, 0.26f, 1f),
+                "Light_gray" => new Color(0.54f, 0.54f, 0.56f, 1f),
+                "Orange" => new Color(1.0f, 0.48f, 0.04f, 1f),
+                "Orange_2" => new Color(1.0f, 0.69f, 0.26f, 1f),
+                "Red" => new Color(0.95f, 0.08f, 0.14f, 1f),
+                "Red_2" => new Color(0.76f, 0.08f, 0.08f, 1f),
+                "White" => new Color(0.96f, 0.96f, 0.96f, 1f),
+                "White_2" => new Color(0.84f, 0.84f, 0.84f, 1f),
+                "Yellow" => new Color(1.0f, 0.72f, 0.08f, 1f),
+                _ => new Color(0.80f, 0.76f, 0.70f, 1f)
+            };
         }
 
         private void BuildUtilityPole(Transform parent, Vector3 pos, Material poleMat)

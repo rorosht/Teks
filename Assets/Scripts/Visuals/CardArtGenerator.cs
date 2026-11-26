@@ -9,6 +9,7 @@ namespace TeksMaster.Visuals
         private static readonly Dictionary<string, Texture2D> _portraitTexCache = new Dictionary<string, Texture2D>();
         private static readonly Dictionary<string, Sprite> _portraitSpriteCache = new Dictionary<string, Sprite>();
         private static readonly Dictionary<string, Sprite> _uiIconCache = new Dictionary<string, Sprite>();
+        private static readonly Dictionary<ShopPackType, Sprite> _shopPackSpriteCache = new Dictionary<ShopPackType, Sprite>();
 
         private static Texture2D _cardBackTex;
         private static Sprite _cardBackSprite;
@@ -33,6 +34,7 @@ namespace TeksMaster.Visuals
             _portraitTexCache.Clear();
             _portraitSpriteCache.Clear();
             _uiIconCache.Clear();
+            _shopPackSpriteCache.Clear();
             _cardBackTex = null;
             _cardBackSprite = null;
             _courtFloorTex = null;
@@ -863,6 +865,62 @@ namespace TeksMaster.Visuals
                         }
                     }
                     break;
+                case "settings":
+                    {
+                        Color gearOuter = new Color(0.84f, 0.92f, 1.0f);
+                        Color gearRim = new Color(0.56f, 0.72f, 0.90f);
+                        Color gearInner = new Color(0.16f, 0.24f, 0.36f);
+                        for (int t = 0; t < 8; t++)
+                        {
+                            float a = t * Mathf.PI * 0.25f;
+                            Vector2 tip = new Vector2(32f + Mathf.Cos(a) * 23f, 32f + Mathf.Sin(a) * 23f);
+                            FillCapsule(tex, new Vector2(32f, 32f), tip, 4.4f, gearRim);
+                        }
+                        FillEllipse(tex, 32, 32, 17.5f, 17.5f, gearOuter);
+                        FillEllipse(tex, 32, 32, 11.5f, 11.5f, gearInner);
+                        FillEllipse(tex, 32, 32, 6.2f, 6.2f, Color.clear);
+                    }
+                    break;
+                case "fusion":
+                    {
+                        Color violetGlow = new Color(0.80f, 0.42f, 1.0f);
+                        Color magentaCore = new Color(0.95f, 0.30f, 0.82f);
+                        Color goldSpark = new Color(1.0f, 0.88f, 0.30f);
+                        // Outer alchemical diamond
+                        FillTriangle(tex, new Vector2(32, 58), new Vector2(10, 32), new Vector2(54, 32), violetGlow);
+                        FillTriangle(tex, new Vector2(32, 6), new Vector2(10, 32), new Vector2(54, 32), magentaCore);
+                        // Inner golden fusion core
+                        FillTriangle(tex, new Vector2(32, 48), new Vector2(20, 32), new Vector2(44, 32), goldSpark);
+                        FillTriangle(tex, new Vector2(32, 16), new Vector2(20, 32), new Vector2(44, 32), goldSpark);
+                        FillEllipse(tex, 32, 32, 6f, 6f, Color.white);
+                        DrawStar(tex, 14, 50, 5f, 2f, new Color(0.55f, 0.96f, 1.0f));
+                        DrawStar(tex, 50, 14, 5f, 2f, goldSpark);
+                    }
+                    break;
+                case "missions":
+                    {
+                        Color parchment = new Color(0.98f, 0.93f, 0.78f);
+                        Color goldEdge = new Color(0.95f, 0.68f, 0.16f);
+                        Color ink = new Color(0.24f, 0.30f, 0.44f);
+                        FillRect(tex, 14, 10, 36, 44, goldEdge);
+                        FillRect(tex, 17, 13, 30, 38, parchment);
+                        FillRect(tex, 11, 48, 42, 7, goldEdge);
+                        FillRect(tex, 11, 9, 42, 7, goldEdge);
+                        FillRect(tex, 21, 37, 22, 4, ink);
+                        FillRect(tex, 21, 29, 18, 4, ink);
+                        FillRect(tex, 21, 21, 20, 4, ink);
+                        DrawStar(tex, 46, 20, 9f, 4f, new Color(1.0f, 0.82f, 0.18f));
+                    }
+                    break;
+                case "location":
+                    {
+                        Color pinOuter = new Color(0.32f, 0.88f, 1.0f);
+                        Color pinRim = new Color(0.14f, 0.56f, 0.90f);
+                        FillTriangle(tex, new Vector2(17, 36), new Vector2(47, 36), new Vector2(32, 8), pinRim);
+                        FillEllipse(tex, 32, 40, 16, 16, pinOuter);
+                        FillEllipse(tex, 32, 40, 7, 7, Color.white);
+                    }
+                    break;
                 default:
                     FillEllipse(tex, 32, 32, 20, 20, Color.white);
                     break;
@@ -872,6 +930,191 @@ namespace TeksMaster.Visuals
             var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
             _uiIconCache[iconName] = sprite;
             return sprite;
+        }
+
+        public static Sprite GetShopPackSprite(ShopPackType packType)
+        {
+            if (_shopPackSpriteCache.TryGetValue(packType, out var cached) && cached != null)
+                return cached;
+
+            const int w = 160;
+            const int h = 210;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            ClearTex(tex, Color.clear);
+
+            Color botCol;
+            Color topCol;
+            Color trimCol;
+            Color crimpCol;
+            Color emblemCol;
+
+            switch (packType)
+            {
+                case ShopPackType.Premium:
+                    botCol = new Color(0.06f, 0.32f, 0.22f);
+                    topCol = new Color(0.18f, 0.76f, 0.50f);
+                    trimCol = new Color(0.98f, 0.84f, 0.28f);
+                    crimpCol = new Color(0.84f, 0.92f, 0.86f);
+                    emblemCol = new Color(1.0f, 0.88f, 0.28f);
+                    break;
+                case ShopPackType.Rare:
+                    botCol = new Color(0.24f, 0.08f, 0.44f);
+                    topCol = new Color(0.66f, 0.24f, 0.90f);
+                    trimCol = new Color(0.42f, 0.94f, 1.0f);
+                    crimpCol = new Color(0.84f, 0.80f, 0.96f);
+                    emblemCol = new Color(0.36f, 0.94f, 1.0f);
+                    break;
+                case ShopPackType.SpecialGem:
+                    botCol = new Color(0.18f, 0.08f, 0.36f);
+                    topCol = new Color(0.94f, 0.46f, 0.08f);
+                    trimCol = new Color(1.0f, 0.86f, 0.24f);
+                    crimpCol = new Color(1.0f, 0.90f, 0.58f);
+                    emblemCol = new Color(0.32f, 0.92f, 1.0f);
+                    break;
+                case ShopPackType.DailyFree:
+                    botCol = new Color(0.56f, 0.12f, 0.16f);
+                    topCol = new Color(0.96f, 0.62f, 0.14f);
+                    trimCol = new Color(1.0f, 0.92f, 0.42f);
+                    crimpCol = new Color(1.0f, 0.86f, 0.46f);
+                    emblemCol = new Color(1.0f, 0.92f, 0.36f);
+                    break;
+                default:
+                    botCol = new Color(0.08f, 0.24f, 0.58f);
+                    topCol = new Color(0.22f, 0.62f, 0.96f);
+                    trimCol = new Color(0.96f, 0.84f, 0.28f);
+                    crimpCol = new Color(0.82f, 0.88f, 0.96f);
+                    emblemCol = new Color(1.0f, 0.86f, 0.26f);
+                    break;
+            }
+
+            const int marginX = 6;
+            const int crimpH = 18;
+            for (int y = 0; y < h; y++)
+            {
+                float ny = (float)y / (h - 1);
+                for (int x = marginX; x < w - marginX; x++)
+                {
+                    // Serrated foil teeth at very top and bottom edges
+                    bool inBottomTeeth = y < 4 && ((x - marginX) % 8 < 4) && y < 2;
+                    bool inTopTeeth = y >= h - 4 && ((x - marginX) % 8 < 4) && y >= h - 2;
+                    if (inBottomTeeth || inTopTeeth) continue;
+
+                    bool inCrimp = y < crimpH || y >= h - crimpH;
+                    Color c;
+                    if (inCrimp)
+                    {
+                        float groove = ((x - marginX) % 5 == 0) ? 0.72f : (((x - marginX) % 5 == 1) ? 1.12f : 0.94f);
+                        c = crimpCol * groove;
+                        c.a = 1f;
+                    }
+                    else if (y == crimpH || y == crimpH + 1 || y == h - crimpH - 1 || y == h - crimpH - 2 ||
+                             x <= marginX + 2 || x >= w - marginX - 3)
+                    {
+                        c = trimCol;
+                    }
+                    else
+                    {
+                        c = Color.Lerp(botCol, topCol, (ny - 0.08f) / 0.84f);
+
+                        // Center sunburst rays behind emblem
+                        Vector2 delta = new Vector2((float)x / w - 0.5f, (ny - 0.52f) * 1.25f);
+                        float dist = delta.magnitude;
+                        float ang = Mathf.Atan2(delta.y, delta.x);
+                        float ray = Mathf.Pow(Mathf.Abs(Mathf.Sin(ang * 8f)), 6f);
+                        c += trimCol * (ray * 0.24f * Mathf.Clamp01(1f - dist * 1.4f));
+
+                        // Glossy diagonal foil sheen
+                        float diag = (x * 0.85f + y * 0.45f) / w;
+                        float sheen = Mathf.Exp(-Mathf.Pow((diag - 0.62f) * 7f, 2f)) * 0.30f
+                                    + Mathf.Exp(-Mathf.Pow((diag - 1.12f) * 9f, 2f)) * 0.22f;
+                        c = Color.Lerp(c, Color.white, Mathf.Clamp01(sheen));
+                    }
+
+                    tex.SetPixel(x, y, c);
+                }
+            }
+
+            // Inner foil framing card badge
+            FillRect(tex, 18, 30, w - 36, h - 60, new Color(0.06f, 0.09f, 0.16f, 0.36f));
+            FillRect(tex, 18, 30, w - 36, 3, new Color(trimCol.r, trimCol.g, trimCol.b, 0.85f));
+            FillRect(tex, 18, h - 33, w - 36, 3, new Color(trimCol.r, trimCol.g, trimCol.b, 0.85f));
+
+            DrawShopPackEmblem(tex, w, h, packType, trimCol, emblemCol);
+
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
+            _shopPackSpriteCache[packType] = sprite;
+            return sprite;
+        }
+
+        private static void DrawShopPackEmblem(Texture2D tex, int w, int h, ShopPackType packType, Color trimCol, Color emblemCol)
+        {
+            float cx = w * 0.5f;
+            float cy = h * 0.52f;
+
+            // Medallion halo behind centerpiece
+            FillEllipse(tex, cx, cy, 38f, 38f, new Color(trimCol.r, trimCol.g, trimCol.b, 0.25f));
+            FillEllipse(tex, cx, cy, 31f, 31f, new Color(0.07f, 0.10f, 0.18f, 0.86f));
+
+            if (packType == ShopPackType.DailyFree)
+            {
+                // Gift ribbon cross + 3 fiesta stars
+                FillRect(tex, Mathf.RoundToInt(cx - 5f), 34, 10, h - 68, new Color(0.92f, 0.20f, 0.22f, 0.90f));
+                FillRect(tex, 20, Mathf.RoundToInt(cy - 5f), w - 40, 10, new Color(0.92f, 0.20f, 0.22f, 0.90f));
+                FillEllipse(tex, cx, cy, 29f, 29f, new Color(0.18f, 0.10f, 0.06f, 0.90f));
+                DrawStar(tex, cx - 18f, cy - 6f, 10f, 4.2f, trimCol);
+                DrawStar(tex, cx + 18f, cy - 6f, 10f, 4.2f, trimCol);
+                DrawStar(tex, cx, cy + 7f, 18f, 8f, emblemCol);
+                return;
+            }
+
+            if (packType == ShopPackType.SpecialGem)
+            {
+                // Faceted Mythic Gem centerpiece
+                FillTriangle(tex, new Vector2(cx - 26f, cy + 8f), new Vector2(cx + 26f, cy + 8f), new Vector2(cx, cy - 28f), new Color(0.08f, 0.52f, 0.88f));
+                FillTriangle(tex, new Vector2(cx - 26f, cy + 8f), new Vector2(cx - 14f, cy + 24f), new Vector2(cx + 14f, cy + 24f), emblemCol);
+                FillTriangle(tex, new Vector2(cx - 26f, cy + 8f), new Vector2(cx + 14f, cy + 24f), new Vector2(cx + 26f, cy + 8f), new Color(0.20f, 0.80f, 0.98f));
+                FillTriangle(tex, new Vector2(cx - 12f, cy + 8f), new Vector2(cx, cy + 22f), new Vector2(cx + 12f, cy + 8f), Color.white);
+                DrawStar(tex, cx - 18f, cy + 22f, 7f, 2.8f, Color.white);
+                DrawStar(tex, cx + 20f, cy - 16f, 6f, 2.5f, trimCol);
+                return;
+            }
+
+            if (packType == ShopPackType.Rare)
+            {
+                // Radiant diamond crest + lightning bolt
+                FillTriangle(tex, new Vector2(cx, cy + 29f), new Vector2(cx - 26f, cy), new Vector2(cx + 26f, cy), emblemCol);
+                FillTriangle(tex, new Vector2(cx, cy - 29f), new Vector2(cx - 26f, cy), new Vector2(cx + 26f, cy), new Color(0.76f, 0.36f, 1.0f));
+                FillTriangle(tex, new Vector2(cx + 5f, cy + 20f), new Vector2(cx - 12f, cy - 2f), new Vector2(cx + 3f, cy - 2f), Color.white);
+                FillTriangle(tex, new Vector2(cx - 5f, cy - 20f), new Vector2(cx + 12f, cy + 2f), new Vector2(cx - 3f, cy + 2f), trimCol);
+                DrawStar(tex, cx - 22f, h - 46f, 6f, 2.5f, trimCol);
+                DrawStar(tex, cx + 22f, h - 46f, 6f, 2.5f, trimCol);
+                return;
+            }
+
+            if (packType == ShopPackType.Premium)
+            {
+                // Crown emblem + 3 stars
+                FillRect(tex, Mathf.RoundToInt(cx - 20f), Mathf.RoundToInt(cy - 10f), 40, 12, emblemCol);
+                FillTriangle(tex, new Vector2(cx - 20f, cy + 2f), new Vector2(cx - 23f, cy + 22f), new Vector2(cx - 7f, cy + 2f), emblemCol);
+                FillTriangle(tex, new Vector2(cx - 8f, cy + 2f), new Vector2(cx, cy + 26f), new Vector2(cx + 8f, cy + 2f), Color.white);
+                FillTriangle(tex, new Vector2(cx + 7f, cy + 2f), new Vector2(cx + 23f, cy + 22f), new Vector2(cx + 20f, cy + 2f), emblemCol);
+                DrawStar(tex, cx - 18f, cy - 20f, 6f, 2.5f, trimCol);
+                DrawStar(tex, cx, cy - 22f, 7f, 3f, Color.white);
+                DrawStar(tex, cx + 18f, cy - 20f, 6f, 2.5f, trimCol);
+                return;
+            }
+
+            // Basic: Classic 3-Star Teks Shield Emblem
+            FillRect(tex, Mathf.RoundToInt(cx - 19f), Mathf.RoundToInt(cy - 2f), 38, 22, trimCol);
+            FillTriangle(tex, new Vector2(cx - 19f, cy - 2f), new Vector2(cx + 19f, cy - 2f), new Vector2(cx, cy - 25f), trimCol);
+            FillRect(tex, Mathf.RoundToInt(cx - 15f), Mathf.RoundToInt(cy + 1f), 30, 16, new Color(0.10f, 0.24f, 0.54f));
+            FillTriangle(tex, new Vector2(cx - 15f, cy + 1f), new Vector2(cx + 15f, cy + 1f), new Vector2(cx, cy - 19f), new Color(0.10f, 0.24f, 0.54f));
+            DrawStar(tex, cx, cy + 3f, 13f, 5.5f, emblemCol);
+            DrawStar(tex, cx - 18f, h - 46f, 5.5f, 2.2f, Color.white);
+            DrawStar(tex, cx + 18f, h - 46f, 5.5f, 2.2f, Color.white);
         }
 
         private static void ClearTex(Texture2D tex, Color color)
